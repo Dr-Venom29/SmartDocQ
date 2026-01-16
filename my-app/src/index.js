@@ -4,14 +4,22 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
-// Temporary service limitation notice
+// Show alert AFTER the page fully loads (once per session)
 if (typeof window !== 'undefined') {
-  window.alert(
-    '⚠️ Temporary Service Limitation\n\n' +
-      "Due to cloud infrastructure costs, SmartDocQ’s live AI services are currently paused.\n\n" +
-      'The complete project architecture, AI pipeline, and full implementation are available on GitHub.\n' +
-      'Please refer to the repository link in the footer for detailed code and documentation.'
-  );
+  window.addEventListener('load', () => {
+    if (!sessionStorage.getItem('smartdocqAlert')) {
+      window.alert(
+        '⚠️ TEMPORARY SERVICE LIMITATION\n\n' +
+          'Only the backend AI services of SmartDocQ are currently paused due to cloud infrastructure cost constraints.\n\n' +
+          'Frontend Status: Fully Operational\n\n' +
+          'You can still explore the platform’s interface, features, and design.\n\n' +
+          'For full system architecture, AI pipeline details, and complete implementation:\n' +
+          'Please visit the GitHub repository linked in the footer.'
+      );
+
+      sessionStorage.setItem('smartdocqAlert', 'shown');
+    }
+  });
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -21,7 +29,4 @@ root.render(
   </React.StrictMode>
 );
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
