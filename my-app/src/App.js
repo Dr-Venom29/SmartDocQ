@@ -1,4 +1,5 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { useEffect } from 'react';
 import Navbar from './Components/Navbar';
 import Hero from './Components/HeroSection';
 import Body from './Components/BodySection';
@@ -26,6 +27,25 @@ function App() {
 }
 
 function Main() {
+
+  // Show alert AFTER UI loads (once per session)
+  useEffect(() => {
+    if (!sessionStorage.getItem('smartdocqAlert')) {
+      setTimeout(() => {
+        window.alert(
+          '⚠️ TEMPORARY SERVICE LIMITATION\n\n' +
+            'Only the backend AI services of SmartDocQ are currently paused due to cloud infrastructure cost constraints.\n\n' +
+            'Frontend Status: Fully Operational\n\n' +
+            'You can still explore the platform’s interface, features, and design.\n\n' +
+            'For full system architecture, AI pipeline details, and complete implementation:\n' +
+            'Please visit the GitHub repository linked in the footer.'
+        );
+
+        sessionStorage.setItem('smartdocqAlert', 'shown');
+      }, 600); // slight delay so UI is visible first
+    }
+  }, []);
+
   return (
     <Routes>
       <Route 
