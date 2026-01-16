@@ -7,5 +7,19 @@
     "i18next-http-backend": "^3.0.2",
     "pdfkit": "^0.17.2",
     "react-i18next": "^15.7.3"
-  }
+  },
+  "name": "smartdoc",
+  "version": "1.0.0",
+  "description": "**Live Demo:** [https://smartdocq.vercel.app](https://smartdocq.vercel.app)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

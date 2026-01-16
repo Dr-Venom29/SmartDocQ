@@ -4,6 +4,16 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+// Temporary service limitation notice
+if (typeof window !== 'undefined') {
+  window.alert(
+    '⚠️ Temporary Service Limitation\n\n' +
+      "Due to cloud infrastructure costs, SmartDocQ’s live AI services are currently paused.\n\n" +
+      'The complete project architecture, AI pipeline, and full implementation are available on GitHub.\n' +
+      'Please refer to the repository link in the footer for detailed code and documentation.'
+  );
+}
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
