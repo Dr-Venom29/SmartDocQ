@@ -278,12 +278,45 @@ For questions, issues, or feature requests:
 Thanks to all the contributors who have helped build SmartDocQ:
 
 <!-- ALL-CONTRIBUTORS-LIST:START -->
-
-- [@Dr-Venom29](https://github.com/Dr-Venom29)
-- [@ANIRUDH-7600](https://github.com/ANIRUDH-7600)
-- [@sameekhsa](https://github.com/sameekhsa)
-- [@ananya-1507](https://github.com/ananya-1507)
-- [@srithi-05](https://github.com/srithi-05)
+<table>
+	<tr>
+		<td align="center">
+			<a href="https://github.com/Dr-Venom29">
+				<img src="https://github.com/Dr-Venom29.png" width="100px;" alt=""/>
+				<br />
+				<sub><b>Dr-Venom29</b></sub>
+			</a>
+		</td>
+		<td align="center">
+			<a href="https://github.com/ANIRUDH-7600">
+				<img src="https://github.com/ANIRUDH-7600.png" width="100px;" alt=""/>
+				<br />
+				<sub><b>ANIRUDH-7600</b></sub>
+			</a>
+		</td>
+		<td align="center">
+			<a href="https://github.com/sameekhsa">
+				<img src="https://github.com/sameekhsa.png" width="100px;" alt=""/>
+				<br />
+				<sub><b>sameekhsa</b></sub>
+			</a>
+		</td>
+		<td align="center">
+			<a href="https://github.com/ananya-1507">
+				<img src="https://github.com/ananya-1507.png" width="100px;" alt=""/>
+				<br />
+				<sub><b>ananya-1507</b></sub>
+			</a>
+		</td>
+		<td align="center">
+			<a href="https://github.com/srithi-05">
+				<img src="https://github.com/srithi-05.png" width="100px;" alt=""/>
+				<br />
+				<sub><b>srithi-05</b></sub>
+			</a>
+		</td>
+	</tr>
+</table>
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
