@@ -278,7 +278,13 @@ For questions, issues, or feature requests:
 Thanks to all the contributors who have helped build SmartDocQ:
 
 <!-- ALL-CONTRIBUTORS-LIST:START -->
-<!-- Add your contributor badges here -->
+
+- [@Dr-Venom29](https://github.com/Dr-Venom29)
+- [@ANIRUDH-7600](https://github.com/ANIRUDH-7600)
+- [@sameekhsa](https://github.com/sameekhsa)
+- [@ananya-1507](https://github.com/ananya-1507)
+- [@srithi-05](https://github.com/srithi-05)
+
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ---
