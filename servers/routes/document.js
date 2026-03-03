@@ -1,9 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
+const crypto = require("crypto");
 const Document = require("../models/Document");
 const { verifyToken, ensureActive } = require("./auth");
 const fetch = require("node-fetch");
+
+// Generate content hash for deduplication
+function hashBuffer(buffer) {
+  return crypto.createHash('sha256').update(buffer).digest('hex');
+}
 
 // Centralize Flask/Python backend base URL for deployments
 function deriveBaseFrom(urlStr) {
@@ -55,6 +61,32 @@ router.post("/upload", verifyToken, ensureActive, upload.single("file"), async (
 
     const { originalname, mimetype, size, buffer } = req.file;
     
+    // === Database-Level Deduplication Check ===
+    const contentHash = hashBuffer(buffer);
+    const existingInProgress = await Document.findOne({
+      user: req.userId,
+      contentHash,
+      processingStatus: { $in: ["queued", "indexing"] }
+    }).select('_id doc_id name processingStatus processingStartedAt uploadedAt');
+    
+    if (existingInProgress) {
+      // Calculate how long it's been processing
+      const startedAt = existingInProgress.processingStartedAt || existingInProgress.uploadedAt;
+      const processingTimeMs = startedAt ? Date.now() - new Date(startedAt).getTime() : 0;
+      const processingTimeMins = Math.floor(processingTimeMs / 60000);
+      
+      return res.status(409).json({
+        message: `This file is already being processed (${processingTimeMins} min). Please wait for it to complete.`,
+        duplicate: true,
+        existingDocumentId: existingInProgress._id,
+        existingDocId: existingInProgress.doc_id,
+        existingName: existingInProgress.name,
+        status: existingInProgress.processingStatus,
+        processingStartedAt: startedAt,
+        processingTimeMinutes: processingTimeMins
+      });
+    }
+    
     // Check if this is a Word document that should be converted to PDF
     const isWordDocument = mimetype === "application/msword" || 
                           mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -93,17 +125,34 @@ router.post("/upload", verifyToken, ensureActive, upload.single("file"), async (
       }
     }
 
+    // Compute hash of final buffer (may differ if converted)
+    const finalContentHash = hashBuffer(finalBuffer);
+    
     const doc = new Document({
       user: req.userId,
       name: finalName,
       type: finalMimetype,
       size: finalBuffer.length,
       data: finalBuffer,
+      contentHash: finalContentHash,
       processingStatus: "queued",
+      processingStartedAt: new Date(), // Track when processing started
       originalName: originalname, // Store original name for reference
       originalType: mimetype // Store original type for reference
     });
-    await doc.save();
+    
+    // Atomic save with duplicate key handling (race condition safety net)
+    try {
+      await doc.save();
+    } catch (saveErr) {
+      if (saveErr.code === 11000) { // Duplicate key error
+        return res.status(409).json({
+          message: "This file is already being processed. Please wait for it to complete.",
+          duplicate: true
+        });
+      }
+      throw saveErr;
+    }
 
     // If file may contain sensitive data, do a quick server-side text scan before indexing
     // Heuristic: only scan PDFs and text to avoid heavy conversions here
@@ -143,6 +192,29 @@ router.post("/upload", verifyToken, ensureActive, upload.single("file"), async (
 router.post("/upload/batch", verifyToken, ensureActive, upload.array("files", 10), async (req, res) => {
   try {
     if (!req.files || !req.files.length) return res.status(400).json({ message: "No files uploaded" });
+    
+    // === Pre-check for duplicates in batch ===
+    const duplicateFiles = [];
+    for (const f of req.files) {
+      const hash = hashBuffer(f.buffer);
+      const existing = await Document.findOne({
+        user: req.userId,
+        contentHash: hash,
+        processingStatus: { $in: ["queued", "indexing"] }
+      }).select('name');
+      if (existing) {
+        duplicateFiles.push(f.originalname);
+      }
+    }
+    
+    if (duplicateFiles.length > 0) {
+      return res.status(409).json({
+        message: `These files are already being processed: ${duplicateFiles.join(', ')}`,
+        duplicate: true,
+        duplicateFiles
+      });
+    }
+    
     const created = [];
     const FormData = require('form-data');
     
@@ -185,17 +257,31 @@ router.post("/upload/batch", verifyToken, ensureActive, upload.array("files", 10
         }
       }
       
+      const finalContentHash = hashBuffer(finalBuffer);
+      
       const doc = new Document({
         user: req.userId,
         name: finalName,
         type: finalMimetype,
         size: finalBuffer.length,
         data: finalBuffer,
+        contentHash: finalContentHash,
         processingStatus: "queued",
+        processingStartedAt: new Date(), // Track when processing started
         originalName: f.originalname,
         originalType: f.mimetype
       });
-      await doc.save();
+      
+      // Atomic save with race condition handling
+      try {
+        await doc.save();
+      } catch (saveErr) {
+        if (saveErr.code === 11000) {
+          // Skip this file, it's being processed by another request
+          continue;
+        }
+        throw saveErr;
+      }
       try {
         const type = (finalMimetype || '').toLowerCase();
         if (type.includes('pdf') || type === 'text/plain') {
@@ -428,9 +514,11 @@ async function triggerIndexing(documentId) {
         doc.processingStatus = "done";
         doc.processedAt = new Date();
       }
+      doc.processingVersion = (doc.processingVersion || 0) + 1; // Increment version on completion
     } else {
       doc.processingStatus = "failed";
       doc.processingError = payload.error || `Indexing failed (${resp.status})`;
+      doc.processingVersion = (doc.processingVersion || 0) + 1; // Increment version on failure too
     }
     await doc.save();
   } catch (err) {
@@ -522,7 +610,13 @@ router.patch("/:id/text", verifyToken, ensureActive, async (req, res) => {
       // Persist failure state if we previously set indexing state
       try {
         if ((doc.type || "").toLowerCase() === "text/plain") {
-          await Document.findByIdAndUpdate(doc._id, { processingStatus: "failed", processingError: payload?.error || "Indexing failed" });
+          await Document.findByIdAndUpdate(doc._id, {
+            $set: { 
+              processingStatus: "failed", 
+              processingError: payload?.error || "Indexing failed"
+            },
+            $inc: { processingVersion: 1 } // Increment version
+          });
         }
       } catch (_) {}
       return res.status(resp.status).json(payload);
@@ -531,7 +625,14 @@ router.patch("/:id/text", verifyToken, ensureActive, async (req, res) => {
     // Update status on success for text docs
     try {
       if ((doc.type || "").toLowerCase() === "text/plain") {
-        await Document.findByIdAndUpdate(doc._id, { processingStatus: "done", processedAt: new Date(), processingError: "" });
+        await Document.findByIdAndUpdate(doc._id, {
+          $set: { 
+            processingStatus: "done", 
+            processedAt: new Date(), 
+            processingError: ""
+          },
+          $inc: { processingVersion: 1 } // Increment version
+        });
       }
     } catch (_) {}
 

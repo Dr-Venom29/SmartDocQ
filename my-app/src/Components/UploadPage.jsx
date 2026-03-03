@@ -262,6 +262,33 @@ const UploadPage = () => {
     });
 
     const data = await res.json();
+    
+    // Handle duplicate upload detection (409 Conflict)
+    if (res.status === 409 && data.duplicate) {
+      clearInterval(interval);
+      setIsUploading(false);
+      
+      // Build informative message with processing time if available
+      let message = data.message || "This file is already being processed.";
+      if (data.existingName && data.processingTimeMinutes !== undefined) {
+        message = `"${data.existingName}" is ${data.status} (${data.processingTimeMinutes} min). Please wait.`;
+      }
+      
+      showToast && showToast(message, { type: "warning" });
+      
+      // If we have existing document info, optionally switch to it
+      if (data.existingDocumentId && data.existingDocId) {
+        setCurrentDoc({
+          id: data.existingDocId,
+          name: data.existingName,
+          documentId: data.existingDocumentId,
+          processingStatus: data.status
+        });
+        fetchHistory(); // Refresh to show current status
+      }
+      return;
+    }
+    
     if (!res.ok) throw new Error(data.message || "Upload failed");
 
     clearInterval(interval);

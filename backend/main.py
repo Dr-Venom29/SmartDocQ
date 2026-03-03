@@ -934,7 +934,8 @@ def index_bytes(doc_id: str, filename: str, mimetype: str, data: bytes):
         nonlocal added, batch_embeddings, batch_documents, batch_metadatas, batch_ids
         if not batch_ids:
             return
-        collection.add(
+        # Use upsert for idempotency - safe to retry without creating duplicates
+        collection.upsert(
             embeddings=batch_embeddings,
             documents=batch_documents,
             metadatas=batch_metadatas,
@@ -1008,7 +1009,8 @@ def index_text(doc_id: str, filename: str, text: str):
         nonlocal added, batch_embeddings, batch_documents, batch_metadatas, batch_ids
         if not batch_ids:
             return
-        collection.add(
+        # Use upsert for idempotency - safe to retry without creating duplicates
+        collection.upsert(
             embeddings=batch_embeddings,
             documents=batch_documents,
             metadatas=batch_metadatas,

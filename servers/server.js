@@ -154,6 +154,56 @@ mongoose.connection.once("open", async () => {
       logger.warn({ err }, "[cleanup] SharedChat cleanup error");
     }
   }, 60 * 60 * 1000);
+
+  // ===== WATCHDOG: Reset stale processing documents =====
+  // Documents stuck in "queued" or "indexing" for >10 minutes are likely crashed
+  // Reset them to "failed" to unblock the deduplication index
+  // Uses optimistic locking (processingVersion) to prevent race with active workers
+  const STALE_PROCESSING_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+  setInterval(async () => {
+    try {
+      const Document = require("./models/Document");
+      const staleThreshold = new Date(Date.now() - STALE_PROCESSING_TIMEOUT_MS);
+      
+      // Find stale documents first
+      const staleDocs = await Document.find({
+        processingStatus: { $in: ["queued", "indexing"] },
+        $or: [
+          { processingStartedAt: { $lt: staleThreshold } },
+          // Fallback for docs without processingStartedAt (legacy)
+          { processingStartedAt: { $exists: false }, uploadedAt: { $lt: staleThreshold } }
+        ]
+      }).select('_id processingVersion processingStatus').lean();
+      
+      let resetCount = 0;
+      for (const doc of staleDocs) {
+        // Atomic update: only succeeds if version hasn't changed (no active worker finished)
+        const result = await Document.findOneAndUpdate(
+          {
+            _id: doc._id,
+            processingVersion: doc.processingVersion, // Optimistic lock
+            processingStatus: { $in: ["queued", "indexing"] } // Still in processing state
+          },
+          {
+            $set: {
+              processingStatus: "failed",
+              processingError: "Processing timed out after 10 minutes. Please re-upload.",
+              processedAt: new Date()
+            },
+            $inc: { processingVersion: 1 } // Increment version
+          },
+          { new: false } // Return old doc to check if update happened
+        );
+        if (result) resetCount++;
+      }
+      
+      if (resetCount > 0) {
+        logger.info({ count: resetCount }, "[watchdog] Reset stale processing documents to failed");
+      }
+    } catch (err) {
+      logger.warn({ err }, "[watchdog] Stale document cleanup error");
+    }
+  }, 2 * 60 * 1000); // Run every 2 minutes
 });
 
 const PORT = process.env.PORT || 5000;
