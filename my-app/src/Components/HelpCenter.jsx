@@ -31,7 +31,7 @@ export default function HelpCenter() {
   return (
     <div className="help-center-page">
       <div className="help-center">
-        <header className="hc-hero">
+        <header id="top" className="hc-hero">
           <h1>Help Center</h1>
           <p>Quick answers and guides for SmartDocQ.</p>
         </header>

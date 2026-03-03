@@ -42,7 +42,7 @@ const Footer = () => {
           <section className="footer-section support">
             <h4>Support</h4>
             <ul className="footer-links">
-              <li><Link to="/help">Help Center</Link></li>
+              <li><Link to="/help#top">Help Center</Link></li>
               <li><Link to="/help#faq">FAQ</Link></li>
             </ul>
           </section>
@@ -59,8 +59,8 @@ const Footer = () => {
               <p>&copy; {year} SmartDocQ. All rights reserved.</p>
             </div>
             <div className="legal-links">
-              <Link to="/privacy">Privacy Policy</Link>
-              <Link to="/terms">Terms of Service</Link>
+              <Link to="/privacy#top">Privacy Policy</Link>
+              <Link to="/terms#top">Terms of Service</Link>
             </div>
           </div>
         </div>

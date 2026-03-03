@@ -1,11 +1,21 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import "./PrivacyPolicy.css";
 
 export default function PrivacyPolicy() {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash) {
+      const el = document.querySelector(location.hash);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [location]);
+
   return (
     <div className="privacy-page">
       <div className="privacy-container">
-        <header className="privacy-hero">
+        <header id="top" className="privacy-hero">
           <h1>Privacy Policy</h1>
           <p>Effective Date: March 1, 2026</p>
         </header>

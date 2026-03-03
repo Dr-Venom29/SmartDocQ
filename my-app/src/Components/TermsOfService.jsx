@@ -1,11 +1,21 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import "./TermsOfService.css";
 
 export default function TermsOfService() {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash) {
+      const el = document.querySelector(location.hash);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [location]);
+
   return (
     <div className="terms-page">
       <div className="terms-container">
-        <header className="terms-hero">
+        <header id="top" className="terms-hero">
           <h1>Terms of Service</h1>
           <p>Effective Date: March 1, 2026</p>
         </header>
