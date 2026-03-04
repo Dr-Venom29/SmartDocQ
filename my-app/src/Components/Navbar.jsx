@@ -238,11 +238,6 @@ function Navbar() {
    * -------------------------------------------------------------------------- */
   return (
     <>
-      {/* Accessible Skip Link for Keyboard Navigation */}
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
-
       {/* Primary Navigation */}
       <nav
         className={`navbar ${isUploadPage ? "upload-navbar" : ""} ${isMobileMenuOpen ? "mobile-open" : ""}`}
@@ -292,21 +287,13 @@ function Navbar() {
           {!loading && (
             user ? (
               <div className="profile-section" ref={profileRef}>
-                <button
-                  type="button"
-                  className="avatar-btn"
-                  aria-label="Open user menu"
-                  aria-haspopup="true"
-                  aria-expanded={showProfileMenu}
-                  aria-controls="profile-menu"
+                <img
+                  src={user?.avatar ? user.avatar : icon}
+                  alt="Profile"
+                  className="avatar"
+                  style={{ cursor: "pointer", userSelect: "none" }}
                   onClick={() => setShowProfileMenu((prev) => !prev)}
-                >
-                  <img
-                    src={user?.avatar ? user.avatar : icon}
-                    alt={`${user?.name || "User"} profile`}
-                    className="avatar"
-                  />
-                </button>
+                />
                 {showProfileMenu && (
                   <div
                     id="profile-menu"
@@ -341,10 +328,8 @@ function Navbar() {
             className="popup"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="login-dialog-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="login-dialog-title" className="sr-only">Login or Sign Up</h2>
             <button
               className="close-btn"
               onClick={closePopup}
@@ -369,10 +354,8 @@ function Navbar() {
             className="popup contact-popup"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="contact-dialog-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="contact-dialog-title" className="sr-only">Contact Us</h2>
             <button
               className="close-btn"
               onClick={closePopup}
