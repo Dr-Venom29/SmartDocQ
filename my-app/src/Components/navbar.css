@@ -1,3 +1,22 @@
+/* Skip link for keyboard accessibility */
+.skip-link {
+  position: absolute;
+  top: -50px;
+  left: 16px;
+  background: #6366f1;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  z-index: 10001;
+  transition: top 0.2s ease;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.skip-link:focus {
+  top: 16px;
+}
+
 .navbar {
   width:100%;
   padding: 15px 40px;
@@ -69,6 +88,90 @@
 .mid a:hover::after {
   width: 100%;
 }
+
+/* Navigation link buttons (Features, Contact Us) */
+.nav-link-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-weight: 500;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  position: relative;
+  padding: 0;
+}
+
+.nav-link-btn:hover {
+  color: #c084fc;
+}
+
+.nav-link-btn::after {
+  content: '';
+  position: absolute;
+  width: 0%;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background: linear-gradient(90deg, #a855f7, #7c3aed);
+  transition: width 0.3s ease;
+}
+
+.nav-link-btn:hover::after {
+  width: 100%;
+}
+
+/* Avatar button wrapper */
+.avatar-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.avatar-btn:focus-visible {
+  outline: 2px solid #a855f7;
+  outline-offset: 2px;
+}
+
+/* Popup loading state */
+.popup-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: #666;
+  font-size: 16px;
+}
+
+/* Popup error state */
+.popup-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  gap: 12px;
+  color: #dc3545;
+  font-size: 14px;
+}
+
+.popup-error button {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.popup-error button:hover {
+  background: #0056b3;
+}
+
 .overlay {
   position: fixed; /* ensures it's always on top of viewport */
   top: 0;
@@ -197,6 +300,7 @@
   height: 16px;
   pointer-events: none;
   flex-shrink: 0;
+  fill: currentColor; /* For inline SVG icons */
 }
 .upload-navbar{
   background-color:#000000;

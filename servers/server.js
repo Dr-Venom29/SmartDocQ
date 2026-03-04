@@ -6,6 +6,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
 const expressPino = require("express-pino-logger");
 const client = require("prom-client");
 const logger = require("./lib/logger");
@@ -66,11 +67,56 @@ const corsOptions = {
     return ok ? callback(null, true) : callback(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "x-service-token"],
-  credentials: false,
+  allowedHeaders: ["Content-Type", "Authorization", "x-service-token", "X-Requested-With"],
+  credentials: true, // Enable cookies/credentials
 };
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
+
+// Cookie parser for httpOnly auth cookies
+app.use(cookieParser());
+
+// CSRF Protection middleware (for cross-origin cookie auth)
+// Validates Origin header + requires custom header for state-changing requests
+const csrfProtection = (req, res, next) => {
+  // Skip for safe methods (GET, HEAD, OPTIONS)
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    return next();
+  }
+
+  // Skip CSRF check if using Bearer token (API clients, not browser cookies)
+  const authHeader = req.headers.authorization || "";
+  if (authHeader.startsWith("Bearer ")) {
+    return next();
+  }
+
+  // For cookie-based auth, validate Origin header
+  const origin = req.headers.origin;
+  if (origin && !allowList.includes(origin)) {
+    // Check wildcard patterns
+    const ok = allowList.some((entry) => entry.startsWith("*.") && origin.endsWith(entry.slice(1)));
+    if (!ok) {
+      logger.warn({ origin, path: req.path }, "CSRF: Origin not in allowlist");
+      return res.status(403).json({ message: "Forbidden: Invalid origin" });
+    }
+  }
+
+  // Require X-Requested-With header for cookie-authenticated requests
+  // Browsers won't send custom headers cross-origin without CORS preflight
+  const xRequestedWith = req.headers["x-requested-with"];
+  if (!xRequestedWith) {
+    // Allow requests without cookies (public endpoints like signup)
+    const hasCookie = req.cookies?.auth_token;
+    if (hasCookie) {
+      logger.warn({ path: req.path }, "CSRF: Missing X-Requested-With header");
+      return res.status(403).json({ message: "Forbidden: Missing security header" });
+    }
+  }
+
+  next();
+};
+
+app.use(csrfProtection);
 
 app.use(bodyParser.json({ limit: "5mb" }));
 

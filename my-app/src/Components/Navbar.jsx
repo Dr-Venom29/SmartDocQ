@@ -1,14 +1,65 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense, Component } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import "./navbar.css";
 import logo from "./logo.png";
-import Login from "./Login";
-import Contact from "./Contact";
-import icon from "./icon1.png";
-import lg from "./lg.png";
-import lg1 from "./lg1.png";
-import Account from "./Account";
 import { useToast } from "./ToastContext";
+import { apiFetch } from "../config";
+
+const Login = lazy(() => import("./Login"));
+const Contact = lazy(() => import("./Contact"));
+const Account = lazy(() => import("./Account"));
+
+class PopupErrorBoundary extends Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="popup-error">
+          <p>Failed to load. Please try again.</p>
+          <button type="button" onClick={this.handleRetry}>
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const safeParseUser = (jsonString) => {
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (parsed && typeof parsed === "object" && typeof parsed.name === "string" && typeof parsed.email === "string") {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+
+const ProfileIcon = () => (
+  <svg className="dpi" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+  </svg>
+);
+
+const LogoutIcon = () => (
+  <svg className="dpi" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+  </svg>
+);
 
 function Navbar() {
   const [popup, setPopup] = useState(null);
@@ -20,12 +71,36 @@ function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const profileRef = useRef();
-  const { showToast } = useToast(); 
+  const { showToast } = useToast();
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) setUser(JSON.parse(savedUser));
-    setLoading(false);
+    const verifySession = async () => {
+      const savedUser = localStorage.getItem("user");
+      if (!savedUser) {
+        setLoading(false);
+        return;
+      }
+
+      const parsed = safeParseUser(savedUser);
+      if (!parsed) {
+        localStorage.removeItem("user");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await apiFetch("/api/auth/verify", { method: "GET" });
+        if (response.ok) {
+          setUser(parsed);
+        } else {
+          localStorage.removeItem("user");
+        }
+      } catch {
+        setUser(parsed); // Offline fallback
+      }
+      setLoading(false);
+    };
+    verifySession();
   }, []);
 
   useEffect(() => {
@@ -38,186 +113,257 @@ function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Proper scroll locking for popups and mobile menu + ESC-to-close
   useEffect(() => {
+    const shouldLock = !!popup || isMobileMenuOpen;
+
     const onKeyDown = (e) => {
       if (e.key === "Escape") {
         if (popup) setPopup(null);
-        if (isMobileMenuOpen) setIsMobileMenuOpen(false);
-        if (showProfileMenu) setShowProfileMenu(false);
+        else if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+        else if (showProfileMenu) setShowProfileMenu(false);
       }
     };
 
-    const shouldLock = !!popup || isMobileMenuOpen;
-    // Lock scroll on both html and body for robustness across browsers
-    document.documentElement.style.overflow = shouldLock ? "hidden" : "";
     document.body.style.overflow = shouldLock ? "hidden" : "";
-    document.body.style.overscrollBehavior = shouldLock ? "contain" : "";
 
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
-      document.body.style.overscrollBehavior = "";
     };
   }, [popup, isMobileMenuOpen, showProfileMenu]);
 
-  // Storage sync across tabs for auth changes
   useEffect(() => {
     const onStorage = (e) => {
-      if (e.key === "user") {
-        setUser(e.newValue ? JSON.parse(e.newValue) : null);
-      }
-      if (e.key === "token" && !e.newValue) {
-        // Token removed in another tab; ensure local user is cleared
-        setUser(null);
-      }
+      if (e.key === "user") setUser(e.newValue ? safeParseUser(e.newValue) : null);
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  // Close mobile menu on route change or when window resizes to desktop
   useEffect(() => {
     setIsMobileMenuOpen(false);
+
+    let timeoutId;
+    const onResize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (window.innerWidth > 768) setIsMobileMenuOpen(false);
+      }, 100);
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener("resize", onResize);
+    };
   }, [location.pathname]);
 
-  useEffect(() => {
-    const onResize = () => {
-      if (window.innerWidth > 768) setIsMobileMenuOpen(false);
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  const scrollToFeatures = () => {
+  const scrollToFeatures = useCallback(() => {
+    setIsMobileMenuOpen(false);
     if (location.pathname !== "/") {
       navigate("/");
       setTimeout(() => {
-        const el = document.getElementById("feat");
-        if (el) el.scrollIntoView({ behavior: "smooth" });
+        document.getElementById("feat")?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     } else {
-      const el = document.getElementById("feat");
-      if (el) el.scrollIntoView({ behavior: "smooth" });
+      document.getElementById("feat")?.scrollIntoView({ behavior: "smooth" });
     }
-  };
+  }, [location.pathname, navigate]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(async () => {
+    try {
+      await apiFetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Continue with local logout
+    }
     setUser(null);
     setShowProfileMenu(false);
     localStorage.removeItem("user");
-    localStorage.removeItem("token");
+    showToast("Logout successful", { type: "success" });
+    navigate("/");
+  }, [navigate, showToast]);
 
-    showToast("Logout successful", { type: "success" }); 
-    navigate("/"); 
-  };
+  const handleAuthSuccess = useCallback((userData) => {
+    setUser(userData);
+    localStorage.setItem("user", JSON.stringify(userData));
+    setPopup(null);
+  }, []);
+
+  const handleContactClick = useCallback(() => {
+    if (!user) {
+      showToast("Please log in to use Contact Us", { type: "error" });
+      return;
+    }
+    setPopup("contact");
+    setIsMobileMenuOpen(false);
+  }, [user, showToast]);
+
+  const toggleProfileMenu = useCallback(() => {
+    setShowProfileMenu((prev) => !prev);
+  }, []);
+
+  const toggleMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen((v) => !v);
+  }, []);
+
+  const closePopup = useCallback(() => setPopup(null), []);
+
+  const openLogin = useCallback(() => {
+    setPopup("login");
+    setIsMobileMenuOpen(false);
+  }, []);
+
+  const openProfile = useCallback(() => {
+    setPopup("account");
+    setShowProfileMenu(false);
+  }, []);
+
+  const handleAvatarError = useCallback((e) => {
+    e.target.src = DEFAULT_AVATAR;
+  }, []);
+
   const isUploadPage = location.pathname === "/upload";
 
   return (
     <>
-      <div className={`navbar ${isUploadPage ? "upload-navbar" : ""} ${isMobileMenuOpen ? "mobile-open" : ""}`}>
-        <div className="a"><img className="logo" src={logo} alt="Logo" /></div>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+
+      <nav
+        className={`navbar ${isUploadPage ? "upload-navbar" : ""} ${isMobileMenuOpen ? "mobile-open" : ""}`}
+        role="navigation"
+        aria-label="Main navigation"
+      >
+        <div className="a">
+          <Link to="/">
+            <img className="logo" src={logo} alt="SmartDocQ Home" />
+          </Link>
+        </div>
 
         <button
+          type="button"
           className={`menu-toggle ${isMobileMenuOpen ? "open" : ""}`}
           aria-label="Toggle navigation menu"
           aria-controls="nav-links"
           aria-expanded={isMobileMenuOpen}
-          onClick={() => setIsMobileMenuOpen((v) => !v)}
+          onClick={toggleMobileMenu}
         >
           <span></span>
           <span></span>
           <span></span>
         </button>
 
-        <div id="nav-links" className="mid">
-          <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }}>Home</a>
-          <a href="#feat" onClick={(e) => { e.preventDefault(); scrollToFeatures(); setIsMobileMenuOpen(false); }}>Features</a>
-          <a
-            href="/"
-            onClick={(e) => {
-              e.preventDefault();
-              if (!user) {
-                showToast("Please log in to use Contact Us", { type: "error" });
-                return;
-              }
-              setPopup("contact");
-              setIsMobileMenuOpen(false);
-            }}
+        <div id="nav-links" className="mid" role="menubar">
+          <Link to="/" role="menuitem" onClick={() => setIsMobileMenuOpen(false)}>
+            Home
+          </Link>
+          <button
+            type="button"
+            className="nav-link-btn"
+            role="menuitem"
+            onClick={scrollToFeatures}
+          >
+            Features
+          </button>
+          <button
+            type="button"
+            className="nav-link-btn"
+            role="menuitem"
+            onClick={handleContactClick}
           >
             Contact Us
-          </a>
+          </button>
         </div>
 
         <div className="login">
           {!loading && (
             user ? (
               <div className="profile-section" ref={profileRef}>
-                <img
-                  src={user?.avatar ? user.avatar : icon}
-                  alt="Profile"
-                  className="avatar"
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                  onClick={() => setShowProfileMenu((prev) => !prev)}
-                />
+                <button
+                  type="button"
+                  className="avatar-btn"
+                  onClick={toggleProfileMenu}
+                  aria-haspopup="true"
+                  aria-expanded={showProfileMenu}
+                  aria-label="User menu"
+                >
+                  <img
+                    src={user.avatar || DEFAULT_AVATAR}
+                    alt="Profile"
+                    className="avatar"
+                    onError={handleAvatarError}
+                  />
+                </button>
                 {showProfileMenu && (
-                  <div className="profile-dropdown">
-                    <a className="dd" href="/" onClick={(e) => { e.preventDefault(); setPopup("account"); setShowProfileMenu(false); }}>
-                      <img src={lg1} alt="/" className="dpi" />Profile
-                    </a>
-                    <a className="dd" href="/" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
-                      <img src={lg} alt="/" className="dpi" />Logout
-                    </a>
+                  <div className="profile-dropdown" role="menu" aria-label="User menu">
+                    <button
+                      type="button"
+                      className="dd"
+                      role="menuitem"
+                      onClick={openProfile}
+                    >
+                      <ProfileIcon />
+                      Profile
+                    </button>
+                    <button
+                      type="button"
+                      className="dd"
+                      role="menuitem"
+                      onClick={handleLogout}
+                    >
+                      <LogoutIcon />
+                      Logout
+                    </button>
                   </div>
                 )}
               </div>
             ) : (
-              <button onClick={() => { setPopup("login"); setIsMobileMenuOpen(false); }}>Login</button>
+              <button type="button" onClick={openLogin}>Login</button>
             )
           )}
         </div>
-      </div>
+      </nav>
 
       {popup === "login" && (
-        <div className="overlay" onClick={() => setPopup(null)}>
+        <div className="overlay" onClick={closePopup} role="dialog" aria-modal="true" aria-label="Login">
           <div className="popup" onClick={(e) => e.stopPropagation()}>
-            <button className="close-btn" onClick={() => setPopup(null)}>✕</button>
-            <Login
-              onAuthSuccess={(userData) => {
-                setUser(userData);
-                localStorage.setItem("user", JSON.stringify(userData));
-                // Only set token if explicitly provided to avoid overwriting a valid one
-                if (userData && userData.token) {
-                  localStorage.setItem("token", userData.token);
-                }
-                setPopup(null);
-              }}
-            />
+            <button type="button" className="close-btn" onClick={closePopup} aria-label="Close">✕</button>
+            <PopupErrorBoundary>
+              <Suspense fallback={<div className="popup-loading">Loading...</div>}>
+                <Login onAuthSuccess={handleAuthSuccess} />
+              </Suspense>
+            </PopupErrorBoundary>
           </div>
         </div>
       )}
 
       {popup === "contact" && (
-        <div className="overlay" onClick={() => setPopup(null)}>
+        <div className="overlay" onClick={closePopup} role="dialog" aria-modal="true" aria-label="Contact">
           <div className="popup contact-popup" onClick={(e) => e.stopPropagation()}>
-            <button className="close-btn" onClick={() => setPopup(null)}>✕</button>
-            <Contact
-              onSuccess={() => setPopup(null)}
-              defaultName={user?.name}
-              defaultEmail={user?.email}
-            />
+            <button type="button" className="close-btn" onClick={closePopup} aria-label="Close">✕</button>
+            <PopupErrorBoundary>
+              <Suspense fallback={<div className="popup-loading">Loading...</div>}>
+                <Contact
+                  onSuccess={closePopup}
+                  defaultName={user?.name}
+                  defaultEmail={user?.email}
+                />
+              </Suspense>
+            </PopupErrorBoundary>
           </div>
         </div>
       )}
 
       {popup === "account" && (
-        <Account
-          user={user}
-          onClose={() => setPopup(null)}
-          onUpdated={(u) => setUser(u)}
-        />
+        <PopupErrorBoundary>
+          <Suspense fallback={<div className="popup-loading">Loading...</div>}>
+            <Account
+              user={user}
+              onClose={closePopup}
+              onUpdated={setUser}
+            />
+          </Suspense>
+        </PopupErrorBoundary>
       )}
     </>
   );

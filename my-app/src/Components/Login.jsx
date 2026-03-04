@@ -124,13 +124,21 @@ function Login({ onAuthSuccess = () => {} }) {
 
     setLoading(true);
     try {
-      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const res = await fetch(url, { 
+        method: "POST", 
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest" // CSRF protection
+        }, 
+        body: JSON.stringify(payload),
+        credentials: "include" // Send/receive httpOnly cookies
+      });
       const result = await res.json();
 
   if (res.ok) {
         if (type === "login") {
-          const { token, user } = result;
-          if (token) localStorage.setItem("token", token);
+          const { user } = result;
+          // Store user info for display only - auth token is in httpOnly cookie
           if (user) localStorage.setItem("user", JSON.stringify(user));
           
           // Check if user is admin and redirect accordingly
@@ -173,15 +181,19 @@ function Login({ onAuthSuccess = () => {} }) {
     try {
       const res = await fetch(apiUrl("/api/auth/google"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest" // CSRF protection
+        },
         body: JSON.stringify({ credential: credentialResponse.credential }),
+        credentials: "include" // Send/receive httpOnly cookies
       });
 
       const result = await res.json();
 
       if (res.ok) {
-        const { token, user } = result;
-        if (token) localStorage.setItem("token", token);
+        const { user } = result;
+        // Store user info for display only - auth token is in httpOnly cookie
         if (user) localStorage.setItem("user", JSON.stringify(user));
 
         // Check if user is admin and redirect accordingly
