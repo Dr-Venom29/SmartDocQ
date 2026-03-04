@@ -13,7 +13,6 @@
 
 /* Dark Cards with Gradient Borders */
 .body-section {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -22,7 +21,7 @@
   overflow: hidden;
   user-select: none;
   -webkit-user-drag: none;
-  padding: clamp(24px, 3vw, 40px) max(16px, env(safe-area-inset-right)) clamp(24px, 3vw, 40px) max(16px, env(safe-area-inset-left));
+  padding: clamp(40px, 5vw, 80px) max(16px, env(safe-area-inset-right)) clamp(24px, 3vw, 40px) max(16px, env(safe-area-inset-left));
 }
 
 .body-section::before {
@@ -195,7 +194,7 @@
   text-transform: uppercase;
   user-select: none;
   -webkit-user-drag: none;
-  margin-top: clamp(40px, 6vw, 120px);
+  margin-top: clamp(24px, 4vw, 60px);
   padding: 0 max(16px, env(safe-area-inset-left)) 0 max(16px, env(safe-area-inset-right));
 }
 

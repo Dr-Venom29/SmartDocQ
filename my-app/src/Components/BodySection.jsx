@@ -61,9 +61,9 @@ const PROCESS_CARDS = [
 ];
 
 const STEPS = [
-  { id: 1, title: "Upload Your Documents", description: "Drag and drop PDFs, DOCX, or TXT files into SmartDocQ." },
-  { id: 2, title: "Ask Your Question", description: "Type your query naturally — no keyword gymnastics required." },
-  { id: 3, title: "Get Instant Answers", description: "SmartDocQ delivers clear, context-aware answers in real time." }
+  { id: 1, title: "Drop It Like It's Hot", description: "PDFs, Word docs, plain text — just drag, drop, and let SmartDocQ handle the rest. Upload done before you blink." },
+  { id: 2, title: "Ask Away", description: "Talk to your docs like you'd text a friend. No fancy syntax, no keyword hunting — just ask what you need." },
+  { id: 3, title: "Boom. Answers.", description: "AI-powered insights hit your screen in seconds. Accurate, relevant, and ready to copy-paste into your life." }
 ];
 
 /* ============================================================================
