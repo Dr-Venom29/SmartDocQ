@@ -21,7 +21,7 @@ SmartDocQ is a comprehensive full-stack web application that enables users to up
 - **Sensitive Data Detection**: Automatic identification of personal information (emails, phone numbers, Aadhaar, PAN, credit cards, SSN)
 - **User Consent Workflow**: Privacy-first approach requiring explicit consent before processing sensitive documents
 - **Content Moderation**: Profanity filtering and URL validation to maintain platform integrity
-- **JWT Authentication**: Secure user sessions with role-based access control (User, Admin, Moderator)
+- **httpOnly Cookie Authentication**: Secure user sessions with role-based access control (User, Admin, Moderator)
 
 ### Administrative Tools
 - **User Management**: Comprehensive admin dashboard for user oversight and role assignment
@@ -243,12 +243,16 @@ Refer to `DEPLOYMENT_CHECKLIST.md` for detailed deployment instructions.
 
 ## Security Considerations
 
-- All passwords are hashed using bcrypt
-- JWT tokens expire after 24 hours
+- All passwords are hashed using bcrypt with salt rounds
+- **httpOnly Cookie Authentication**: JWT tokens stored in secure httpOnly cookies to prevent XSS attacks
+- Cookies configured with `SameSite` and `Secure` flags in production
+- Client-side user data validated with `safeParseUser()` to prevent corrupted/malicious data
+- JWT tokens expire after 1 hour with automatic cleanup on logout
 - Sensitive data detection runs before document processing
 - Content moderation filters inappropriate content
-- CORS configured for specific allowed origins
+- CORS configured with credentials support for specific allowed origins
 - Environment variables store sensitive configuration
+- Cross-tab authentication sync for consistent session state
 
 ## Future Enhancements
 

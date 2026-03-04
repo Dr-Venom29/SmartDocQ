@@ -13,12 +13,15 @@ See `.env.example` for a template.
 
 ## CORS requirements (backends)
 
-Both APIs must allow the deployed frontend origin:
+Both APIs must allow the deployed frontend origin with credentials support for httpOnly cookie authentication:
 
-- `Access-Control-Allow-Origin: https://<your-vercel-domain>.vercel.app`
+- `Access-Control-Allow-Origin: https://<your-vercel-domain>.vercel.app` (must be exact, not `*`)
+- `Access-Control-Allow-Credentials: true`
 - `Access-Control-Allow-Headers: Authorization, Content-Type`
 - `Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS`
 - Properly handle `OPTIONS` preflight responses.
+
+**Note**: All API calls use `credentials: "include"` via the `apiFetch()` helper in `src/config.js`.
 
 ## Vercel deployment
 
