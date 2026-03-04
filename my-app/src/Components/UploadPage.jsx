@@ -49,11 +49,8 @@ const UploadPage = () => {
   // --- Fetch history from backend ---
   const fetchHistory = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
       const res = await fetch(HISTORY_URL, {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : ''
-        }
+        credentials: "include"
       });
       if (!res.ok) throw new Error("Failed to fetch upload history");
       const docs = await res.json();
@@ -254,11 +251,10 @@ const UploadPage = () => {
   }, 200);
 
   try {
-    const token = localStorage.getItem("token");
     const res = await fetch(useBatch ? BATCH_API_URL : API_URL, {
       method: "POST",
       body: formData,
-      headers: { Authorization: token ? `Bearer ${token}` : '' }
+      credentials: "include"
     });
 
     const data = await res.json();
@@ -329,10 +325,9 @@ const UploadPage = () => {
       if (data.converted) {
         try {
           // Get the converted PDF from the server
-          const token = localStorage.getItem("token");
           const downloadUrl = apiUrl(`/api/document/${data.documentId}/download`);
           fetch(downloadUrl, {
-            headers: { Authorization: `Bearer ${token}` }
+            credentials: "include"
           }).then(async (downloadRes) => {
             if (downloadRes.ok) {
               const blob = await downloadRes.blob();
@@ -386,12 +381,9 @@ const UploadPage = () => {
   };
   const removeHistoryItem = async (id) => {
   try {
-    const token = localStorage.getItem("token");
     const res = await fetch(apiUrl(`/api/document/${id}`), {
       method: "DELETE",
-      headers: {
-        Authorization: token ? `Bearer ${token}` : ''
-      }
+      credentials: "include"
     });
     if (!res.ok) {
       const data = await res.json();
@@ -415,12 +407,6 @@ const UploadPage = () => {
 };
   const selectHistoryItem = async (item) => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        showToast && showToast("Please login to view the document", { type: "error" });
-        return;
-      }
-      
       // Show loading state immediately
       setCurrentDoc(item);
       setUploaded(true);
@@ -437,7 +423,7 @@ const UploadPage = () => {
         // Direct PDF preview (either original PDF or converted from Word)
         const downloadUrl = apiUrl(`/api/document/${item.documentId}/download`);
         const downloadRes = await fetch(downloadUrl, {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: "include"
         });
         if (downloadRes.ok) {
           const blob = await downloadRes.blob();
@@ -465,7 +451,7 @@ const UploadPage = () => {
             } else {
               // Fallback: download original file for fallback display
               const res = await fetch(apiUrl(`/api/document/${item.documentId || item.id}/download`), {
-                headers: { Authorization: `Bearer ${token}` }
+                credentials: "include"
               });
               if (!res.ok) {
                 const t = await res.text().catch(() => "");
@@ -480,7 +466,7 @@ const UploadPage = () => {
           } catch (err) {
             // Error with preview, fallback to download
             const res = await fetch(apiUrl(`/api/document/${item.documentId || item.id}/download`), {
-              headers: { Authorization: `Bearer ${token}` }
+              credentials: "include"
             });
             if (!res.ok) {
               const t = await res.text().catch(() => "");
@@ -495,7 +481,7 @@ const UploadPage = () => {
         } else {
           // Download the file bytes from Node and build a blob URL
           const res = await fetch(apiUrl(`/api/document/${item.documentId || item.id}/download`), {
-            headers: { Authorization: `Bearer ${token}` }
+            credentials: "include"
           });
           if (!res.ok) {
             const t = await res.text().catch(() => "");
@@ -516,7 +502,7 @@ const UploadPage = () => {
       // Load chat history for this document
       try {
         const chatRes = await fetch(apiUrl(`/api/chat/${item.documentId || item._id || item.id}`), {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: "include"
         });
         if (chatRes.ok) {
           const data = await chatRes.json();
@@ -549,12 +535,11 @@ const UploadPage = () => {
       showToast && showToast("Invalid filename.", { type: "error" });
       return;
     }
-    const token = localStorage.getItem("token");
     const res = await fetch(apiUrl(`/api/document/${id}`), {
       method: "PUT",
+      credentials: "include",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: token ? `Bearer ${token}` : ''
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({ name: newName })
     });
@@ -574,11 +559,10 @@ const UploadPage = () => {
       // Find the item to get its Mongo documentId and current pinned state
       const item = history.find(h => h.id === id);
       if (!item) return;
-      const token = localStorage.getItem("token");
       const url = apiUrl(`/api/document/${item.documentId}/${item.pinned ? 'unpin' : 'pin'}`);
       const res = await fetch(url, {
         method: 'POST',
-        headers: { Authorization: token ? `Bearer ${token}` : '' }
+        credentials: "include"
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -609,12 +593,11 @@ const sendMessage = async () => {
   setIsTyping(true);
 
   try {
-    const token = localStorage.getItem("token");
     const res = await fetch(apiUrl(`/api/chat/${docId}/message`), {
       method: "POST",
+      credentials: "include",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: token ? `Bearer ${token}` : ""
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({ text }),
     });
@@ -642,12 +625,9 @@ const sendMessage = async () => {
     // Also delete from backend/Atlas if document is selected
     if (docId) {
       try {
-        const token = localStorage.getItem("token");
         await fetch(apiUrl(`/api/chat/${docId}`), {
           method: "DELETE",
-          headers: {
-            Authorization: token ? `Bearer ${token}` : ""
-          }
+          credentials: "include"
         });
         console.log("Chat deleted from Atlas");
       } catch (err) {
@@ -804,12 +784,11 @@ const sendMessage = async () => {
                   // Persist both messages to chat history on the Node backend
                   if (docId) {
                     try {
-                      const token = localStorage.getItem('token');
                       await fetch(apiUrl(`/api/chat/${docId}/append`), {
                         method: 'POST',
+                        credentials: 'include',
                         headers: {
-                          'Content-Type': 'application/json',
-                          Authorization: token ? `Bearer ${token}` : ''
+                          'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
                           messages: [

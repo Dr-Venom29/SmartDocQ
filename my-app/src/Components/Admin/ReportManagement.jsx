@@ -23,7 +23,6 @@ const ReportManagement = () => {
     try {
       setLoading(true);
       setError("");
-      const token = localStorage.getItem("token");
       const params = new URLSearchParams({
         page: String(opts.page ?? page),
         limit: String(limit),
@@ -32,8 +31,8 @@ const ReportManagement = () => {
       if (search.trim()) params.set("search", search.trim());
       if (startDate) params.set("startDate", startDate);
       if (endDate) params.set("endDate", endDate);
-  const res = await fetch(apiUrl(`/api/admin/contact-reports?${params.toString()}`), {
-        headers: { Authorization: token ? `Bearer ${token}` : "" }
+      const res = await fetch(apiUrl(`/api/admin/contact-reports?${params.toString()}`), {
+        credentials: "include"
       });
       if (!res.ok) throw new Error(`Failed to load reports (${res.status})`);
       const data = await res.json();
@@ -52,9 +51,8 @@ const ReportManagement = () => {
 
   const fetchSummary = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
-  const res = await fetch(apiUrl("/api/admin/contact-reports/analytics/summary"), {
-        headers: { Authorization: token ? `Bearer ${token}` : "" }
+      const res = await fetch(apiUrl("/api/admin/contact-reports/analytics/summary"), {
+        credentials: "include"
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -66,10 +64,10 @@ const ReportManagement = () => {
 
   const updateStatus = async (id, nextStatus) => {
     try {
-      const token = localStorage.getItem("token");
-  const res = await fetch(apiUrl(`/api/admin/contact-reports/${id}`), {
+      const res = await fetch(apiUrl(`/api/admin/contact-reports/${id}`), {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ status: nextStatus })
       });
       if (!res.ok) throw new Error("Failed to update status");
@@ -87,10 +85,9 @@ const ReportManagement = () => {
   const deleteReport = async (id) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-  const res = await fetch(apiUrl(`/api/admin/contact-reports/${id}`), {
+      const res = await fetch(apiUrl(`/api/admin/contact-reports/${id}`), {
         method: "DELETE",
-        headers: { Authorization: token ? `Bearer ${token}` : "" }
+        credentials: "include"
       });
       if (!res.ok) throw new Error("Failed to delete report");
       await fetchReports({ page });

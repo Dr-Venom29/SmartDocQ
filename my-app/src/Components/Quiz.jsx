@@ -21,12 +21,11 @@ const Quiz = ({ docId, onClose }) => {
     setIsLoading(true);
     setShowSettings(false);
     try {
-      const token = localStorage.getItem("token");
   const response = await fetch(pyApiUrl("/api/document/generate-quiz"), {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
         },
         body: JSON.stringify({
           doc_id: docId,

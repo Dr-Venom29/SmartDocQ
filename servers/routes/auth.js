@@ -14,39 +14,31 @@ const { OAuth2Client } = require('google-auth-library');
 const logger = require("../lib/logger");
 
 // Cookie configuration for httpOnly auth
-// Set CROSS_ORIGIN_COOKIES=true if frontend & backend are on different domains
-const COOKIE_NAME = "auth_token";
 const isProduction = process.env.NODE_ENV === "production";
-const isCrossOrigin = process.env.CROSS_ORIGIN_COOKIES === "true";
-
 const COOKIE_OPTIONS = {
-  httpOnly: true,                      // Prevents JavaScript access (XSS protection)
-  secure: isProduction || isCrossOrigin, // HTTPS required for cross-origin or production
-  sameSite: isCrossOrigin ? "none" : (isProduction ? "strict" : "lax"), // "none" for cross-origin
-  maxAge: 60 * 60 * 1000,              // 1 hour (matches JWT expiry)
-  path: "/",                           // Available on all routes
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  maxAge: 60 * 60 * 1000, // 1 hour
+  path: "/"
 };
 
 // Helper to set auth cookie
-function setAuthCookie(res, token) {
-  res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
-}
+const setAuthCookie = (res, token) => {
+  res.cookie("auth_token", token, COOKIE_OPTIONS);
+};
 
 // Helper to clear auth cookie
-function clearAuthCookie(res) {
-  res.clearCookie(COOKIE_NAME, { ...COOKIE_OPTIONS, maxAge: 0 });
-}
+const clearAuthCookie = (res) => {
+  res.clearCookie("auth_token", { ...COOKIE_OPTIONS, maxAge: 0 });
+};
 
-// Simple auth middleware to verify JWT from cookie OR header (backward compatible)
+// Auth middleware: reads from cookie first, then Authorization header
 function verifyToken(req, res, next) {
   try {
-    // Priority: 1) httpOnly cookie, 2) Authorization header (for API clients)
-    let token = req.cookies?.[COOKIE_NAME];
-    
-    if (!token) {
-      const authHeader = req.headers.authorization || "";
-      token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    }
+    // Try cookie first, then Authorization header
+    const token = req.cookies?.auth_token || 
+      (req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : null);
     
     if (!token) return res.status(401).json({ message: "Missing token" });
 
@@ -106,9 +98,7 @@ router.post("/login", async (req, res) => {
         email: "admin123@gmail.com" 
       }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
-      // Set httpOnly cookie
       setAuthCookie(res, adminToken);
-
       return res.json({ 
         user: {
           id: "admin_special",
@@ -141,9 +131,7 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
-    // Set httpOnly cookie
     setAuthCookie(res, token);
-
     res.json({ 
       user: {
         id: user._id,
@@ -168,9 +156,9 @@ router.post("/logout", (req, res) => {
   res.json({ message: "Logged out successfully" });
 });
 
-// Verify token endpoint - check if user is authenticated
+// Verify session - checks if cookie is valid
 router.get("/verify", verifyToken, (req, res) => {
-  res.json({ authenticated: true, userId: req.userId });
+  res.json({ valid: true, userId: req.userId });
 });
 
 // Utility: derive Cloudinary public_id from a secure URL
@@ -444,9 +432,7 @@ router.post('/google', async (req, res) => {
     // Generate JWT
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    // Set httpOnly cookie
     setAuthCookie(res, token);
-
     res.json({
       user: {
         id: user._id,

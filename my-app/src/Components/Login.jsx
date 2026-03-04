@@ -126,19 +126,15 @@ function Login({ onAuthSuccess = () => {} }) {
     try {
       const res = await fetch(url, { 
         method: "POST", 
-        headers: { 
-          "Content-Type": "application/json",
-          "X-Requested-With": "XMLHttpRequest" // CSRF protection
-        }, 
-        body: JSON.stringify(payload),
-        credentials: "include" // Send/receive httpOnly cookies
+        headers: { "Content-Type": "application/json" }, 
+        credentials: "include",
+        body: JSON.stringify(payload) 
       });
       const result = await res.json();
 
   if (res.ok) {
         if (type === "login") {
           const { user } = result;
-          // Store user info for display only - auth token is in httpOnly cookie
           if (user) localStorage.setItem("user", JSON.stringify(user));
           
           // Check if user is admin and redirect accordingly
@@ -181,19 +177,15 @@ function Login({ onAuthSuccess = () => {} }) {
     try {
       const res = await fetch(apiUrl("/api/auth/google"), {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "X-Requested-With": "XMLHttpRequest" // CSRF protection
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ credential: credentialResponse.credential }),
-        credentials: "include" // Send/receive httpOnly cookies
       });
 
       const result = await res.json();
 
       if (res.ok) {
         const { user } = result;
-        // Store user info for display only - auth token is in httpOnly cookie
         if (user) localStorage.setItem("user", JSON.stringify(user));
 
         // Check if user is admin and redirect accordingly

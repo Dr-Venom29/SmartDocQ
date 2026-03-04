@@ -16,7 +16,7 @@ function Contact({ onSuccess, defaultName = "", defaultEmail = "" }) {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("user"));
   const abortRef = useRef(null);
 
   // Keep name/email in sync if defaults change (e.g., after login)
@@ -28,10 +28,10 @@ function Contact({ onSuccess, defaultName = "", defaultEmail = "" }) {
     }));
   }, [defaultName, defaultEmail]);
 
-  // React to token changes across tabs/components
+  // React to user changes across tabs/components
   useEffect(() => {
     const onStorage = (e) => {
-      if (e.key === "token") {
+      if (e.key === "user") {
         setIsLoggedIn(!!e.newValue);
       }
     };
@@ -84,21 +84,18 @@ function Contact({ onSuccess, defaultName = "", defaultEmail = "" }) {
     if (Object.keys(newErrors).length === 0) {
       setIsSubmitting(true);
       try {
-        const token = localStorage.getItem("token");
-        // Abort previous request if any
         if (abortRef.current) {
           try { abortRef.current.abort(); } catch (_) {}
         }
         const controller = new AbortController();
         abortRef.current = controller;
-  const res = await fetch(apiUrl("/api/contact/submit"), {
+        const res = await fetch(apiUrl("/api/contact/submit"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
+          credentials: "include",
           body: JSON.stringify({
-            // backend uses auth user; send only subject/message
             subject: formData.subject.trim(),
             message: formData.message.trim(),
           }),

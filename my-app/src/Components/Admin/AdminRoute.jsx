@@ -11,8 +11,8 @@ const AdminRoute = () => {
   useEffect(() => {
     const checkAdminAccess = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
+        const user = localStorage.getItem("user");
+        if (!user) {
           showToast("Please login to access the admin panel.", { type: "error", duration: 2500 });
           setIsAdmin(false);
           return;
@@ -20,8 +20,8 @@ const AdminRoute = () => {
 
         // Try to access admin dashboard to verify admin rights
   const response = await fetch(apiUrl("/api/admin/dashboard"), {
+          credentials: "include",
           headers: {
-            "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"
           }
         });
@@ -33,8 +33,7 @@ const AdminRoute = () => {
           showToast("Access denied. Admin privileges required.", { type: "error", duration: 2500 });
           setIsAdmin(false);
         } else if (response.status === 401) {
-          // Invalid/expired token
-          localStorage.removeItem("token");
+          // Invalid/expired session
           localStorage.removeItem("user");
           showToast("Session expired. Please login again.", { type: "error", duration: 2500 });
           setIsAdmin(false);

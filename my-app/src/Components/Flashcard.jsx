@@ -33,13 +33,12 @@ const Flashcard = ({ docId, onClose }) => {
     setIsLoading(true);
     setShowSettings(false);
     try {
-      const token = localStorage.getItem("token");
-  const response = await fetch(pyApiUrl("/api/document/generate-flashcards"), {
+      const response = await fetch(pyApiUrl("/api/document/generate-flashcards"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
         },
+        credentials: "include",
         body: JSON.stringify({
           doc_id: docId,
           num_cards: numCards,

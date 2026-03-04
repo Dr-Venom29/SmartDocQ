@@ -98,8 +98,8 @@ const HeroSection = () => {
   }, [isMounted, reduceMotion]);
 
   const handleGetStarted = () => {
-    const token = localStorage.getItem("token"); // check if logged in
-    if (token) {
+    const user = localStorage.getItem("user");
+    if (user) {
       navigate("/upload");
     } else {
       showToast("Please log in to get started!", { type: "error" });

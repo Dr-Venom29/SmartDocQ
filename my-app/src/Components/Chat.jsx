@@ -5,7 +5,7 @@ import display from "../Animations/Chat-D.json"
 import { useToast } from "./ToastContext";
 import Quiz from "./Quiz";
 import Flashcard from "./Flashcard";
-import { apiUrl } from "../config";
+import { apiUrl, apiFetch } from "../config";
 import whatsappIcon from "../Animations/whatsapp-svgrepo-com.svg";
 import twitterIcon from "../Animations/twitter-color-svgrepo-com.svg";
 import gmailIcon from "../Animations/gmail-old-svgrepo-com.svg";
@@ -39,21 +39,15 @@ const Chat = ({ chat, setChat, chatInput, setChatInput, sendMessage, clearChat, 
   }, [chat]);
 
   const saveFeedback = async (idx, rating, revertFn) => {
-    if (!documentId) return; // cannot persist without id
+    if (!documentId) return;
     try {
-      const token = localStorage.getItem("token");
-  const res = await fetch(apiUrl(`/api/chat/${documentId}/message/${idx}/rating`), {
+      const res = await apiFetch(`/api/chat/${documentId}/message/${idx}/rating`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: token ? `Bearer ${token}` : ''
-        },
         body: JSON.stringify({ rating })
       });
       if (!res.ok) {
         throw new Error((await res.json().catch(()=>({}))).message || 'Failed to save feedback');
       }
-      // Update local chat array with persisted rating
       setChat && setChat(prev => prev.map((m, i) => i === idx ? { ...m, rating } : m));
     } catch (err) {
       revertFn && revertFn();
@@ -193,9 +187,8 @@ const Chat = ({ chat, setChat, chatInput, setChatInput, sendMessage, clearChat, 
             onClick={async () => {
               try {
                 if (!documentId) return;
-                const token = localStorage.getItem('token');
                 const res = await fetch(apiUrl(`/api/chat/${documentId}/export.pdf`), {
-                  headers: { Authorization: token ? `Bearer ${token}` : '' }
+                  credentials: 'include'
                 });
                 if (!res.ok) {
                   const j = await res.json().catch(()=>({ message: 'Failed to export chat' }));
@@ -361,13 +354,8 @@ const ShareControl = ({ documentId, chat }) => {
   const createShareLink = async () => {
     if (!documentId) throw new Error('Missing document');
     if (!chat || chat.length === 0) throw new Error('Nothing to share yet');
-    const token = localStorage.getItem('token');
-    const res = await fetch(apiUrl(`/api/share/chat/${documentId}`), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: token ? `Bearer ${token}` : ''
-      }
+    const res = await apiFetch(`/api/share/chat/${documentId}`, {
+      method: 'POST'
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json.message || 'Failed to create share link');

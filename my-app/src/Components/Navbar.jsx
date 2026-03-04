@@ -1,28 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./navbar.css";
 import logo from "./logo.png";
-import { useToast } from "./ToastContext";
-import { apiFetch } from "../config";
 import Login from "./Login";
 import Contact from "./Contact";
-import Account from "./Account";
+import icon from "./icon1.png";
 import lg from "./lg.png";
 import lg1 from "./lg1.png";
-
-const safeParseUser = (jsonString) => {
-  try {
-    const parsed = JSON.parse(jsonString);
-    if (parsed && typeof parsed === "object" && typeof parsed.name === "string" && typeof parsed.email === "string") {
-      return parsed;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
-
-const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+import Account from "./Account";
+import { useToast } from "./ToastContext";
+import { apiFetch } from "../config";
 
 function Navbar() {
   const [popup, setPopup] = useState(null);
@@ -34,18 +21,11 @@ function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const profileRef = useRef();
-  const { showToast } = useToast();
+  const { showToast } = useToast(); 
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      const parsed = safeParseUser(savedUser);
-      if (parsed) {
-        setUser(parsed);
-      } else {
-        localStorage.removeItem("user");
-      }
-    }
+    if (savedUser) setUser(JSON.parse(savedUser));
     setLoading(false);
   }, []);
 
@@ -59,65 +39,69 @@ function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Proper scroll locking for popups and mobile menu + ESC-to-close
   useEffect(() => {
-    const shouldLock = !!popup || isMobileMenuOpen;
-
     const onKeyDown = (e) => {
       if (e.key === "Escape") {
         if (popup) setPopup(null);
-        else if (isMobileMenuOpen) setIsMobileMenuOpen(false);
-        else if (showProfileMenu) setShowProfileMenu(false);
+        if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+        if (showProfileMenu) setShowProfileMenu(false);
       }
     };
 
+    const shouldLock = !!popup || isMobileMenuOpen;
+    // Lock scroll on both html and body for robustness across browsers
+    document.documentElement.style.overflow = shouldLock ? "hidden" : "";
     document.body.style.overflow = shouldLock ? "hidden" : "";
+    document.body.style.overscrollBehavior = shouldLock ? "contain" : "";
 
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
+      document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
+      document.body.style.overscrollBehavior = "";
     };
   }, [popup, isMobileMenuOpen, showProfileMenu]);
 
+  // Storage sync across tabs for auth changes
   useEffect(() => {
     const onStorage = (e) => {
-      if (e.key === "user") setUser(e.newValue ? safeParseUser(e.newValue) : null);
+      if (e.key === "user") {
+        setUser(e.newValue ? JSON.parse(e.newValue) : null);
+      }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
+  // Close mobile menu on route change or when window resizes to desktop
   useEffect(() => {
     setIsMobileMenuOpen(false);
-
-    let timeoutId;
-    const onResize = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        if (window.innerWidth > 768) setIsMobileMenuOpen(false);
-      }, 100);
-    };
-
-    window.addEventListener("resize", onResize);
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener("resize", onResize);
-    };
   }, [location.pathname]);
 
-  const scrollToFeatures = useCallback(() => {
-    setIsMobileMenuOpen(false);
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth > 768) setIsMobileMenuOpen(false);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const scrollToFeatures = () => {
     if (location.pathname !== "/") {
       navigate("/");
       setTimeout(() => {
-        document.getElementById("feat")?.scrollIntoView({ behavior: "smooth" });
+        const el = document.getElementById("feat");
+        if (el) el.scrollIntoView({ behavior: "smooth" });
       }, 100);
     } else {
-      document.getElementById("feat")?.scrollIntoView({ behavior: "smooth" });
+      const el = document.getElementById("feat");
+      if (el) el.scrollIntoView({ behavior: "smooth" });
     }
-  }, [location.pathname, navigate]);
+  };
 
-  const handleLogout = useCallback(async () => {
+  const handleLogout = async () => {
     try {
       await apiFetch("/api/auth/logout", { method: "POST" });
     } catch {
@@ -126,153 +110,98 @@ function Navbar() {
     setUser(null);
     setShowProfileMenu(false);
     localStorage.removeItem("user");
-    showToast("Logout successful", { type: "success" });
-    navigate("/");
-  }, [navigate, showToast]);
-
-  const handleAuthSuccess = useCallback((userData) => {
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
-    setPopup(null);
-  }, []);
-
-  const handleContactClick = useCallback(() => {
-    if (!user) {
-      showToast("Please log in to use Contact Us", { type: "error" });
-      return;
-    }
-    setPopup("contact");
-    setIsMobileMenuOpen(false);
-  }, [user, showToast]);
-
-  const toggleProfileMenu = useCallback(() => {
-    setShowProfileMenu((prev) => !prev);
-  }, []);
-
-  const toggleMobileMenu = useCallback(() => {
-    setIsMobileMenuOpen((v) => !v);
-  }, []);
-
-  const closePopup = useCallback(() => setPopup(null), []);
-
-  const openLogin = useCallback(() => {
-    setPopup("login");
-    setIsMobileMenuOpen(false);
-  }, []);
-
-  const openProfile = useCallback(() => {
-    setPopup("account");
-    setShowProfileMenu(false);
-  }, []);
-
-  const handleAvatarError = useCallback((e) => {
-    e.target.src = DEFAULT_AVATAR;
-  }, []);
-
+    showToast("Logout successful", { type: "success" }); 
+    navigate("/"); 
+  };
   const isUploadPage = location.pathname === "/upload";
 
   return (
     <>
-      <a href="#main-content" className="skip-link">Skip to main content</a>
-
-      <nav
-        className={`navbar ${isUploadPage ? "upload-navbar" : ""} ${isMobileMenuOpen ? "mobile-open" : ""}`}
-        role="navigation"
-        aria-label="Main navigation"
-      >
-        <div className="a">
-          <Link to="/">
-            <img className="logo" src={logo} alt="SmartDocQ Home" />
-          </Link>
-        </div>
+      <div className={`navbar ${isUploadPage ? "upload-navbar" : ""} ${isMobileMenuOpen ? "mobile-open" : ""}`}>
+        <div className="a"><img className="logo" src={logo} alt="Logo" /></div>
 
         <button
-          type="button"
           className={`menu-toggle ${isMobileMenuOpen ? "open" : ""}`}
           aria-label="Toggle navigation menu"
           aria-controls="nav-links"
           aria-expanded={isMobileMenuOpen}
-          onClick={toggleMobileMenu}
+          onClick={() => setIsMobileMenuOpen((v) => !v)}
         >
           <span></span>
           <span></span>
           <span></span>
         </button>
 
-        <div id="nav-links" className="mid" role="menubar">
-          <Link to="/" role="menuitem" onClick={() => setIsMobileMenuOpen(false)}>
-            Home
-          </Link>
-          <button
-            type="button"
-            className="nav-link-btn"
-            role="menuitem"
-            onClick={scrollToFeatures}
-          >
-            Features
-          </button>
-          <button
-            type="button"
-            className="nav-link-btn"
-            role="menuitem"
-            onClick={handleContactClick}
+        <div id="nav-links" className="mid">
+          <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }}>Home</a>
+          <a href="#feat" onClick={(e) => { e.preventDefault(); scrollToFeatures(); setIsMobileMenuOpen(false); }}>Features</a>
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              if (!user) {
+                showToast("Please log in to use Contact Us", { type: "error" });
+                return;
+              }
+              setPopup("contact");
+              setIsMobileMenuOpen(false);
+            }}
           >
             Contact Us
-          </button>
+          </a>
         </div>
 
         <div className="login">
           {!loading && (
             user ? (
               <div className="profile-section" ref={profileRef}>
-                <button
-                  type="button"
-                  className="avatar-btn"
-                  onClick={toggleProfileMenu}
-                  aria-haspopup="true"
-                  aria-expanded={showProfileMenu}
-                  aria-label="User menu"
-                >
-                  <img
-                    src={user.avatar || DEFAULT_AVATAR}
-                    alt="Profile"
-                    className="avatar"
-                    onError={handleAvatarError}
-                  />
-                </button>
+                <img
+                  src={user?.avatar ? user.avatar : icon}
+                  alt="Profile"
+                  className="avatar"
+                  style={{ cursor: "pointer", userSelect: "none" }}
+                  onClick={() => setShowProfileMenu((prev) => !prev)}
+                />
                 {showProfileMenu && (
-                  <div className="profile-dropdown" role="menu" aria-label="User menu">
-                    <a className="dd" href="/" onClick={(e) => { e.preventDefault(); openProfile(); }}>
-                      <img src={lg1} alt="" className="dpi" />Profile
+                  <div className="profile-dropdown">
+                    <a className="dd" href="/" onClick={(e) => { e.preventDefault(); setPopup("account"); setShowProfileMenu(false); }}>
+                      <img src={lg1} alt="/" className="dpi" />Profile
                     </a>
                     <a className="dd" href="/" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
-                      <img src={lg} alt="" className="dpi" />Logout
+                      <img src={lg} alt="/" className="dpi" />Logout
                     </a>
                   </div>
                 )}
               </div>
             ) : (
-              <button type="button" onClick={openLogin}>Login</button>
+              <button onClick={() => { setPopup("login"); setIsMobileMenuOpen(false); }}>Login</button>
             )
           )}
         </div>
-      </nav>
+      </div>
 
       {popup === "login" && (
-        <div className="overlay" onClick={closePopup} role="dialog" aria-modal="true" aria-label="Login">
+        <div className="overlay" onClick={() => setPopup(null)}>
           <div className="popup" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="close-btn" onClick={closePopup} aria-label="Close">✕</button>
-            <Login onAuthSuccess={handleAuthSuccess} />
+            <button className="close-btn" onClick={() => setPopup(null)}>✕</button>
+            <Login
+              onAuthSuccess={(userData) => {
+                setUser(userData);
+                localStorage.setItem("user", JSON.stringify(userData));
+
+                setPopup(null);
+              }}
+            />
           </div>
         </div>
       )}
 
       {popup === "contact" && (
-        <div className="overlay" onClick={closePopup} role="dialog" aria-modal="true" aria-label="Contact">
+        <div className="overlay" onClick={() => setPopup(null)}>
           <div className="popup contact-popup" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="close-btn" onClick={closePopup} aria-label="Close">✕</button>
+            <button className="close-btn" onClick={() => setPopup(null)}>✕</button>
             <Contact
-              onSuccess={closePopup}
+              onSuccess={() => setPopup(null)}
               defaultName={user?.name}
               defaultEmail={user?.email}
             />
@@ -283,8 +212,8 @@ function Navbar() {
       {popup === "account" && (
         <Account
           user={user}
-          onClose={closePopup}
-          onUpdated={setUser}
+          onClose={() => setPopup(null)}
+          onUpdated={(u) => setUser(u)}
         />
       )}
     </>

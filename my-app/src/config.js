@@ -9,20 +9,15 @@ export const PY_API_BASE = (process.env.REACT_APP_PY_API_URL || "http://localhos
 export const apiUrl = (path) => `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
 export const pyApiUrl = (path) => `${PY_API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
 
-// Fetch wrapper with credentials for httpOnly cookie auth
+// Fetch wrapper for authenticated requests using httpOnly cookies
 export const apiFetch = (path, options = {}) => {
-  return fetch(apiUrl(path), {
+  const url = path.startsWith("http") ? path : apiUrl(path);
+  return fetch(url, {
     ...options,
-    credentials: 'include', // Send cookies with requests
+    credentials: "include",
     headers: {
-      'Content-Type': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest', // CSRF protection header
+      "Content-Type": "application/json",
       ...options.headers,
     },
   });
-};
-
-// Fetch wrapper for Python API (no cookies needed - uses signed URLs)
-export const pyApiFetch = (path, options = {}) => {
-  return fetch(pyApiUrl(path), options);
 };

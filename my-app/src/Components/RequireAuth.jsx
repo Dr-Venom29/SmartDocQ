@@ -1,9 +1,9 @@
 import React from "react";
 
 const RequireAuth = ({ children }) => {
-  const token = localStorage.getItem("token");
+  const user = localStorage.getItem("user");
 
-  if (!token) {
+  if (!user) {
     // Block content and show a simple access message without redirecting
     return (
       <div style={{ minHeight: "50vh", display: "flex", alignItems: "center", justifyContent: "center" }}>

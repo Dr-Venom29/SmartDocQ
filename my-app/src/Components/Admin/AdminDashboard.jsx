@@ -26,10 +26,9 @@ const AdminDashboard = () => {
   const fetchAdminData = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
   const response = await fetch(apiUrl("/api/admin/dashboard"), {
+        credentials: "include",
         headers: {
-          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         }
       });
@@ -55,10 +54,9 @@ const AdminDashboard = () => {
     let cancelled = false;
     const tick = async () => {
       try {
-        const token = localStorage.getItem("token");
         const response = await fetch(apiUrl("/api/admin/dashboard"), {
+          credentials: "include",
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         });
@@ -165,7 +163,6 @@ const AdminDashboard = () => {
               <button
                 className="btn btn-danger"
                 onClick={() => {
-                  localStorage.removeItem("token");
                   localStorage.removeItem("user");
                   window.location.href = "/";
                 }}

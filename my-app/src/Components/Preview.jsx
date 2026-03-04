@@ -414,12 +414,11 @@ function PlainTextPreview({ file, documentId, filename, onTextSaved }) {
     }
     try {
       setIsSaving(true);
-      const token = localStorage.getItem("token");
       const res = await fetch(apiUrl(`/api/document/${documentId}/text`), {
         method: "PATCH",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
         },
         body: JSON.stringify({ text: editedText }),
       });

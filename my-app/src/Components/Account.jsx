@@ -131,9 +131,6 @@ function Account({ user, onClose, onUpdated }) {
       return;
     }
 
-    const token = localStorage.getItem("token") || user.token;
-    if (!token) return showToast("Session not found. Please log in again.", { type: "error" });
-
     const payload = {};
     if (formData.name && formData.name !== user.name) payload.name = formData.name;
     if (formData.email && formData.email !== user.email) payload.email = formData.email;
@@ -153,7 +150,8 @@ function Account({ user, onClose, onUpdated }) {
         ? (async () => {
             const res = await fetch(apiUrl("/api/auth/me"), {
               method: "PUT",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify(payload),
             });
             const data = await res.json();
@@ -173,7 +171,7 @@ function Account({ user, onClose, onUpdated }) {
             form.append("avatar", uploadFile, uploadFile.name || 'avatar.jpg');
             const resAvatar = await fetch(apiUrl("/api/auth/me/avatar"), {
               method: "POST",
-              headers: { Authorization: `Bearer ${token}` },
+              credentials: "include",
               body: form,
             });
             const dataAvatar = await resAvatar.json();
@@ -385,14 +383,9 @@ function Account({ user, onClose, onUpdated }) {
                         className="settings-btn danger"
                         onClick={async () => {
                           try {
-                            const token = localStorage.getItem("token") || user.token;
-                            if (!token) {
-                              showToast("Please login again.", { type: "error" });
-                              return;
-                            }
                             const res = await fetch(apiUrl("/api/chat"), {
                               method: "DELETE",
-                              headers: { Authorization: `Bearer ${token}` },
+                              credentials: "include",
                             });
                             const data = await res.json().catch(() => ({}));
                             if (!res.ok) throw new Error(data.message || "Failed to clear chat history");
@@ -454,17 +447,15 @@ function Account({ user, onClose, onUpdated }) {
                 className="modal-btn danger"
                 onClick={async () => {
                   try {
-                    const token = localStorage.getItem("token") || user.token;
                     const res = await fetch(apiUrl("/api/auth/me"), {
                       method: "DELETE",
-                      headers: { Authorization: `Bearer ${token}` },
+                      credentials: "include",
                     });
 
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.message || "Failed to delete account");
 
                     localStorage.removeItem("user");
-                    localStorage.removeItem("token");
                     showToast("Account deleted permanently!", { type: "success" });
 
                     setShowDeleteModal(false);

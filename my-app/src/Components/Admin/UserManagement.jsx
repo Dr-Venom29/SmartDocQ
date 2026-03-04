@@ -29,7 +29,6 @@ const UserManagement = ({ users = [], onRefresh }) => {
       setError("");
       const page = opts.page ?? pagination.page;
       const limit = opts.limit ?? pagination.limit;
-      const token = localStorage.getItem("token");
       const params = new URLSearchParams({
         page: String(page),
         limit: String(limit),
@@ -37,11 +36,11 @@ const UserManagement = ({ users = [], onRefresh }) => {
         sortBy,
         sortOrder
       });
-  const res = await fetch(apiUrl(`/api/admin/users?${params.toString()}`), {
+      const res = await fetch(apiUrl(`/api/admin/users?${params.toString()}`), {
         headers: {
-          Authorization: token ? `Bearer ${token}` : "",
           "Content-Type": "application/json"
         },
+        credentials: "include",
         signal: controller.signal
       });
       if (!res.ok) {
@@ -114,13 +113,12 @@ const UserManagement = ({ users = [], onRefresh }) => {
   const prev = (Array.isArray(serverUsers) && serverUsers.length ? serverUsers : users);
       const prevSnap = [...prev];
       setServerUsers(prev.filter(u => u._id !== userId));
-      const token = localStorage.getItem("token");
-  const response = await fetch(apiUrl(`/api/admin/users/${userId}`), {
+      const response = await fetch(apiUrl(`/api/admin/users/${userId}`), {
         method: "DELETE",
         headers: {
-          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
-        }
+        },
+        credentials: "include"
       });
 
       if (!response.ok) {
@@ -145,14 +143,12 @@ const UserManagement = ({ users = [], onRefresh }) => {
       setLoading(true);
       // Optimistic UI update
   setServerUsers((prev) => (Array.isArray(prev) && prev.length ? prev : sourceUsers).map(u => u._id === userId ? { ...u, isActive: !u.isActive } : u));
-      const token = localStorage.getItem("token");
-  const response = await fetch(apiUrl(`/api/admin/users/${userId}/toggle-status`), {
+      const response = await fetch(apiUrl(`/api/admin/users/${userId}/toggle-status`), {
         method: "PATCH",
         headers: {
-          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
-        }
-      });
+        },
+        credentials: "include"
 
       if (!response.ok) {
         // Revert on error
