@@ -82,6 +82,7 @@ function Navbar() {
   const [loading, setLoading] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [profileMenuPos, setProfileMenuPos] = useState({ top: 0, right: 0 });
 
   // Routing hooks
   const navigate = useNavigate();
@@ -89,6 +90,7 @@ function Navbar() {
   
   // DOM references
   const profileRef = useRef();
+  const profileMenuRef = useRef(null);
   
   // Toast notifications
   const { showToast } = useToast();
@@ -116,18 +118,45 @@ function Navbar() {
    * -------------------------------------------------------------------------- */
   useEffect(() => {
     const handleClickOutside = (e) => {
-      const root = profileRef.current;
-      if (!root) return;
+      const trigger = profileRef.current;
+      const menu = profileMenuRef.current;
+      if (!trigger && !menu) return;
 
       const path = typeof e.composedPath === "function" ? e.composedPath() : null;
-      const isInside = path ? path.includes(root) : root.contains(e.target);
-      if (!isInside) {
+      const clickedInsideTrigger = trigger
+        ? (path ? path.includes(trigger) : trigger.contains(e.target))
+        : false;
+      const clickedInsideMenu = menu
+        ? (path ? path.includes(menu) : menu.contains(e.target))
+        : false;
+
+      if (!clickedInsideTrigger && !clickedInsideMenu) {
         setShowProfileMenu(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const updateProfileMenuPos = useCallback(() => {
+    const trigger = profileRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const top = rect.bottom + 10;
+    const right = Math.max(8, window.innerWidth - rect.right);
+    setProfileMenuPos({ top, right });
+  }, []);
+
+  useEffect(() => {
+    if (!showProfileMenu) return;
+    updateProfileMenuPos();
+    window.addEventListener("scroll", updateProfileMenuPos, true);
+    window.addEventListener("resize", updateProfileMenuPos);
+    return () => {
+      window.removeEventListener("scroll", updateProfileMenuPos, true);
+      window.removeEventListener("resize", updateProfileMenuPos);
+    };
+  }, [showProfileMenu, updateProfileMenuPos]);
 
   /* --------------------------------------------------------------------------
    * SCROLL LOCK & KEYBOARD: Lock body scroll when modals open, ESC to close
@@ -311,37 +340,17 @@ function Navbar() {
                     alt="Profile"
                     className="avatar"
                     style={{ cursor: "pointer", userSelect: "none" }}
-                    onClick={() => setShowProfileMenu((prev) => !prev)}
+                    onClick={() => {
+                      setShowProfileMenu((prev) => {
+                        const next = !prev;
+                        if (next) {
+                          // Position immediately to avoid a 0,0 flash.
+                          setTimeout(updateProfileMenuPos, 0);
+                        }
+                        return next;
+                      });
+                    }}
                   />
-                  {showProfileMenu && (
-                    <div
-                      id="profile-menu"
-                      className="profile-dropdown"
-                      role="menu"
-                      aria-label="User menu"
-                      onMouseDown={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        className="dd"
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setPopup("account");
-                          setShowProfileMenu(false);
-                        }}
-                      >
-                        <img src={lg1} alt="" className="dpi" aria-hidden="true" />Profile
-                      </button>
-                      <button
-                        className="dd"
-                        type="button"
-                        role="menuitem"
-                        onClick={handleLogout}
-                      >
-                        <img src={lg} alt="" className="dpi" aria-hidden="true" />Logout
-                      </button>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <button type="button" aria-label="Open login form" onClick={() => { setPopup("login"); setIsMobileMenuOpen(false); }}>Login</button>
@@ -350,6 +359,37 @@ function Navbar() {
           </div>
         </nav>
       </ClickSpark>
+
+      {showProfileMenu && renderPortal(
+        <div
+          id="profile-menu"
+          ref={profileMenuRef}
+          className="profile-dropdown profile-dropdown--portal"
+          role="menu"
+          aria-label="User menu"
+          style={{ top: profileMenuPos.top, right: profileMenuPos.right }}
+        >
+          <button
+            className="dd"
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setPopup("account");
+              setShowProfileMenu(false);
+            }}
+          >
+            <img src={lg1} alt="" className="dpi" aria-hidden="true" />Profile
+          </button>
+          <button
+            className="dd"
+            type="button"
+            role="menuitem"
+            onClick={handleLogout}
+          >
+            <img src={lg} alt="" className="dpi" aria-hidden="true" />Logout
+          </button>
+        </div>
+      )}
 
       {/* Authentication Dialog */}
       {popup === "login" && renderPortal(

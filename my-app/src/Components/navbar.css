@@ -171,6 +171,13 @@
   padding: 0.5rem 0;
   z-index: 4000;
 }
+
+.profile-dropdown--portal {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 15000;
+}
 .dd {
   display: flex;
   align-items: center;
