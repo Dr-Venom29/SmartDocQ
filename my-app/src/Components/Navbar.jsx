@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./navbar.css";
 import logo from "./logo.png";
@@ -234,98 +235,105 @@ function Navbar() {
 
   const isUploadPage = location.pathname === "/upload";
 
+  const renderPortal = useCallback((node) => {
+    if (typeof document === "undefined") return node;
+    return createPortal(node, document.body);
+  }, []);
+
   /* --------------------------------------------------------------------------
    * RENDER
    * -------------------------------------------------------------------------- */
   return (
-    <ClickSpark
-      sparkColor="#fff"
-      sparkSize={10}
-      sparkRadius={15}
-      sparkCount={8}
-      duration={400}
-    >
-      {/* Primary Navigation */}
-      <nav
-        className={`navbar ${isUploadPage ? "upload-navbar" : ""} ${isMobileMenuOpen ? "mobile-open" : ""}`}
-        role="navigation"
-        aria-label="Main navigation"
+    <>
+      <ClickSpark
+        sparkColor="#fff"
+        sparkSize={10}
+        sparkRadius={15}
+        sparkCount={8}
+        duration={400}
       >
-        <div className="a">
-          <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} aria-label="SmartDoc Home">
-            <img className="logo" src={logo} alt="SmartDoc Logo" />
-          </a>
-        </div>
-
-        <button
-          className={`menu-toggle ${isMobileMenuOpen ? "open" : ""}`}
-          aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-          aria-controls="nav-links"
-          aria-expanded={isMobileMenuOpen}
-          onClick={() => setIsMobileMenuOpen((v) => !v)}
-          type="button"
+        {/* Primary Navigation */}
+        <nav
+          className={`navbar ${isUploadPage ? "upload-navbar" : ""} ${isMobileMenuOpen ? "mobile-open" : ""}`}
+          role="navigation"
+          aria-label="Main navigation"
         >
-          <span aria-hidden="true"></span>
-          <span aria-hidden="true"></span>
-          <span aria-hidden="true"></span>
-        </button>
+          <div className="a">
+            <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} aria-label="SmartDoc Home">
+              <img className="logo" src={logo} alt="SmartDoc Logo" />
+            </a>
+          </div>
 
-        <div id="nav-links" className="mid" role="menubar" aria-label="Main menu">
-          <a href="/" role="menuitem" onClick={(e) => { e.preventDefault(); navigate("/"); }}>Home</a>
-          <a href="#feat" role="menuitem" onClick={(e) => { e.preventDefault(); scrollToFeatures(); setIsMobileMenuOpen(false); }}>Features</a>
-          <a
-            href="/contact"
-            role="menuitem"
-            onClick={(e) => {
-              e.preventDefault();
-              if (!user) {
-                showToast("Please log in to use Contact Us", { type: "error" });
-                return;
-              }
-              setPopup("contact");
-              setIsMobileMenuOpen(false);
-            }}
+          <button
+            className={`menu-toggle ${isMobileMenuOpen ? "open" : ""}`}
+            aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-controls="nav-links"
+            aria-expanded={isMobileMenuOpen}
+            onClick={() => setIsMobileMenuOpen((v) => !v)}
+            type="button"
           >
-            Contact Us
-          </a>
-        </div>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+          </button>
 
-        <div className="login">
-          {!loading && (
-            user ? (
-              <div className="profile-section" ref={profileRef}>
-                <img
-                  src={user?.avatar ? user.avatar : icon}
-                  alt="Profile"
-                  className="avatar"
-                  style={{ cursor: "pointer", userSelect: "none" }}
-                  onClick={() => setShowProfileMenu((prev) => !prev)}
-                />
-                {showProfileMenu && (
-                  <div
-                    id="profile-menu"
-                    className="profile-dropdown"
-                    role="menu"
-                    aria-label="User menu"
-                  >
-                    <a className="dd" href="/profile" role="menuitem" onClick={(e) => { e.preventDefault(); setPopup("account"); setShowProfileMenu(false); }}>
-                      <img src={lg1} alt="" className="dpi" aria-hidden="true" />Profile
-                    </a>
-                    <a className="dd" href="/logout" role="menuitem" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
-                      <img src={lg} alt="" className="dpi" aria-hidden="true" />Logout
-                    </a>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <button type="button" aria-label="Open login form" onClick={() => { setPopup("login"); setIsMobileMenuOpen(false); }}>Login</button>
-            )
-          )}
-        </div>
-      </nav>
+          <div id="nav-links" className="mid" role="menubar" aria-label="Main menu">
+            <a href="/" role="menuitem" onClick={(e) => { e.preventDefault(); navigate("/"); }}>Home</a>
+            <a href="#feat" role="menuitem" onClick={(e) => { e.preventDefault(); scrollToFeatures(); setIsMobileMenuOpen(false); }}>Features</a>
+            <a
+              href="/contact"
+              role="menuitem"
+              onClick={(e) => {
+                e.preventDefault();
+                if (!user) {
+                  showToast("Please log in to use Contact Us", { type: "error" });
+                  return;
+                }
+                setPopup("contact");
+                setIsMobileMenuOpen(false);
+              }}
+            >
+              Contact Us
+            </a>
+          </div>
+
+          <div className="login">
+            {!loading && (
+              user ? (
+                <div className="profile-section" ref={profileRef}>
+                  <img
+                    src={user?.avatar ? user.avatar : icon}
+                    alt="Profile"
+                    className="avatar"
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                    onClick={() => setShowProfileMenu((prev) => !prev)}
+                  />
+                  {showProfileMenu && (
+                    <div
+                      id="profile-menu"
+                      className="profile-dropdown"
+                      role="menu"
+                      aria-label="User menu"
+                    >
+                      <a className="dd" href="/profile" role="menuitem" onClick={(e) => { e.preventDefault(); setPopup("account"); setShowProfileMenu(false); }}>
+                        <img src={lg1} alt="" className="dpi" aria-hidden="true" />Profile
+                      </a>
+                      <a className="dd" href="/logout" role="menuitem" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
+                        <img src={lg} alt="" className="dpi" aria-hidden="true" />Logout
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button type="button" aria-label="Open login form" onClick={() => { setPopup("login"); setIsMobileMenuOpen(false); }}>Login</button>
+              )
+            )}
+          </div>
+        </nav>
+      </ClickSpark>
 
       {/* Authentication Dialog */}
-      {popup === "login" && (
+      {popup === "login" && renderPortal(
         <div
           className="overlay"
           onClick={closePopup}
@@ -351,7 +359,7 @@ function Navbar() {
       )}
 
       {/* Contact Form Dialog */}
-      {popup === "contact" && (
+      {popup === "contact" && renderPortal(
         <div
           className="overlay"
           onClick={closePopup}
@@ -381,14 +389,14 @@ function Navbar() {
       )}
 
       {/* Account Settings Dialog */}
-      {popup === "account" && (
+      {popup === "account" && renderPortal(
         <Account
           user={user}
           onClose={closePopup}
           onUpdated={handleUserUpdate}
         />
       )}
-    </ClickSpark>
+    </>
   );
 }
 
