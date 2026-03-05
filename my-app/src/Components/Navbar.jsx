@@ -280,7 +280,7 @@ function Navbar() {
               e.preventDefault();
               if (!user) {
                 showToast("Please log in to use Contact Us", { type: "error" });
-    </ClickSpark>
+                return;
               }
               setPopup("contact");
               setIsMobileMenuOpen(false);
@@ -388,7 +388,7 @@ function Navbar() {
           onUpdated={handleUserUpdate}
         />
       )}
-    </>
+    </ClickSpark>
   );
 }
 
