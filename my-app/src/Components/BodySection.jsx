@@ -4,6 +4,7 @@ import video from "../Animations/Guide.mp4";
 import Lottie from "lottie-react";
 import arrow from "../Animations/Arrow.json";
 import thumb from "../Animations/ThumbNail.png";
+import ClickSpark from "./Effects/ClickSpark";
 
 /* ============================================================================
  * PROCESS CARDS DATA
@@ -87,7 +88,7 @@ const VideoSection = () => {
           videoEl.pause();
         }
       },
-      { threshold: 0.25 }
+      { threshold: 0.10 }
     );
 
     observer.observe(container);
@@ -165,7 +166,13 @@ const StepsSection = () => {
  * ============================================================================ */
 function BodySection() {
   return (
-    <>
+    <ClickSpark
+      sparkColor="#fff"
+      sparkSize={10}
+      sparkRadius={15}
+      sparkCount={8}
+      duration={400}
+    >
       <section className="body-section" aria-labelledby="process-heading">
         <h2 id="process-heading" className="sr-only">How SmartDocQ Works</h2>
         <div className="cards-grid" role="list" aria-label="SmartDocQ processing pipeline">
@@ -197,7 +204,7 @@ function BodySection() {
           <StepsSection />
         </div>
       </section>
-    </>
+    </ClickSpark>
   );
 }
 

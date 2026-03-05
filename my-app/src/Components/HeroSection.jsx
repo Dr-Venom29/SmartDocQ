@@ -17,6 +17,7 @@ import f9 from "../Animations/f9.json";
 import f10 from "../Animations/f10.json";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "./ToastContext";
+import ClickSpark from "./Effects/ClickSpark";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -64,11 +65,6 @@ const FEATURES = [
     title: "Fort Knox Security",
     desc: "Your data stays yours. Enterprise-grade validation, spam detection, and content filtering keep your workspace clean and your information locked down tight.",
     anim: f8
-  },
-  {
-    title: "Command Center",
-    desc: "Full admin dashboard with user management, real-time analytics, and system monitoring. See everything, control everything, miss nothing.",
-    anim: f9
   },
   {
     title: "Effortless Doc Control",
@@ -197,7 +193,13 @@ const HeroSection = () => {
   };
 
   return (
-    <>
+    <ClickSpark
+      sparkColor="#fff"
+      sparkSize={10}
+      sparkRadius={15}
+      sparkCount={8}
+      duration={400}
+    >
       <section className="hero-section" aria-labelledby="hero-heading">
         <div className="hero-container">
           <div className="hero-left">
@@ -233,7 +235,7 @@ const HeroSection = () => {
         </div>
         <h2 className="use-title">From Chaos to Clarity</h2>
       </section>
-    </>
+    </ClickSpark>
   );
 };
 

@@ -10,6 +10,7 @@ import lg1 from "./lg1.png";
 import Account from "./Account";
 import { useToast } from "./ToastContext";
 import { apiFetch } from "../config";
+import ClickSpark from "./Effects/ClickSpark";
 
 /* ============================================================================
  * USER DATA VALIDATION UTILITIES
@@ -237,7 +238,13 @@ function Navbar() {
    * RENDER
    * -------------------------------------------------------------------------- */
   return (
-    <>
+    <ClickSpark
+      sparkColor="#fff"
+      sparkSize={10}
+      sparkRadius={15}
+      sparkCount={8}
+      duration={400}
+    >
       {/* Primary Navigation */}
       <nav
         className={`navbar ${isUploadPage ? "upload-navbar" : ""} ${isMobileMenuOpen ? "mobile-open" : ""}`}
@@ -273,7 +280,7 @@ function Navbar() {
               e.preventDefault();
               if (!user) {
                 showToast("Please log in to use Contact Us", { type: "error" });
-                return;
+    </ClickSpark>
               }
               setPopup("contact");
               setIsMobileMenuOpen(false);
