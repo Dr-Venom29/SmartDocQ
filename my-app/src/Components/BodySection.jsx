@@ -74,6 +74,7 @@ const STEPS = [
 const VideoSection = () => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
+  const [isInView, setIsInView] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -83,12 +84,20 @@ const VideoSection = () => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
+          setIsInView(true);
           videoEl.play().catch(() => {});
         } else {
           videoEl.pause();
+          setIsInView(false);
+          try {
+            // Reset so we show the thumbnail (not the last frame) offscreen.
+            videoEl.currentTime = 0;
+          } catch {
+            // Some browsers can throw if seeking isn't allowed yet.
+          }
         }
       },
-      { threshold: 0.10 }
+      { threshold: 0.05 }
     );
 
     observer.observe(container);
@@ -97,20 +106,30 @@ const VideoSection = () => {
 
   return (
     <div className="video-section" ref={containerRef}>
-      <video
-        ref={videoRef}
-        loop
-        playsInline
-        muted
-        draggable="false"
-        disablePictureInPicture
-        poster={thumb}
-        preload="metadata"
-        aria-label="SmartDocQ demo showing document upload and AI-powered question answering"
-      >
-        <source src={video} type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
+      <div className="video-wrapper">
+        <img
+          src={thumb}
+          className={`video-thumb ${isInView ? "hidden" : ""}`}
+          alt=""
+          aria-hidden="true"
+          draggable="false"
+        />
+        <video
+          ref={videoRef}
+          className={`demo-video ${isInView ? "visible" : ""}`}
+          loop
+          playsInline
+          muted
+          draggable="false"
+          disablePictureInPicture
+          poster={thumb}
+          preload="metadata"
+          aria-label="SmartDocQ demo showing document upload and AI-powered question answering"
+        >
+          <source src={video} type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      </div>
     </div>
   );
 };
