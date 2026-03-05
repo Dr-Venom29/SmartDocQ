@@ -13,7 +13,6 @@ import f5 from "../Animations/f5.json";
 import f6 from "../Animations/f6.json";
 import f7 from "../Animations/f7.json";
 import f8 from "../Animations/f8.json";
-import f9 from "../Animations/f9.json";
 import f10 from "../Animations/f10.json";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "./ToastContext";
