@@ -42,6 +42,17 @@ npm install
 npm start
 ```
 
+## Shared chat security & previews
+
+- Shared chat rendering is sanitized with DOMPurify (prevents XSS in shared views).
+- Shared chat API calls are centralized in `src/Services/ServiceChat.js`.
+
+### Open Graph (WhatsApp/FB) preview image
+
+For professional link previews, `public/index.html` includes Open Graph tags pointing to `/og-preview.png`.
+
+- Ensure `public/og-preview.png` exists (recommended: 1200×630 PNG/JPG, ideally < 300 KB).
+
 ## Available Scripts
 
 In the project directory, you can run:

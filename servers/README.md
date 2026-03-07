@@ -22,3 +22,18 @@ Uses httpOnly cookies for JWT storage. Key endpoints:
 
 ## Health
 - GET /healthz returns `{ "status": "ok" }`
+
+## Public share links
+
+SmartDoc supports sharing a read-only snapshot of a document chat via a public link.
+
+- Create share (auth required): `POST /api/share/chat/:documentId`
+	- Returns `{ shareId, title }`
+- View share (public): `GET /api/share/:shareId`
+- Export share as PDF (public): `GET /api/share/:shareId/export.pdf`
+
+### Security
+
+- Share links expire after ~24 hours (`410` if expired).
+- Share IDs are high-entropy URL-safe strings (currently 32 chars base64url); legacy shorter IDs may still resolve.
+- Public share endpoints are rate-limited (100 requests/min per IP) to prevent abuse.

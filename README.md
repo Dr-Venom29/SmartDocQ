@@ -250,6 +250,7 @@ Refer to `DEPLOYMENT_CHECKLIST.md` for detailed deployment instructions.
 - JWT tokens expire after 1 hour with automatic cleanup on logout
 - Sensitive data detection runs before document processing
 - Content moderation filters inappropriate content
+- Shared chat links use high-entropy IDs, expire (~24h), and are rate-limited on the public endpoints
 - CORS configured with credentials support for specific allowed origins
 - Environment variables store sensitive configuration
 - Cross-tab authentication sync for consistent session state
