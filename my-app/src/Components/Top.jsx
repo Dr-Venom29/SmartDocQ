@@ -12,20 +12,23 @@ export default function Top() {
     const toggleVisibility = () => {
       setVisible(window.scrollY > 200);
     };
-    window.addEventListener("scroll", toggleVisibility);
-    return () => window.removeEventListener("scroll", toggleVisibility);
+    // Passive listener improves scroll performance by guaranteeing no preventDefault().
+    window.addEventListener("scroll", toggleVisibility, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", toggleVisibility);
+    };
   }, []);
 
   const scrollToTop = () => {
     try {
-      // Smoothly scroll through all sections; keep pins enabled so horizontal section scrubs back
+      // Smooth scroll to the top via GSAP.
       gsap.to(window, {
         duration: 1.4,
         scrollTo: { y: 0, autoKill: true },
         ease: "power2.out",
       });
     } catch (_) {
-      // Fallback to native smooth scroll
+      // Fallback to native smooth scrolling.
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -38,7 +41,17 @@ export default function Top() {
       className={`scroll-to-top ${visible ? "show" : ""}`}
       onClick={scrollToTop}
     >
-      ⇧
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        aria-hidden="true"
+      >
+        <polyline points="18 15 12 9 6 15" />
+      </svg>
       <span className="tooltip">Back to Top</span>
     </button>
   );
