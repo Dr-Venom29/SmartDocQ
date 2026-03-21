@@ -1,3 +1,6 @@
+#navbar {
+  opacity: 0;
+}
 .navbar {
   width:100%;
   padding: 15px 40px;
@@ -28,6 +31,7 @@
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+  
 }
 
 .mid a {

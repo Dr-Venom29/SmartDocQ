@@ -295,10 +295,11 @@ function Navbar() {
           className={`navbar ${isUploadPage ? "upload-navbar" : ""} ${isMobileMenuOpen ? "mobile-open" : ""}`}
           role="navigation"
           aria-label="Main navigation"
+          id="navbar"
         >
           <div className="a">
-            <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} aria-label="SmartDoc Home">
-              <img className="logo" src={logo} alt="SmartDoc Logo" />
+            <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} aria-label="SmartDocQ Home">
+              <img className="logo" src={logo} alt="SmartDocQ Logo" />
             </a>
           </div>
 
