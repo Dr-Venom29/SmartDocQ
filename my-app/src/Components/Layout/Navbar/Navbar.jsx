@@ -37,13 +37,13 @@ export default function Navbar() {
   const closePopup   = useCallback(() => setPopup(null), []);
   const isUploadPage = location.pathname === "/upload";
 
-  // Keep activeTab in sync with URL
+  // Keep activeTab in sync with the current URL
   useEffect(() => {
     const tab = getActiveTab(location.pathname);
     if (tab) setActiveTab(tab);
   }, [location.pathname]);
 
-  // ESC for popups / profile menu (mobile menu ESC handled inside useMobileMenu)
+  // Handle Escape key for dialogs and profile menu (mobile menu ESC is handled inside useMobileMenu)
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key === "Escape") { setPopup(null); setShowProfileMenu(false); }
@@ -52,7 +52,7 @@ export default function Navbar() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Scroll lock for popups
+  // Lock page scroll while a popup is open
   useEffect(() => {
     const lock = !!popup;
     document.documentElement.style.overflow = lock ? "hidden" : "";
@@ -63,7 +63,7 @@ export default function Navbar() {
     };
   }, [popup]);
 
-  // Desktop slider
+  // Update desktop navigation slider position
   const updateSlider = useCallback(() => {
     const activeEl    = itemsRef.current[activeTab];
     const containerEl = navContainerRef.current;
@@ -80,7 +80,7 @@ export default function Navbar() {
     return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", updateSlider); };
   }, [updateSlider]);
 
-  // Smooth scroll util
+  // Smoothly scroll the page to a target element
   const smoothScroll = (target, duration = 800) => {
     if (!target) return;
     const targetPos = target.getBoundingClientRect().top + window.pageYOffset;
@@ -114,7 +114,7 @@ export default function Navbar() {
     }
   }, [location.pathname]);
 
-  // Sheet item tap handler — all navigation logic lives here
+  // Central handler for mobile sheet navigation items
   const handleSheetItemClick = useCallback((itemId) => {
     setActiveTab(itemId);
     closeMobileMenu();
@@ -139,14 +139,14 @@ export default function Navbar() {
           aria-label="Main navigation"
           id="navbar">
 
-          {/* Logo */}
+          {/* Logo section */}
           <div className="a">
             <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} aria-label="SmartDocQ Home">
               <img className="logo" src={logo} alt="SmartDocQ Logo" />
             </a>
           </div>
 
-          {/* Desktop pill nav */}
+          {/* Desktop navigation (pill-style menu) */}
           <div
             id="nav-links"
             className="nav-links-container"
@@ -204,7 +204,7 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Login / Avatar */}
+          {/* Authentication actions (login button or profile avatar) */}
           <div className="login">
             {!loading && (
               user ? (
@@ -229,7 +229,7 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Hamburger — mobile only */}
+          {/* Mobile menu toggle button (hamburger) */}
           <button
             className={`menu-toggle ${isMobileMenuOpen ? "open" : ""}`}
             aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
@@ -242,7 +242,7 @@ export default function Navbar() {
         </nav>
       </ClickSpark>
 
-      {/* Mobile bottom sheet */}
+      {/* Mobile navigation bottom sheet */}
       <MobileSheet
         isOpen={isMobileMenuOpen}
         onClose={closeMobileMenu}

@@ -28,41 +28,27 @@
   margin-top:10px;
 }
 
-/* ── NAV DESIGN ── */
-
 .nav-links-container {
-    position: relative;
+  position: relative;
     display: flex;
     align-items: center;
-    background: #111114;
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 12px;
-    padding: 5px;
-    gap: 2px;
-  --nav-icon-color: rgba(255,255,255,0.45);
-  --nav-icon-hover-color: rgba(255,255,255,0.7);
-  --nav-icon-active-color: rgba(34, 211, 238, 0.95);
-}
+    background: #050505;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 100px;
+    padding: 4px;
+    gap: 0px;
+  }
 
-.nav-links-container::before {
-    content: '';
+  .nav-slider {
     position: absolute;
-    top: 0; left: 16px; right: 16px;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-    border-radius: 1px;
-}
-
-.nav-slider {
-    position: absolute;
-    height: calc(100% - 10px);
-    top: 5px;
-    background: #1c1c21;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
-    transition: left 0.35s cubic-bezier(0.34, 1.26, 0.64, 1), width 0.35s cubic-bezier(0.34, 1.26, 0.64, 1);
+    height: calc(100% - 8px);
+    top: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 100px;
+    transition: left 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+          width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
     z-index: 0;
 }
 
@@ -72,25 +58,25 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 24px;
-    font-size: 15px;
+    padding: 8px 18px;
+    font-size: 14px;
     font-weight: 500;
-    letter-spacing: 0.01em;
+    letter-spacing: -0.01em;
     color: rgba(255,255,255,0.32);
     cursor: pointer;
-    border-radius: 8px;
-    transition: color 0.25s;
+    border-radius: 100px;
+    transition: color 0.3s ease;
     white-space: nowrap;
     user-select: none;
     text-decoration: none;
 }
 
 .nav-item svg {
-    width: 15px;
-    height: 15px;
-  color: var(--nav-icon-color);
-  opacity: 1;
-  transition: color 0.25s, opacity 0.25s;
+    width: 16px;
+    height: 16px;
+    color: #a89d8a;
+    opacity: 1;
+    transition: color 0.3s ease;
     flex-shrink: 0;
 }
 
@@ -99,51 +85,40 @@
     font-weight: 550;
 }
 
-.nav-item:hover:not(.active) svg {
-  color: var(--nav-icon-hover-color);
-}
-
 .nav-item.active svg {
-  color: var(--nav-icon-active-color);
+  color: #bba682;
   opacity: 1;
 }
 
 .nav-item:hover:not(.active) {
-    color: rgba(255,255,255,0.55);
+  color: rgba(255,255,255,0.55);
+}
+
+.nav-item:hover:not(.active) svg {
+  color: #b29f84;
 }
 
 .nav-badge {
     font-family: 'DM Mono', monospace;
     font-size: 9px;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: 0.04em;
-  background: rgba(34, 211, 238, 0.14);
-  color: rgba(34, 211, 238, 0.95);
-  border: 1px solid rgba(34, 211, 238, 0.22);
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.8);
+    border: 1px solid rgba(255,255,255,0.15);
     border-radius: 4px;
-    padding: 2px 6px;
+    padding: 1px 5px;
     line-height: 1;
 }
 
 .nav-divider {
     width: 1px;
-    height: 16px;
-    background: rgba(255,255,255,0.06);
+    height: 14px;
+    background: #3f3e3d;
     flex-shrink: 0;
     margin: 0 2px;
 }
 
-.nav-item.active::after {
-    content: '';
-    position: absolute;
-    bottom: 4px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 3px;
-    height: 3px;
-    border-radius: 50%;
-  background: rgba(220, 20, 60, 0.9);
-}
 
 .login .login-cta {
   background: transparent;
@@ -320,7 +295,7 @@
 
 .upload-navbar { background-color: #000000; }
 
-/* ── HAMBURGER (mobile only) ── */
+/* ── HAMBURGER TOGGLE (MOBILE ONLY) ── */
 .menu-toggle {
   display: none;
   width: 38px;
@@ -380,7 +355,7 @@
   .navbar .a { order: 1; }
   .login     { order: 3; margin-left: auto; margin-top: 6px; }
 
-  /* hide desktop pill nav on mobile */
+  /* Hide desktop pill navigation on mobile */
   .nav-links-container { display: none !important; }
 
 }

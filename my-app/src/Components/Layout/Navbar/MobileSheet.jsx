@@ -50,7 +50,7 @@ const ArrowIcon = () => (
   </svg>
 );
 
-const DISMISS_THRESHOLD = 80; // px downward before dismiss
+const DISMISS_THRESHOLD = 80; // Pixels to drag downward before dismissing the sheet
 
 export default function MobileSheet({
   isOpen,

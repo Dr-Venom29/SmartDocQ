@@ -9,24 +9,24 @@ export function useMobileMenu() {
   const close = () => setIsMobileMenuOpen(false);
   const toggle = () => setIsMobileMenuOpen((v) => !v);
 
-  // Close on route change
+  // Close the mobile menu when the route changes
   useEffect(() => { close(); }, [location.pathname]);
 
-  // Close on desktop resize
+  // Close the mobile menu when switching to a desktop viewport
   useEffect(() => {
     const onResize = () => { if (window.innerWidth > 768) close(); };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // ESC key
+  // Close the mobile menu when the Escape key is pressed
   useEffect(() => {
     const onKeyDown = (e) => { if (e.key === "Escape") close(); };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Scroll lock
+  // Lock page scroll while the mobile menu is open
   useEffect(() => {
     document.documentElement.style.overflow = isMobileMenuOpen ? "hidden" : "";
     document.body.style.overflow            = isMobileMenuOpen ? "hidden" : "";

@@ -19,8 +19,8 @@
 
   .mobile-sheet-overlay.open {
     pointer-events: auto;
-    background: rgba(0, 0, 0, 0.75); /* Slightly darker for premium feel */
-    backdrop-filter: blur(12px); /* Sharper blur */
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(1px);
     -webkit-backdrop-filter: blur(12px);
   }
 
@@ -28,44 +28,44 @@
   .mobile-sheet-panel {
     position: absolute;
     bottom: 0; left: 0; right: 0;
-    background: #050505; /* Not pure black, very dark grey for depth */
+    background: #050505;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 24px 24px 0 0;
     padding: 24px 20px 40px;
     transform: translateY(100%);
-    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); /* Apple-like ease */
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.9); /* Deep shadow */
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.9);
   }
 
   .mobile-sheet-overlay.open .mobile-sheet-panel {
     transform: translateY(0);
   }
 
-  /* Drag Pill */
+  /* Drag handle pill */
   .sheet-pill {
     width: 36px; height: 4px;
-    background: rgba(255, 255, 255, 0.15);
+    background: #ffffff;
     border-radius: 100px;
     margin: 0 auto 24px;
   }
 
-  /* Section Label */
+  /* Section label */
   .sheet-section-label {
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.08em;
-    color: rgba(255, 255, 255, 0.25);
+    color: rgba(255, 255, 255, 0.45);
     text-transform: uppercase;
     margin-bottom: 22px;
     padding: 0 4px;
   }
 
-  /* ── NAV ITEMS ── */
+  /* ── NAVIGATION ITEMS ── */
   .sheet-items {
     display: flex;
     flex-direction: column;
-    gap: 4px; /* Tighter gap for premium feel */
+    gap: 4px; /* Tighter gap between items */
     margin-bottom: 28px;
   }
 
@@ -74,7 +74,7 @@
     align-items: center;
     gap: 16px;
     padding: 14px 12px;
-    border-radius: 12px; /* Slightly squarer, modern */
+    border-radius: 12px;
     cursor: pointer;
     background: transparent;
     border: 1px solid transparent;
@@ -93,18 +93,18 @@
   .mobile-sheet-overlay.open .sheet-item:nth-child(2) { opacity: 1; transform: translateY(0); transition-delay: 0.10s; }
   .mobile-sheet-overlay.open .sheet-item:nth-child(3) { opacity: 1; transform: translateY(0); transition-delay: 0.15s; }
 
-  /* Premium Hover: Extremely subtle background shift */
+  /* Hover state: subtle background shift */
   .sheet-item:hover {
-    background: rgba(255, 255, 255, 0.02); /* Barely visible */
+    background: rgba(255, 255, 255, 0.02);
   }
 
-  /* Premium Active: Sharp border, no color fill */
+  /* Active state: sharp border, minimal fill */
   .sheet-item.active {
     background: rgba(255, 255, 255, 0.03);
     border-color: rgba(255, 255, 255, 0.1);
   }
 
-  /* Icon Box */
+  /* Icon container */
   .sheet-item-icon {
     width: 36px; height: 36px;
     border-radius: 10px;
@@ -122,18 +122,17 @@
     transition: color 0.25s ease;
   }
 
-  /* Active Icon: High Contrast White (No Cyan) */
+  /* Active icon: high contrast white */
   .sheet-item.active .sheet-item-icon {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.15);
-    /* No box-shadow/glow */
   }
 
   .sheet-item.active .sheet-item-icon svg {
-    color: #ffffff; /* Pure white icon */
+    color: #ffffff;
   }
 
-  /* Text Hierarchy */
+  /* Text hierarchy (title and subtitle) */
   .sheet-item-text {
     flex: 1;
     display: flex; flex-direction: column; gap: 3px;
@@ -141,7 +140,7 @@
 
   .sheet-item-title {
     font-size: 15px; font-weight: 500;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.92);
     letter-spacing: -0.01em;
   }
 
@@ -152,10 +151,10 @@
 
   .sheet-item-sub {
     font-size: 12px; font-weight: 400;
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.62);
   }
 
-  /* Arrow Icon */
+  /* Arrow icon */
   .sheet-item-arrow {
     width: 14px; height: 14px;
     color: rgba(255, 255, 255, 0.15);
@@ -170,19 +169,19 @@
     transform: translateX(0);
   }
 
-  /* ACTIVE DOT: Small, sharp, solid white. No glow. */
+  /* Active item indicator dot */
   .sheet-active-dot {
     width: 5px; height: 5px;
     border-radius: 50%;
-    background: #ffffff;
-    box-shadow: none; /* Removed glow */
+    background: #4ade80;
+    box-shadow: none;
     flex-shrink: 0;
   }
 
-  /* Divider */
+  /* Divider between navigation and actions */
   .sheet-divider {
     height: 1px;
-    background: rgba(255,255,255,0.06);
+    background: #ffffff;
     margin: 4px 0 28px;
   }
 
@@ -200,12 +199,12 @@
   .sheet-action-btn {
     flex: 1;
     padding: 14px;
-    border-radius: 11px; /* Slightly more rectangular */
+    border-radius: 11px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.02);
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 14px; font-weight: 500;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.88);
     cursor: pointer;
     text-align: center;
     transition: all 0.2s ease;
@@ -218,7 +217,7 @@
     color: #fff;
   }
 
-  /* Primary: Pure White for contrast */
+  /* Primary button: solid white for contrast */
   .sheet-action-btn.sheet-action-primary {
     background: #ffffff;
     border-color: #ffffff;
@@ -230,11 +229,11 @@
     background: #f0f0f0;
   }
 
-  /* Danger: Subtle Red */
+  /* Danger button: subtle red state */
   .sheet-action-btn.sheet-action-danger {
     background: transparent;
     border-color: rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.82);
   }
 
   .sheet-action-btn.sheet-action-danger:hover {

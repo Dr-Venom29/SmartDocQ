@@ -17,7 +17,7 @@ export default function ProfileMenu({ triggerRef, onProfile, onLogout, onClose }
     });
   }, [triggerRef]);
 
-  // Position on mount + keep in sync on scroll/resize
+  // Position the menu on mount and keep it in sync on scroll/resize
   useEffect(() => {
     updatePos();
     window.addEventListener("scroll", updatePos, true);
@@ -28,7 +28,7 @@ export default function ProfileMenu({ triggerRef, onProfile, onLogout, onClose }
     };
   }, [updatePos]);
 
-  // Click outside to close
+  // Close the menu when clicking outside of the trigger or menu
   useEffect(() => {
     const handleClickOutside = (e) => {
       const trigger = triggerRef.current;

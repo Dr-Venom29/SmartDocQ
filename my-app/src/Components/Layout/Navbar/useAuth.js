@@ -32,7 +32,7 @@ export function useAuth() {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  // Initialize from localStorage
+  // Initialize user state from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem("user");
@@ -50,7 +50,7 @@ export function useAuth() {
     }
   }, []);
 
-  // Cross-tab sync
+  // Keep auth state in sync across browser tabs
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key === "user") setUser(safeParseUser(e.newValue));
