@@ -175,7 +175,7 @@ const HeroSection = () => {
       window.addEventListener("load", onLoad);
     }
 
-    // ✅ Debounced ResizeObserver — prevents spamming during Lottie frames
+    //Debounced ResizeObserver — prevents spamming during Lottie frames
     const ro = new ResizeObserver(() => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => ScrollTrigger.refresh(), 100);
@@ -183,7 +183,7 @@ const HeroSection = () => {
     ro.observe(container);
 
     return () => {
-      clearTimeout(resizeTimer);       // ✅ clear pending timer
+      clearTimeout(resizeTimer); 
       tween?.scrollTrigger?.kill();
       tween?.kill();
       ro.disconnect();
@@ -235,7 +235,6 @@ const HeroSection = () => {
 
       <h2 id="feat" className="feature-title">Why SmartDocQ Stands Out</h2>
 
-      {/* ✅ use-title moved OUTSIDE features-section */}
       <section className="features-section" ref={sectionRef} aria-label="Product features">
         <div className="features-container" ref={containerRef} role="list">
           {FEATURES.map((f) => (

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+
 #navbar {
   opacity: 0;
 }
@@ -11,6 +13,9 @@
   background: transparent;
   position: relative;
   z-index: 3000;
+  font-family: 'DM Sans', sans-serif;
+  height:70px;
+  margin-top: 10px;
 }
 .navbar *{
   user-select: none;
@@ -20,61 +25,182 @@
 .logo {
   height: 50px;
   width: 100px;
+  margin-top:10px;
 }
 
-.mid {
-  display: flex;
-  gap: 30px;
-  padding: 10px 30px;
+/* ── NEW NAV DESIGN ── */
+
+.nav-links-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #111114;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 5px;
+    gap: 2px;
+
+  /* SVG icon colors (edit these to customize) */
+  --nav-icon-color: rgba(255,255,255,0.45);
+  --nav-icon-hover-color: rgba(255,255,255,0.7);
+  --nav-icon-active-color: rgba(34, 211, 238, 0.95); /* cyan */
+}
+
+/* top highlight line */
+.nav-links-container::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 16px; right: 16px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    border-radius: 1px;
+}
+
+.nav-slider {
+    position: absolute;
+    height: calc(100% - 10px);
+    top: 5px;
+    background: #1c1c21;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    transition: left 0.35s cubic-bezier(0.34, 1.26, 0.64, 1), width 0.35s cubic-bezier(0.34, 1.26, 0.64, 1);
+    pointer-events: none;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
+    z-index: 0;
+}
+
+.nav-item {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: rgba(255,255,255,0.32);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: color 0.25s;
+    white-space: nowrap;
+    user-select: none;
+    text-decoration: none;
+}
+
+.nav-item svg {
+    width: 15px;
+    height: 15px;
+
+  /* Most of your icons use stroke="currentColor" in JSX.
+     Setting `color` here controls the stroke/fill color. */
+  color: var(--nav-icon-color);
+  opacity: 1;
+  transition: color 0.25s, opacity 0.25s;
+    flex-shrink: 0;
+}
+
+.nav-item.active {
+    color: rgba(255,255,255,0.88);
+    font-weight: 550;
+}
+
+.nav-item:hover:not(.active) svg {
+  color: var(--nav-icon-hover-color);
+}
+
+.nav-item.active svg {
+  color: var(--nav-icon-active-color);
+  opacity: 1;
+}
+
+.nav-item:hover:not(.active) {
+    color: rgba(255,255,255,0.55);
+}
+
+.nav-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  background: rgba(34, 211, 238, 0.14);
+  color: rgba(34, 211, 238, 0.95);
+  border: 1px solid rgba(34, 211, 238, 0.22);
+    border-radius: 4px;
+    padding: 2px 6px;
+    line-height: 1;
+}
+
+.nav-divider {
+    width: 1px;
+    height: 16px;
+    background: rgba(255,255,255,0.06);
+    flex-shrink: 0;
+    margin: 0 2px;
+}
+
+.nav-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(34, 211, 238, 0.8);
+}
+
+.login .login-cta {
+  background: transparent;
+  color: #a89d8a;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.97rem;
+  padding: 12px 28px;
+  border: none;
   border-radius: 50px;
-  background:rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
-  
-}
-
-.mid a {
-  text-decoration: none;
-  color: #fff;
-  font-weight: 500;
-  transition: color 0.3s ease;
-  position:relative;
-}
-
-.mid a:hover {
-  color: #c084fc;
-}
-
-.login button {
-  padding: 10px 30px;
-  border-radius: 50px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  position: relative;
   cursor: pointer;
-  font-size: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: border 0.3s ease, color 0.3s ease;
+  transition: color 0.2s;
 }
 
-.login button:hover {
-  border: 1px solid #a855f7;
-  color: #c084fc;
-}
-
-.mid a::after {
+.login .login-cta::before,
+.login .login-cta::after {
   content: '';
   position: absolute;
-  width: 0%;
-  height: 2px;
-  bottom: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  transition: width 0.3s, height 0.3s, border-radius 0.3s;
+}
+
+.login .login-cta::before {
+  top: 0;
   left: 0;
-  background: linear-gradient(90deg, #a855f7, #7c3aed);
-  transition: width 0.3s ease;
+  border-top: 1.7px solid #4ade80;
+  border-left: 1.7px solid #4ade80;
+  border-top-left-radius: 50px;
 }
-.mid a:hover::after {
+
+.login .login-cta::after {
+  bottom: 0;
+  right: 0;
+  border-bottom: 1.7px solid #4ade80;
+  border-right: 1.7px solid #4ade80;
+  border-bottom-right-radius: 50px;
+}
+
+.login .login-cta:hover::before,
+.login .login-cta:hover::after {
   width: 100%;
+  height: 100%;
 }
+
+.login .login-cta:hover {
+  color: #bba682;
+}
+
 .overlay {
   position: fixed; /* ensures it's always on top of viewport */
   top: 0;
@@ -261,9 +387,9 @@
 
 /* Responsive layout */
 @media (max-width: 900px) {
-  .mid {
-    gap: 20px;
-    padding: 8px 20px;
+  .nav-links-container {
+    gap: 15px;
+    padding: 5px 15px;
   }
 }
 
@@ -271,8 +397,9 @@
   .navbar {
     padding: 12px 16px;
     gap: 12px;
+    display: flex; 
+    align-items: center; 
   }
-  .navbar { display: flex; align-items: center; }
   .logo {
     height: 42px;
     width: auto;
@@ -283,38 +410,63 @@
     margin-left: 8px;    /* spacing from login */
     flex-direction: column; /* stack lines vertically */
     gap: 4px;               /* tighter space between lines for smaller icon */
+    margin-top:10px;
   }
   .navbar .a { order: 1; }
-  .login { order: 3; margin-left: 0; }
-  .mid {
+  .login { order: 3; margin-left: 0;margin-top:6px; }
+  
+  .nav-links-container {
     position: absolute;
     top: 64px;
     left: 16px;
     right: 16px;
     flex-direction: column;
     padding: 12px;
-    gap: 12px;
+    gap: 4px;
     border-radius: 16px;
     display: none;
     z-index: 50;
     /* Simplify mobile panel look */
-    background: rgba(0, 0, 0, 0.85);
-    border: none;
-    box-shadow: none;
+    background: #111114;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     backdrop-filter: none;
+    align-items: stretch;
   }
-  .navbar.mobile-open .mid {
+  
+  /* Hide the slider elements on mobile */
+  .nav-slider, .nav-divider, .nav-links-container::before {
+    display: none;
+  }
+
+  /* Show container when open */
+  .navbar.mobile-open .nav-links-container {
     display: flex;
   }
-  .mid a {
-    padding: 12px 12px;
-    border-radius: 10px;
+  
+  .nav-item {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 12px 16px;
+    border-radius: 8px;
     background: transparent;
-    transition: background-color 120ms ease-out, color 120ms ease-out;
+    border: none;
   }
-  /* Remove desktop underline accent on mobile */
-  .mid a::after { content: none; }
-  .mid a:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  
+  .nav-item.active {
+    background: rgba(34, 211, 238, 0.12);
+    color: rgba(34, 211, 238, 0.95);
+  }
+  
+  .nav-item.active::after {
+    display: none; /* remove dot on mobile */
+  }
+
+  .nav-item:hover { 
+    background: rgba(255,255,255,0.06); 
+    color: #fff; 
+  }
+  
   .login {
     margin-left: auto;
   }

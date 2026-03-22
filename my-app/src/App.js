@@ -1,6 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import Navbar from './Components/Navbar';
+import Navbar from './Components/Layout/Navbar';
 import Hero from './Components/HeroSection';
 import Body from './Components/BodySection';
 import Top from './Components/Top';
