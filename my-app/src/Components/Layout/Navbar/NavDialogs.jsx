@@ -8,11 +8,18 @@ export default function NavDialogs({ popup, user, onClose, onAuthSuccess, onUser
   const body = typeof document !== "undefined" ? document.body : null;
   if (!popup || !body) return null;
 
-  if (popup === "login") return createPortal(
+  if (popup === "login" || popup === "signup") return createPortal(
     <div className="overlay" onClick={onClose} role="presentation">
       <div className="popup" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <button className="close-btn" onClick={onClose} aria-label="Close login dialog" type="button" autoFocus>✕</button>
-        <Login onAuthSuccess={onAuthSuccess} />
+        <button
+          className="close-btn"
+          onClick={onClose}
+          aria-label={popup === "signup" ? "Close signup dialog" : "Close login dialog"}
+          type="button"
+          autoFocus>
+          ✕
+        </button>
+        <Login key={popup} onAuthSuccess={onAuthSuccess} initialMode={popup} />
       </div>
     </div>,
     body

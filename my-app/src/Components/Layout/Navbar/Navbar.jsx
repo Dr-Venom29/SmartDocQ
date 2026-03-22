@@ -8,6 +8,8 @@ import ClickSpark from "../../Effects/ClickSpark";
 import { useAuth } from "./useAuth";
 import ProfileMenu from "./ProfileMenu";
 import NavDialogs from "./NavDialogs";
+import MobileSheet from "./MobileSheet";
+import { useMobileMenu } from "./useMobileMenu";
 
 const getActiveTab = (pathname) => {
   if (pathname === "/") return "Home";
@@ -15,39 +17,59 @@ const getActiveTab = (pathname) => {
 };
 
 export default function Navbar() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate   = useNavigate();
+  const location   = useLocation();
 
-  const [popup, setPopup] = useState(null);
+  const [popup, setPopup]                     = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState(() => getActiveTab(location.pathname));
-  const [sliderStyle, setSliderStyle] = useState({ left: 0, width: 0, opacity: 0 });
+  const [activeTab, setActiveTab]             = useState(() => getActiveTab(location.pathname));
+  const [sliderStyle, setSliderStyle]         = useState({ left: 0, width: 0, opacity: 0 });
 
-  const navContainerRef = useRef(null);
-  const itemsRef = useRef({});
+  const navContainerRef  = useRef(null);
+  const itemsRef         = useRef({});
   const pendingScrollRef = useRef(false);
-  const profileRef = useRef();
+  const profileRef       = useRef();
 
-  const { showToast } = useToast();
-  const { user, loading, persistUser, logout } = useAuth();
+  const { showToast }                              = useToast();
+  const { user, loading, persistUser, logout }     = useAuth();
+  const { isMobileMenuOpen, close: closeMobileMenu, toggle: toggleMobileMenu } = useMobileMenu();
 
-  const closePopup = useCallback(() => setPopup(null), []);
+  const closePopup   = useCallback(() => setPopup(null), []);
   const isUploadPage = location.pathname === "/upload";
 
-  // Sync activeTab with URL — only set if route maps to a known tab
+  // Keep activeTab in sync with URL
   useEffect(() => {
     const tab = getActiveTab(location.pathname);
     if (tab) setActiveTab(tab);
   }, [location.pathname]);
 
-  // Slider logic
+  // ESC for popups / profile menu (mobile menu ESC handled inside useMobileMenu)
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") { setPopup(null); setShowProfileMenu(false); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // Scroll lock for popups
+  useEffect(() => {
+    const lock = !!popup;
+    document.documentElement.style.overflow = lock ? "hidden" : "";
+    document.body.style.overflow            = lock ? "hidden" : "";
+    return () => {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow            = "";
+    };
+  }, [popup]);
+
+  // Desktop slider
   const updateSlider = useCallback(() => {
-    const activeEl = itemsRef.current[activeTab];
+    const activeEl    = itemsRef.current[activeTab];
     const containerEl = navContainerRef.current;
     if (activeEl && containerEl) {
       const navRect = containerEl.getBoundingClientRect();
-      const elRect = activeEl.getBoundingClientRect();
+      const elRect  = activeEl.getBoundingClientRect();
       setSliderStyle({ left: elRect.left - navRect.left, width: elRect.width, opacity: 1 });
     }
   }, [activeTab]);
@@ -55,70 +77,33 @@ export default function Navbar() {
   useEffect(() => {
     const raf = requestAnimationFrame(updateSlider);
     window.addEventListener("resize", updateSlider);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", updateSlider);
-    };
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", updateSlider); };
   }, [updateSlider]);
 
-  // ESC key + scroll lock
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") {
-        setPopup(null);
-        setIsMobileMenuOpen(false);
-        setShowProfileMenu(false);
-      }
-    };
-    const shouldLock = !!popup || isMobileMenuOpen;
-    document.documentElement.style.overflow = shouldLock ? "hidden" : "";
-    document.body.style.overflow = shouldLock ? "hidden" : "";
-    document.body.style.overscrollBehavior = shouldLock ? "contain" : "";
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-      document.body.style.overscrollBehavior = "";
-    };
-  }, [popup, isMobileMenuOpen]);
-
-  // Close mobile menu on route change or resize
-  useEffect(() => { setIsMobileMenuOpen(false); }, [location.pathname]);
-  useEffect(() => {
-    const onResize = () => { if (window.innerWidth > 768) setIsMobileMenuOpen(false); };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  // Custom smooth scroll
+  // Smooth scroll util
   const smoothScroll = (target, duration = 800) => {
     if (!target) return;
-    const targetPosition = target.getBoundingClientRect().top + window.pageYOffset;
-    const startPosition = window.pageYOffset;
-    const distance = targetPosition - startPosition;
-    let startTime = null;
-    const animation = (currentTime) => {
+    const targetPos = target.getBoundingClientRect().top + window.pageYOffset;
+    const startPos  = window.pageYOffset;
+    const distance  = targetPos - startPos;
+    let startTime   = null;
+    const animate   = (currentTime) => {
       if (!startTime) startTime = currentTime;
-      const timeElapsed = currentTime - startTime;
-      const progress = Math.min(timeElapsed / duration, 1);
+      const elapsed  = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
       const ease = progress < 0.5
-        ? 4 * progress * progress * progress
-        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-      window.scrollTo(0, startPosition + distance * ease);
-      if (timeElapsed < duration) requestAnimationFrame(animation);
+        ? 4 * progress ** 3
+        : 1 - (-2 * progress + 2) ** 3 / 2;
+      window.scrollTo(0, startPos + distance * ease);
+      if (elapsed < duration) requestAnimationFrame(animate);
     };
-    requestAnimationFrame(animation);
+    requestAnimationFrame(animate);
   };
 
   const scrollToFeatures = useCallback(() => {
     const el = document.getElementById("feat");
-    if (el) {
-      smoothScroll(el, 800);
-    } else {
-      pendingScrollRef.current = true;
-      navigate("/");
-    }
+    if (el) { smoothScroll(el, 800); }
+    else    { pendingScrollRef.current = true; navigate("/"); }
   }, [navigate]);
 
   useEffect(() => {
@@ -129,44 +114,50 @@ export default function Navbar() {
     }
   }, [location.pathname]);
 
+  // Sheet item tap handler — all navigation logic lives here
+  const handleSheetItemClick = useCallback((itemId) => {
+    setActiveTab(itemId);
+    closeMobileMenu();
+    if (itemId === "Home") {
+      navigate("/");
+    } else if (itemId === "Features") {
+      setTimeout(() => scrollToFeatures(), 300);
+    } else if (itemId === "Contact") {
+      setTimeout(() => {
+        if (!user) { showToast("Please log in to use Contact Us", { type: "error" }); return; }
+        setPopup("contact");
+      }, 300);
+    }
+  }, [navigate, scrollToFeatures, user, showToast, closeMobileMenu]);
+
   return (
     <>
       <ClickSpark sparkColor="#fff" sparkSize={10} sparkRadius={15} sparkCount={8} duration={400}>
         <nav
-          className={`navbar ${isUploadPage ? "upload-navbar" : ""} ${isMobileMenuOpen ? "mobile-open" : ""}`}
+          className={`navbar ${isUploadPage ? "upload-navbar" : ""}`}
           role="navigation"
           aria-label="Main navigation"
           id="navbar">
+
+          {/* Logo */}
           <div className="a">
             <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} aria-label="SmartDocQ Home">
               <img className="logo" src={logo} alt="SmartDocQ Logo" />
             </a>
           </div>
 
-          <button
-            className={`menu-toggle ${isMobileMenuOpen ? "open" : ""}`}
-            aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-            aria-controls="nav-links"
-            aria-expanded={isMobileMenuOpen}
-            onClick={() => setIsMobileMenuOpen((v) => !v)}
-            type="button">
-            <span aria-hidden="true" /><span aria-hidden="true" /><span aria-hidden="true" />
-          </button>
-
+          {/* Desktop pill nav */}
           <div
             id="nav-links"
             className="nav-links-container"
             role="menubar"
             aria-label="Main menu"
             ref={navContainerRef}>
-            <div
-              className="nav-slider"
-              style={{ left: sliderStyle.left, width: sliderStyle.width, opacity: sliderStyle.opacity }}
-            />
+            <div className="nav-slider" style={sliderStyle} />
 
             <div
               className={`nav-item ${activeTab === "Home" ? "active" : ""}`}
-              onClick={() => { navigate("/"); setActiveTab("Home"); setIsMobileMenuOpen(false); }}
+              onClick={() => { navigate("/"); setActiveTab("Home"); }}
               role="menuitem"
               ref={(el) => (itemsRef.current["Home"] = el)}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -179,11 +170,7 @@ export default function Navbar() {
 
             <div
               className={`nav-item ${activeTab === "Features" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("Features");
-                setIsMobileMenuOpen(false);
-                setTimeout(() => scrollToFeatures(), 300);
-              }}
+              onClick={() => { setActiveTab("Features"); setTimeout(() => scrollToFeatures(), 300); }}
               role="menuitem"
               ref={(el) => (itemsRef.current["Features"] = el)}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -201,7 +188,6 @@ export default function Navbar() {
               className={`nav-item ${activeTab === "Contact" ? "active" : ""}`}
               onClick={() => {
                 setActiveTab("Contact");
-                setIsMobileMenuOpen(false);
                 setTimeout(() => {
                   if (!user) { showToast("Please log in to use Contact Us", { type: "error" }); return; }
                   setPopup("contact");
@@ -218,6 +204,7 @@ export default function Navbar() {
             </div>
           </div>
 
+          {/* Login / Avatar */}
           <div className="login">
             {!loading && (
               user ? (
@@ -235,14 +222,38 @@ export default function Navbar() {
                   type="button"
                   className="login-cta"
                   aria-label="Open login form"
-                  onClick={() => { setPopup("login"); setIsMobileMenuOpen(false); }}>
+                  onClick={() => setPopup("login")}>
                   Login
                 </button>
               )
             )}
           </div>
+
+          {/* Hamburger — mobile only */}
+          <button
+            className={`menu-toggle ${isMobileMenuOpen ? "open" : ""}`}
+            aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-controls="mobile-sheet"
+            aria-expanded={isMobileMenuOpen}
+            onClick={toggleMobileMenu}
+            type="button">
+            <span aria-hidden="true" /><span aria-hidden="true" /><span aria-hidden="true" />
+          </button>
         </nav>
       </ClickSpark>
+
+      {/* Mobile bottom sheet */}
+      <MobileSheet
+        isOpen={isMobileMenuOpen}
+        onClose={closeMobileMenu}
+        activeTab={activeTab}
+        onItemClick={handleSheetItemClick}
+        user={user}
+        onLogin={()   => { closeMobileMenu(); setPopup("login");    }}
+        onSignUp={()  => { closeMobileMenu(); setPopup("signup");   }}
+        onAccount={() => { closeMobileMenu(); setPopup("account");  }}
+        onLogout={()  => { closeMobileMenu(); logout();             }}
+      />
 
       {showProfileMenu && (
         <ProfileMenu

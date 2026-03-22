@@ -177,13 +177,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size:30px;
+  font-size: clamp(1.05rem, 3.2vw, 1.875rem);
   font-weight: 600;
-  letter-spacing: 2px;
+  letter-spacing: 0.08em;
   color: #ded1d1;
   text-transform: uppercase;
   user-select: none;
   -webkit-user-drag: none;
+  text-align: center;
+  padding: 0 12px;
 }
 
 .feature-title::before,
@@ -379,14 +381,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size:30px;
+  font-size: clamp(1.05rem, 3.2vw, 1.875rem);
   font-weight: 600;
-  letter-spacing: 2px;
+  letter-spacing: 0.08em;
   color: #ded1d1;
   text-transform: uppercase;
   user-select: none;
   -webkit-user-drag: none;
   margin-top:40px;
+  text-align: center;
+  padding: 0 12px;
+}
+
+@media (max-width: 480px) {
+  .feature-title::before,
+  .feature-title::after,
+  .use-title::before,
+  .use-title::after {
+    display: none;
+  }
 }
 
 .use-title::before,

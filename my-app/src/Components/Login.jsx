@@ -1,14 +1,14 @@
- import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
 import { useToast } from "./ToastContext";
 import { apiUrl } from "../config";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 
-function Login({ onAuthSuccess = () => {} }) {
+function Login({ onAuthSuccess = () => {}, initialMode = "login" }) {
   const { showToast } = useToast();
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(initialMode !== "signup");
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [signupData, setSignupData] = useState({ email: "", username: "", password: "", confirmPassword: "" });
   const [errors, setErrors] = useState({});
@@ -21,6 +21,11 @@ function Login({ onAuthSuccess = () => {} }) {
   });
 
   const firstErrorRef = useRef(null);
+
+  // Sync initial mode when dialog is opened for login vs signup
+  useEffect(() => {
+    setIsLogin(initialMode !== "signup");
+  }, [initialMode]);
 
   // Calculate password strength
   const calculatePasswordStrength = (password) => {

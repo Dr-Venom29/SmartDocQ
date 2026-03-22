@@ -28,7 +28,7 @@
   margin-top:10px;
 }
 
-/* ── NEW NAV DESIGN ── */
+/* ── NAV DESIGN ── */
 
 .nav-links-container {
     position: relative;
@@ -39,14 +39,11 @@
     border-radius: 12px;
     padding: 5px;
     gap: 2px;
-
-  /* SVG icon colors (edit these to customize) */
   --nav-icon-color: rgba(255,255,255,0.45);
   --nav-icon-hover-color: rgba(255,255,255,0.7);
-  --nav-icon-active-color: rgba(34, 211, 238, 0.95); /* cyan */
+  --nav-icon-active-color: rgba(34, 211, 238, 0.95);
 }
 
-/* top highlight line */
 .nav-links-container::before {
     content: '';
     position: absolute;
@@ -91,9 +88,6 @@
 .nav-item svg {
     width: 15px;
     height: 15px;
-
-  /* Most of your icons use stroke="currentColor" in JSX.
-     Setting `color` here controls the stroke/fill color. */
   color: var(--nav-icon-color);
   opacity: 1;
   transition: color 0.25s, opacity 0.25s;
@@ -148,7 +142,7 @@
     width: 3px;
     height: 3px;
     border-radius: 50%;
-    background: rgba(34, 211, 238, 0.8);
+  background: rgba(220, 20, 60, 0.9);
 }
 
 .login .login-cta {
@@ -193,8 +187,8 @@
 
 .login .login-cta:hover::before,
 .login .login-cta:hover::after {
-  width: 100%;
-  height: 100%;
+  width: 80%;
+  height: 80%;
 }
 
 .login .login-cta:hover {
@@ -202,7 +196,7 @@
 }
 
 .overlay {
-  position: fixed; /* ensures it's always on top of viewport */
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -211,7 +205,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 20000; /* above navbar and page layers */
+  z-index: 20000;
 }
 
 .popup {
@@ -227,7 +221,7 @@
     0 25px 50px -12px rgba(0, 0, 0, 0.15),
     0 8px 25px -5px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  z-index: 20001; /* even higher than overlay */
+  z-index: 20001;
   animation: popupSlideIn 0.3s ease-out;
   user-select: none;
   -webkit-user-drag: none;
@@ -242,16 +236,9 @@
 }
 
 @keyframes popupSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 
 .close-btn {
   position: absolute;
@@ -267,22 +254,17 @@
   padding: 2px 6px;
 }
 
-.popup .close-btn {
-  color: #000 !important;
-}
-
-.close-btn:hover {
-  background: rgba(0, 0, 0, 0.08) !important;
-}
+.popup .close-btn { color: #000 !important; }
+.close-btn:hover { background: rgba(0, 0, 0, 0.08) !important; }
 
 .avatar{
   width: 36px;
   height: 36px;
-  border-radius: 50%; /* make it round */
-  object-fit: cover;  /* fill circle without distortion */
+  border-radius: 50%;
+  object-fit: cover;
   display: block;
 }
-/* Container positioning */
+
 .profile-section {
   position: relative;
   display: inline-block;
@@ -293,7 +275,7 @@
   top: 50px;
   right: 0;
   width: 160px;
-  background: #2c2c2c; /* dark background */
+  background: #2c2c2c;
   border-radius: 8px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
   display: flex;
@@ -308,12 +290,13 @@
   right: 0;
   z-index: 15000;
 }
+
 .dd {
   display: flex;
   align-items: center;
-  justify-content: flex-start; 
-  gap: 8px;                 
-  width: auto;                
+  justify-content: flex-start;
+  gap: 8px;
+  width: auto;
   background: none;
   border: none;
   outline: none;
@@ -326,11 +309,7 @@
   box-shadow: none !important;
   text-align: left;
 }
-
-.dd:hover {
-  background-color: #434040;
-  border-radius: 8px;
-}
+.dd:hover { background-color: #434040; border-radius: 8px; }
 
 .dpi {
   width: 16px;
@@ -338,136 +317,70 @@
   pointer-events: none;
   flex-shrink: 0;
 }
-.upload-navbar{
-  background-color:#000000;
-}
 
-/* Mobile menu toggle */
+.upload-navbar { background-color: #000000; }
+
+/* ── HAMBURGER (mobile only) ── */
 .menu-toggle {
   display: none;
-  width: 35px;
-  height: 35px;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.2);
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 5px;
   cursor: pointer;
-  outline: none;                    /* remove default blue/cyan focus */
-  -webkit-tap-highlight-color: transparent; /* remove mobile tap highlight */
-}
-.menu-toggle span {
-  display: block;
-  width: 16px; /* smaller horizontal line */
-  height: 2px; /* thinner line */
-  background: #fff;
-  transition: none; /* no animation between hamburger and X */
-}
-/* Animate to X on open */
-.menu-toggle.open { position: relative; }
-.menu-toggle.open span {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform-origin: center;
-}
-/* No glow/focus ring on the toggle */
-.menu-toggle:focus { outline: none; box-shadow: none; }
-.menu-toggle.open span:nth-child(1) {
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-.menu-toggle.open span:nth-child(2) {
-  transform: translate(-50%, -50%);
-  opacity: 0;
-}
-.menu-toggle.open span:nth-child(3) {
-  transform: translate(-50%, -50%) rotate(-45deg);
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Responsive layout */
+.menu-toggle span {
+  display: block;
+  height: 1.5px;
+  background: rgba(255,255,255,0.8);
+  border-radius: 2px;
+  transform-origin: center;
+  transition: transform 0.35s cubic-bezier(0.34,1.26,0.64,1), opacity 0.25s, width 0.3s;
+}
+.menu-toggle span:nth-child(1) { width: 16px; }
+.menu-toggle span:nth-child(2) { width: 11px; align-self: flex-start; margin-left: 11px; }
+.menu-toggle span:nth-child(3) { width: 16px; }
+
+.menu-toggle:focus { outline: none; box-shadow: none; }
+
+/* X state */
+.menu-toggle.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); width: 16px; }
+.menu-toggle.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.menu-toggle.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); width: 16px; }
+
+
+/* ── RESPONSIVE ── */
 @media (max-width: 900px) {
-  .nav-links-container {
-    gap: 15px;
-    padding: 5px 15px;
-  }
+  .nav-links-container { gap: 15px; padding: 5px 15px; }
 }
 
 @media (max-width: 768px) {
   .navbar {
     padding: 12px 16px;
     gap: 12px;
-    display: flex; 
-    align-items: center; 
+    display: flex;
+    align-items: center;
   }
-  .logo {
-    height: 42px;
-    width: auto;
-  }
+  .logo { height: 42px; width: auto; }
+
   .menu-toggle {
     display: inline-flex;
-    order: 4;            /* far right */
-    margin-left: 8px;    /* spacing from login */
-    flex-direction: column; /* stack lines vertically */
-    gap: 4px;               /* tighter space between lines for smaller icon */
-    margin-top:10px;
+    order: 4;
+    margin-left: 8px;
+    margin-top: 10px;
   }
   .navbar .a { order: 1; }
-  .login { order: 3; margin-left: 0;margin-top:6px; }
-  
-  .nav-links-container {
-    position: absolute;
-    top: 64px;
-    left: 16px;
-    right: 16px;
-    flex-direction: column;
-    padding: 12px;
-    gap: 4px;
-    border-radius: 16px;
-    display: none;
-    z-index: 50;
-    /* Simplify mobile panel look */
-    background: #111114;
-    border: 1px solid rgba(255,255,255,0.06);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    backdrop-filter: none;
-    align-items: stretch;
-  }
-  
-  /* Hide the slider elements on mobile */
-  .nav-slider, .nav-divider, .nav-links-container::before {
-    display: none;
-  }
+  .login     { order: 3; margin-left: auto; margin-top: 6px; }
 
-  /* Show container when open */
-  .navbar.mobile-open .nav-links-container {
-    display: flex;
-  }
-  
-  .nav-item {
-    width: 100%;
-    justify-content: flex-start;
-    padding: 12px 16px;
-    border-radius: 8px;
-    background: transparent;
-    border: none;
-  }
-  
-  .nav-item.active {
-    background: rgba(34, 211, 238, 0.12);
-    color: rgba(34, 211, 238, 0.95);
-  }
-  
-  .nav-item.active::after {
-    display: none; /* remove dot on mobile */
-  }
+  /* hide desktop pill nav on mobile */
+  .nav-links-container { display: none !important; }
 
-  .nav-item:hover { 
-    background: rgba(255,255,255,0.06); 
-    color: #fff; 
-  }
-  
-  .login {
-    margin-left: auto;
-  }
 }
