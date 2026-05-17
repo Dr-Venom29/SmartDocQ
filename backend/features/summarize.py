@@ -1,9 +1,14 @@
 from flask import Blueprint, request, jsonify
 import re
+import logging
 from typing import List, Tuple, Optional
+
+from config import FLASK_DEBUG
 
 
 summarize_bp = Blueprint("summarize", __name__)
+
+logger = logging.getLogger(__name__)
 
 
 def _clean_selection_text(text: str) -> str:
@@ -134,6 +139,8 @@ def init_summarizer(TEXT_MODEL: str, genai_module):
                 "length": len(cleaned),
             })
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            logger.exception("Unexpected error in /api/summarize")
+            message = str(e) if FLASK_DEBUG else "An unexpected server error occurred."
+            return jsonify({"error": message}), 500
 
     return summarize_bp

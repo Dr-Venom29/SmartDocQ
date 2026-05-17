@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
+import logging
 
-from config import URL_REGEX
+from config import URL_REGEX, FLASK_DEBUG
 from indexing.indexer import has_index, start_background_indexing
 from state.memory_store import consent_state, general_fallback
 from services.retrieval_service import retrieve_context
@@ -10,6 +11,8 @@ from utils.security import is_greeting_or_smalltalk, contains_profanity, contain
 from utils.formatting import format_response, is_out_of_doc_answer
 
 ask_bp = Blueprint("ask", __name__)
+
+logger = logging.getLogger(__name__)
 
 _NO_CONTEXT_MSG = (
     "I couldn't find relevant information about your question in the uploaded document.\n"
@@ -118,5 +121,6 @@ def ask_doc():
         return jsonify({"answer": format_response(raw_text), "requireConfirmation": False})
 
     except Exception as e:
-        print("Ask error:", e)
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in /api/document/ask")
+        message = str(e) if FLASK_DEBUG else "An unexpected server error occurred."
+        return jsonify({"error": message}), 500

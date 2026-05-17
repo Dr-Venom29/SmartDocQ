@@ -22,6 +22,7 @@ SmartDocQ is a comprehensive full-stack web application that enables users to up
 - **User Consent Workflow**: Privacy-first approach requiring explicit consent before processing sensitive documents
 - **Content Moderation**: Profanity filtering and URL validation to maintain platform integrity
 - **Jailbreak Attempt Filtering**: Blocks common prompt-injection/jailbreak phrases in user questions before invoking retrieval/LLM
+- **Hardened Error Handling**: Production-safe error responses return generic messages to clients while logging full server-side tracebacks. Detailed exception text is exposed only when `FLASK_DEBUG=1`, reducing information leakage and protecting internal service details.
 - **httpOnly Cookie Authentication**: Secure user sessions with role-based access control (User, Admin, Moderator)
 - **Centralized Server-Side Validation**: Auth and admin APIs validate all inputs with Zod schemas before any business logic or database access.
 - **Strict Admin Authorization**: Admin endpoints are protected by middleware that requires an authenticated user with `isAdmin = true`; there are no hardcoded admin credentials or token backdoors.

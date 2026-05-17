@@ -54,3 +54,6 @@ NOISE_DISTANCE_THRESHOLD = 0.6
 
 # ====== SECURITY CONFIG ======
 JAILBREAK_THRESHOLD = int(os.environ.get("JAILBREAK_THRESHOLD", "3"))
+
+# When enabled, client-facing error responses may include exception details.
+FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "0").strip().lower() in ("1", "true", "yes")

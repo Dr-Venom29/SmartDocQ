@@ -109,8 +109,9 @@ def fetch_doc_from_node(doc_id: str):
 
         return True, filename, mimetype, r.content
 
-    except Exception as e:
-        return False, str(e), None, None
+    except Exception:
+        logger.exception("[Retrieval] Failed to fetch document from Node API")
+        return False, "Failed to fetch document", None, None
 
 
 def fetch_doc_meta_from_node(doc_id: str):

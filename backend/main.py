@@ -2,14 +2,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
+import logging
 from services.gemini_client import genai, TEXT_MODEL
 from flask import Flask, jsonify
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
-from config import ALLOWED_ORIGINS, MAX_CONTENT_LENGTH
+from config import ALLOWED_ORIGINS, MAX_CONTENT_LENGTH, FLASK_DEBUG
 from routes.document_routes import document_bp
 from routes.ask_routes import ask_bp
+
+logger = logging.getLogger(__name__)
 
 
 # ====== APP FACTORY ======
@@ -68,8 +71,9 @@ def handle_request_entity_too_large(e):
 def handle_exception(e):
     if isinstance(e, HTTPException):
         return jsonify({"error": e.description}), getattr(e, "code", 500)
-    print("Unhandled Exception:", e)
-    return jsonify({"error": str(e)}), 500
+    logger.exception("Unhandled exception")
+    message = str(e) if FLASK_DEBUG else "An internal server error occurred."
+    return jsonify({"error": message}), 500
 
 
 # ====== HEALTHCHECK / ROOT ======
@@ -86,5 +90,4 @@ def root():
 # ====== RUN SERVER ======
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5001"))
-    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(host="0.0.0.0", port=port, debug=FLASK_DEBUG)

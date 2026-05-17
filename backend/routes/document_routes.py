@@ -2,11 +2,12 @@ import os
 import hashlib
 import importlib
 import tempfile
+import logging
 
 import requests
 from flask import Blueprint, request, jsonify, send_file
 
-from config import NODE_BASE_URL, SERVICE_TOKEN, NODE_FETCH_TIMEOUT
+from config import NODE_BASE_URL, SERVICE_TOKEN, NODE_FETCH_TIMEOUT, FLASK_DEBUG
 from db.chroma import collection
 from indexing.indexer import index_bytes, index_text, has_index
 
@@ -15,6 +16,8 @@ from services.retrieval_service import fetch_doc_from_node, fetch_doc_meta_from_
 from utils.security import detect_sensitive
 
 document_bp = Blueprint("document", __name__)
+
+logger = logging.getLogger(__name__)
 
 pdf_cache = {}
 
@@ -58,7 +61,9 @@ def index_from_atlas():
             return jsonify({"error": "Unsupported or empty document"}), 400
         return jsonify({"message": f"Indexed {added} chunks", "doc_id": doc_id, "requireConfirmation": False})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in /api/index-from-atlas")
+        message = str(e) if FLASK_DEBUG else "An unexpected server error occurred."
+        return jsonify({"error": message}), 500
 
 
 @document_bp.route("/api/convert/word-to-pdf", methods=["POST"])
@@ -104,7 +109,9 @@ def convert_word_to_pdf():
             )
             return response
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in /api/convert/word-to-pdf")
+        message = str(e) if FLASK_DEBUG else "An unexpected server error occurred."
+        return jsonify({"error": message}), 500
 
 
 @document_bp.route("/api/document/preview/<doc_id>.pdf", methods=["GET"])
@@ -156,7 +163,9 @@ def preview_word_as_pdf(doc_id):
             pdf_cache[cache_key] = cached_pdf
             return send_file(cached_pdf, mimetype="application/pdf", as_attachment=False, download_name="preview.pdf")
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in /api/document/preview/<doc_id>.pdf")
+        message = str(e) if FLASK_DEBUG else "An unexpected server error occurred."
+        return jsonify({"error": message}), 500
 
 
 @document_bp.route("/api/document/my", methods=["GET"])
@@ -272,4 +281,6 @@ def replace_text_index():
             return jsonify({"error": "Empty text or indexing failed"}), 400
         return jsonify({"message": f"Indexed {added} chunks", "doc_id": doc_id, "requireConfirmation": False})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("Unexpected error in /api/index/replace-text")
+        message = str(e) if FLASK_DEBUG else "An unexpected server error occurred."
+        return jsonify({"error": message}), 500
