@@ -17,3 +17,7 @@ Copy `.env.example` to `.env` and fill in:
 
 ## Health
 - GET /healthz returns `{ "status": "ok" }`
+
+## Safety notes
+- The `/api/document/ask` route rejects common jailbreak/prompt-injection attempts in user questions before retrieval/LLM.
+- The LLM prompt construction treats retrieved document context as untrusted data (delimited/guarded) to reduce document-based prompt injection risk.

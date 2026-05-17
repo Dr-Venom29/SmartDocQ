@@ -51,3 +51,6 @@ URL_REGEX = re.compile(
     re.IGNORECASE
 )
 NOISE_DISTANCE_THRESHOLD = 0.6
+
+# ====== SECURITY CONFIG ======
+JAILBREAK_THRESHOLD = int(os.environ.get("JAILBREAK_THRESHOLD", "3"))

@@ -21,6 +21,7 @@ SmartDocQ is a comprehensive full-stack web application that enables users to up
 - **Sensitive Data Detection**: Automatic identification of personal information (emails, phone numbers, Aadhaar, PAN, credit cards, SSN)
 - **User Consent Workflow**: Privacy-first approach requiring explicit consent before processing sensitive documents
 - **Content Moderation**: Profanity filtering and URL validation to maintain platform integrity
+- **Jailbreak Attempt Filtering**: Blocks common prompt-injection/jailbreak phrases in user questions before invoking retrieval/LLM
 - **httpOnly Cookie Authentication**: Secure user sessions with role-based access control (User, Admin, Moderator)
 - **Centralized Server-Side Validation**: Auth and admin APIs validate all inputs with Zod schemas before any business logic or database access.
 - **Strict Admin Authorization**: Admin endpoints are protected by middleware that requires an authenticated user with `isAdmin = true`; there are no hardcoded admin credentials or token backdoors.
@@ -107,6 +108,7 @@ npm install
 # MONGO_URI=your_mongodb_connection_string
 # JWT_SECRET=your_jwt_secret_key
 # FRONTEND_ORIGINS=http://localhost:3000
+# DNS_SERVERS=1.1.1.1,8.8.8.8  # optional; helps if Atlas DNS SRV lookups fail
 # SERVICE_TOKEN=your_service_token
 # FLASK_ASK_URL=http://localhost:5001/api/document/ask
 # FLASK_INDEX_URL=http://localhost:5001/api/index-from-atlas
@@ -233,20 +235,13 @@ We welcome contributions from the community! Here's how you can help:
 - Add unit tests for new functionality
 - Ensure no sensitive data or API keys are committed
 
-## Testing
+## Running Tests
+
+Run the Python test suite (Flask AI service):
 
 ```bash
-# Run backend tests
-cd servers
-npm test
-
-# Run frontend tests
-cd my-app
-npm test
-
-# Run Python tests
 cd backend
-pytest
+python -m pytest tests/ -v
 ```
 
 ## Deployment
@@ -267,7 +262,7 @@ Refer to `DEPLOYMENT_CHECKLIST.md` for detailed deployment instructions.
 - Cookies configured with `SameSite` and `Secure` flags in production
 - Client-side user data validated with `safeParseUser()` to prevent corrupted/malicious data
 - JWT tokens expire after 1 hour with automatic cleanup on logout
-- **Sensitive Data Detection**: Advanced pattern-based detection with validation (e.g., Luhn algorithm for credit cards) to reduce false positives and improve accuracy
+- **Sensitive Data Detection**: Advanced pattern-based detection with checksum/heuristic validation (Luhn for credit cards, Verhoeff for Aadhaar) and India-focused phone heuristics to reduce false positives
 - Content moderation filters inappropriate content
 - Shared chat links use high-entropy IDs, expire (~24h), and are rate-limited on the public endpoints
 - CORS configured with credentials support for specific allowed origins

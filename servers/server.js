@@ -10,6 +10,7 @@ const bodyParser = require("body-parser");
 const expressPino = require("express-pino-logger");
 const client = require("prom-client");
 const logger = require("./lib/logger");
+const dns = require("dns");
 
 const authRoutes = require("./routes/auth");
 const documentRoutes = require("./routes/document");
@@ -20,6 +21,10 @@ const searchRoutes = require("./routes/search");
 const shareRoutes = require("./routes/share");
 
 const app = express();
+
+// Fail fast instead of buffering queries when MongoDB isn't connected.
+// We'll only start listening after a successful connection.
+mongoose.set("bufferCommands", false);
 
 // In production, we may be behind a reverse proxy (Render/Vercel/etc.).
 // This ensures req.ip is derived correctly from X-Forwarded-For.
@@ -84,10 +89,9 @@ app.use(bodyParser.json({ limit: "5mb" }));
 
 logger.info({ env: process.env.NODE_ENV || "", port: process.env.PORT || 5000 }, "Server environment");
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => logger.info("MongoDB Atlas connected"))
-  .catch((err) => logger.error({ err }, "MongoDB connection error"));
+mongoose.connection.on("connected", () => logger.info("MongoDB connected"));
+mongoose.connection.on("disconnected", () => logger.warn("MongoDB disconnected"));
+mongoose.connection.on("error", (err) => logger.error({ err }, "MongoDB connection error"));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/document", documentRoutes);
@@ -110,7 +114,7 @@ app.get("/metrics", async (req, res) => {
 });
 
 // Ensure indexes are set once connected
-mongoose.connection.once("open", async () => {
+async function onDbOpen() {
   try {
     const Document = require("./models/Document");
     const DocChunk = require("./models/DocChunk");
@@ -207,9 +211,53 @@ mongoose.connection.once("open", async () => {
       logger.warn({ err }, "[watchdog] Stale document cleanup error");
     }
   }, 2 * 60 * 1000); // Run every 2 minutes
-});
+}
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+async function start() {
+  const mongoUri = process.env.MONGO_URI;
+  if (!mongoUri) {
+    logger.error("Missing required env var: MONGO_URI");
+    process.exit(1);
+    return;
+  }
+
+  // Optional: allow overriding DNS servers used by Node's resolver.
+  // This is helpful on networks where the default DNS server refuses or blocks queries.
+  // Example: DNS_SERVERS=1.1.1.1,8.8.8.8
+  const rawDnsServers = process.env.DNS_SERVERS;
+  if (rawDnsServers) {
+    const servers = rawDnsServers
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (servers.length) {
+      try {
+        dns.setServers(servers);
+        logger.info({ servers }, "Configured Node DNS servers");
+      } catch (err) {
+        logger.warn({ err }, "Failed to configure Node DNS servers");
+      }
+    }
+  }
+
+  try {
+    await mongoose.connect(mongoUri, {
+      // Keep timeouts explicit so failures surface quickly and predictably.
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+    });
+
+    // Run post-connect tasks (indexes, cleanups, watchdog)
+    await onDbOpen();
+
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+  } catch (err) {
+    logger.error({ err }, "Failed to start server (MongoDB connection failed)");
+    process.exit(1);
+  }
+}
+
+start();
 
 module.exports = { app, logger };

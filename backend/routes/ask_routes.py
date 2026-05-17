@@ -6,7 +6,7 @@ from state.memory_store import consent_state, general_fallback
 from services.retrieval_service import retrieve_context
 from services.llm_service import generate_answer_from_context, generate_general_answer
 from services.document_service import suggest_topics_for_doc, GENERIC_TOPICS
-from utils.security import is_greeting_or_smalltalk, contains_profanity
+from utils.security import is_greeting_or_smalltalk, contains_profanity, contains_jailbreak_attempt
 from utils.formatting import format_response, is_out_of_doc_answer
 
 ask_bp = Blueprint("ask", __name__)
@@ -43,6 +43,14 @@ def ask_doc():
         return jsonify({"answer": "⚠️ No links allowed. Please ask using text only."}), 422
     if contains_profanity(question):
         return jsonify({"answer": "⚠️ Please avoid using offensive words."}), 422
+    if contains_jailbreak_attempt(question):
+        return jsonify({
+            "answer": (
+                "⚠️ Your message contains instructions intended to override the assistant’s safety rules. "
+                "Please ask a question about the uploaded document content."
+            ),
+            "requireConfirmation": False,
+        }), 422
 
     if not doc_id:
         return jsonify({"error": "Missing doc_id"}), 400
