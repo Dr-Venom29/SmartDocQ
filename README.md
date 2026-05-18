@@ -74,6 +74,21 @@ SmartDocQ follows a **three-tier microservice architecture**:
 
 This separation ensures scalability, maintainability, and efficient resource utilization.
 
+## Index Lifecycle Management
+
+The Flask AI service includes automatic vector index lifecycle management
+to maintain retrieval quality as embedding models and preprocessing logic evolve.
+
+Each ChromaDB vector stores metadata such as the embedding model, indexing
+pipeline version, and indexing timestamp. Before retrieval, SmartDocQ verifies
+vector compatibility and automatically triggers background reindexing when
+stale or incompatible vectors are detected.
+
+**This prevents:** silent retrieval degradation when upgrading embedding models
+or modifying chunking and preprocessing strategies.
+
+**Supported versioning:** embedding model, pipeline version, indexing timestamp
+
 ## Requirements
 
 To set up SmartDocQ locally, you'll need:
