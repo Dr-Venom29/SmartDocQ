@@ -2,9 +2,10 @@ from flask import Blueprint, request, jsonify
 import logging
 
 from config import URL_REGEX, FLASK_DEBUG
-from indexing.indexer import has_index, start_background_indexing
+from indexing.indexer import start_background_indexing
 from state.memory_store import consent_state, general_fallback
 from services.retrieval_service import retrieve_context
+from services.vector_versioning import get_reindex_status
 from services.llm_service import generate_answer_from_context, generate_general_answer
 from services.document_service import suggest_topics_for_doc, GENERIC_TOPICS
 from utils.security import is_greeting_or_smalltalk, contains_profanity, contains_jailbreak_attempt
@@ -96,9 +97,21 @@ def ask_doc():
             return jsonify({"answer": _NO_CONTEXT_MSG})
 
         # --- Background index trigger ---
-        if not has_index(doc_id):
+        # Prefer serving only vectors generated with the active embedding model.
+        # - If no vectors exist => index.
+        # - If vectors exist but are from a different model => reindex (block retrieval).
+        # - If vectors are legacy (no embedding_model metadata yet) => reindex in background,
+        #   but still allow retrieval to preserve backward compatibility.
+        status = get_reindex_status(doc_id)
+        if status.reason in ("no_vectors", "model_mismatch", "error"):
             start_background_indexing(doc_id)
-            return jsonify({"answer": "Indexing this document in the background. Please try your question again in ~30–60 seconds.", "requireConfirmation": False})
+            msg = "Indexing this document in the background. Please try your question again in ~30–60 seconds."
+            if status.reason == "model_mismatch":
+                msg = "Reindexing this document due to an embedding model change. Please try again in ~30–60 seconds."
+            return jsonify({"answer": msg, "requireConfirmation": False})
+        if status.reason in ("missing_metadata", "pipeline_version_mismatch"):
+            # Existing vectors are still usable; refresh in background.
+            start_background_indexing(doc_id)
 
         # --- Retrieve context (embedding + ranking lives in retrieval_service) ---
         context, err = retrieve_context(question, doc_id)

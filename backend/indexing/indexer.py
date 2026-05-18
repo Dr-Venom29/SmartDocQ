@@ -1,8 +1,15 @@
 import threading
 import requests
 import re
+from datetime import datetime, timezone
 from db.chroma import collection
-from config import SERVICE_TOKEN, CHUNK_UPSERT_URL, NODE_FETCH_TIMEOUT
+from config import (
+    SERVICE_TOKEN,
+    CHUNK_UPSERT_URL,
+    NODE_FETCH_TIMEOUT,
+    EMBED_MODEL,
+    INDEX_PIPELINE_VERSION,
+)
 from state.memory_store import consent_state
 from utils.extraction import (
     extract_text_for_mimetype,
@@ -132,7 +139,19 @@ def _index_sections(doc_id: str, filename: str, sections: list, chunk_records_ou
             if not emb:
                 continue
 
-            meta = {"doc_id": doc_id, "chunk": chunk_index, "filename": filename}
+            # Chunk metadata persisted in Chroma.
+            # `embedding_model` is critical for detecting incompatible vectors
+            # after EMBED_MODEL changes.
+            meta = {
+                "doc_id": doc_id,
+                "chunk": chunk_index,
+                "filename": filename,
+                "embedding_model": EMBED_MODEL,
+                # ISO 8601 UTC timestamp for observability/debugging.
+                "indexed_at": datetime.now(timezone.utc).isoformat(),
+                # Allows reindexing when pipeline changes (chunking/cleaning/etc.).
+                "pipeline_version": INDEX_PIPELINE_VERSION,
+            }
             if sheet_name:
                 meta["sheet"] = sheet_name
 

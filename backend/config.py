@@ -42,6 +42,11 @@ CHUNK_UPSERT_URL = os.environ.get("CHUNK_UPSERT_URL", f"{NODE_BASE_URL}/api/sear
 TEXT_MODEL = os.environ.get("TEXT_MODEL", "models/gemini-2.5-flash")
 EMBED_MODEL = os.environ.get("EMBED_MODEL", "models/gemini-embedding-2")
 
+# ====== INDEXING / PIPELINE VERSIONING ======
+# Bump this when you make changes that should force reindexing even if the
+# embedding model stays the same (e.g., new chunking strategy, new cleaners).
+INDEX_PIPELINE_VERSION = os.environ.get("INDEX_PIPELINE_VERSION", "1")
+
 # ====== CHROMA CONFIG ======
 CHROMA_DB_PATH = os.environ.get("CHROMA_DB_PATH", os.path.join(os.getcwd(), "chroma_db"))
 
