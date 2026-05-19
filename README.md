@@ -125,7 +125,7 @@ npm install
 # JWT_SECRET=your_jwt_secret_key
 # FRONTEND_ORIGINS=http://localhost:3000
 # DNS_SERVERS=1.1.1.1,8.8.8.8  # optional; helps if Atlas DNS SRV lookups fail
-# SERVICE_TOKEN=your_service_token
+# SERVICE_TOKEN=shared_strong_secret  # REQUIRED; must match backend SERVICE_TOKEN (used for x-service-token internal auth)
 # FLASK_ASK_URL=http://localhost:5001/api/document/ask
 # FLASK_INDEX_URL=http://localhost:5001/api/index-from-atlas
 # FLASK_CONVERT_URL=http://localhost:5001/api/convert/word-to-pdf
@@ -151,8 +151,9 @@ pip install -r requirements.txt
 # PORT=5001
 # FRONTEND_ORIGINS=http://localhost:3000
 # NODE_BASE_URL=http://localhost:5000
-# SERVICE_TOKEN=your_service_token
+# SERVICE_TOKEN=shared_strong_secret  # REQUIRED; must match servers SERVICE_TOKEN
 # GEMINI_API_KEY=your_google_ai_api_key
+# INDEX_BATCH_SIZE=64  # optional; Chroma flush size during indexing
 
 # Start Flask service
 python main.py
@@ -257,6 +258,9 @@ Run the Python test suite (Flask AI service):
 
 ```bash
 cd backend
+# SERVICE_TOKEN is required (dummy value is OK for unit tests)
+# PowerShell example:
+#   $env:SERVICE_TOKEN="dev-token"
 python -m pytest tests/ -v
 ```
 

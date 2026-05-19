@@ -7,10 +7,11 @@ Copy `.env.example` to `.env` and configure:
 - `PORT` — Port for the AI service (default: `5001`)
 - `FRONTEND_ORIGINS` — Comma-separated CORS allowlist (e.g., `http://localhost:3000,https://your-frontend.vercel.app`)
 - `NODE_BASE_URL` — Base URL of the Node.js API used for document download and metadata access
-- `SERVICE_TOKEN` — Shared secret that must match the Node API's `SERVICE_TOKEN` for secure server-to-server communication
+- `SERVICE_TOKEN` — Shared secret that must match the Node API's `SERVICE_TOKEN` for secure server-to-server communication (required)
 - `GEMINI_API_KEY` — Google Generative AI API key
 - `TEXT_MODEL` — Optional override for the Gemini text model (default: `models/gemini-2.5-flash`)
 - `EMBED_MODEL` — Optional override for the embedding model (default: `models/gemini-embedding-2`)
+- `INDEX_BATCH_SIZE` — Optional Chroma flush size during indexing (default: `64`)
 - `JAILBREAK_THRESHOLD` — Optional weighted threshold for jailbreak detection (default: `3`)
 
 ## Installation & Run
@@ -62,6 +63,8 @@ This prevents silent retrieval degradation when upgrading embedding models or mo
 
 ## Testing
 
+Note: `SERVICE_TOKEN` is required to import some modules; set it in your environment (a dummy value is fine for unit tests).
+
 Run automated unit tests for the security module:
 
 ```bash
@@ -72,4 +75,16 @@ Run the index lifecycle/versioning tests:
 
 ```bash
 python -m pytest tests/test_vector_versioning.py -v
+```
+
+Run chunking unit tests:
+
+```bash
+python -m pytest tests/test_chunking.py -v
+```
+
+Run indexing pipeline/indexer unit tests:
+
+```bash
+python -m pytest tests/test_indexer.py -v
 ```

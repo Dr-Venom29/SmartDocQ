@@ -1,15 +1,26 @@
 import re
 
+
+_PARAGRAPH_SPLITTER = re.compile(r"\n\s*\n")
+_SHEET_PATTERN = re.compile(r"^\s*#\s*Sheet:\s*(.*)", re.IGNORECASE)
+
 def _split_large_para(p: str, size: int) -> list:
     return [p[i:i + size] for i in range(0, len(p), size)]
 
 
 def chunk_text(text: str, size: int = 1000, overlap: int = 200) -> list:
+    if size <= 0:
+        raise ValueError("size must be positive")
+    if overlap < 0:
+        raise ValueError("overlap must be non-negative")
+    if overlap >= size:
+        overlap = size // 2
+
     text = (text or "").strip()
     if not text:
         return []
 
-    paras = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    paras = [p.strip() for p in _PARAGRAPH_SPLITTER.split(text) if p.strip()]
     if not paras:
         paras = [text]
 
@@ -61,7 +72,7 @@ def split_sheet_sections(text: str) -> list:
 
     for ln in lines:
         #regex-based flexible matching
-        m = re.match(r"^\s*#\s*Sheet:\s*(.*)", ln, re.IGNORECASE)
+        m = _SHEET_PATTERN.match(ln)
         if m:
             found = True
             if current_lines:

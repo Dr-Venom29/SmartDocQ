@@ -10,7 +10,7 @@ Copy `.env.example` to `.env` and fill in:
 - FRONTEND_URL: base URL used when generating password-reset links (e.g., https://smartdocq.vercel.app)
 - CLOUDINARY_*: optional for avatars
 - DNS_SERVERS: optional comma-separated DNS servers for Node's resolver (e.g., `1.1.1.1,8.8.8.8`) if Atlas lookups fail with `querySrv ECONNREFUSED`
-- SERVICE_TOKEN: shared secret for server-to-server requests from Flask
+- SERVICE_TOKEN: shared secret for server-to-server requests from Flask (required; server refuses to start if missing; must match backend `SERVICE_TOKEN`)
 - FLASK_ASK_URL, FLASK_INDEX_URL, FLASK_CONVERT_URL: Flask service endpoints
 
 ## Authentication
