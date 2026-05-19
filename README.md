@@ -84,6 +84,8 @@ pipeline version, and indexing timestamp. Before retrieval, SmartDocQ verifies
 vector compatibility and automatically triggers background reindexing when
 stale or incompatible vectors are detected.
 
+- Uses Contextual Chunk Headers to prepend document and optional sheet metadata to each chunk before embedding, improving retrieval accuracy while preserving clean chunk text for display and LLM context.
+
 **This prevents:** silent retrieval degradation when upgrading embedding models
 or modifying chunking and preprocessing strategies.
 

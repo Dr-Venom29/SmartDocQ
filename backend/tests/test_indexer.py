@@ -236,6 +236,91 @@ def test_metadata_validation(fake_collection, mock_embedding, disable_node_push,
 
 
 # ============================================================================
+# Contextual Chunk Headers (CCH) Tests
+# ============================================================================
+
+
+def test_build_chunk_header_filename_only():
+    header = indexer._build_chunk_header("notes.pdf")
+    assert header == "Document: notes.pdf"
+
+
+def test_build_chunk_header_with_sheet():
+    header = indexer._build_chunk_header("report.xlsx", "Revenue")
+    assert header == "Document: report.xlsx\nSheet: Revenue"
+
+
+def test_build_chunk_header_empty_filename():
+    header = indexer._build_chunk_header("")
+    assert header == "Document: document"
+
+
+def test_index_sections_passes_contextual_header_to_embeddings(
+    fake_collection, disable_node_push, monkeypatch
+):
+    captured = {}
+
+    def capture_embedding_input(text: str):
+        captured["text"] = text
+        return [0.1, 0.2, 0.3]
+
+    monkeypatch.setattr(indexer, "generate_embeddings", capture_embedding_input)
+
+    chunk = "This is a sufficiently long paragraph to be indexed. " * 20
+
+    # Isolate behavior from sheet-parsing and chunking heuristics.
+    monkeypatch.setattr(indexer, "split_sheet_sections", lambda _text: [(None, "dummy")])
+    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [chunk])
+
+    ok, added = indexer.index_text("doc_cch", "sample.txt", "ignored")
+    assert ok is True
+    assert added == 1
+
+    assert captured["text"].startswith("Document: sample.txt")
+    assert "\n\n" in captured["text"]
+
+    stored = next(iter(fake_collection.store.values()))["document"]
+    assert stored == chunk.strip()
+    assert "Document:" not in stored
+
+
+def test_chunk_header_saved_in_metadata(fake_collection, disable_node_push, monkeypatch):
+    monkeypatch.setattr(indexer, "generate_embeddings", lambda _text: [0.1, 0.2, 0.3])
+
+    chunk = "This is a sufficiently long paragraph for metadata testing. " * 20
+    monkeypatch.setattr(indexer, "split_sheet_sections", lambda _text: [(None, "dummy")])
+    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [chunk])
+
+    ok, added = indexer.index_text("doc_cch_meta", "sample.txt", "ignored")
+    assert ok is True
+    assert added == 1
+
+    meta = next(iter(fake_collection.store.values()))["metadata"]
+    assert "chunk_header" in meta
+    assert meta["chunk_header"] == "Document: sample.txt"
+
+
+def test_chunk_header_with_sheet_saved_in_metadata(fake_collection, disable_node_push, monkeypatch):
+    monkeypatch.setattr(indexer, "generate_embeddings", lambda _text: [0.1, 0.2, 0.3])
+
+    chunk = "This is a sufficiently long paragraph for sheet header testing. " * 20
+    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [chunk])
+
+    chunk_records = []
+    added = indexer._index_sections(
+        "doc_cch_sheet",
+        "report.xlsx",
+        [("Revenue", "dummy")],
+        chunk_records,
+    )
+    assert added == 1
+
+    meta = next(iter(fake_collection.store.values()))["metadata"]
+    assert "chunk_header" in meta
+    assert meta["chunk_header"] == "Document: report.xlsx\nSheet: Revenue"
+
+
+# ============================================================================
 # 10. Timestamp Format Test
 # ============================================================================
 

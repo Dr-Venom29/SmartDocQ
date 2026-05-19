@@ -40,6 +40,21 @@ _indexing_lock = threading.Lock()
 
 # ===== HELPERS =====
 
+def _build_chunk_header(filename: str, sheet_name: str | None = None) -> str:
+    """Build a contextual header prepended ONLY to embedding input.
+
+    This improves retrieval quality by anchoring vectors to document-level context
+    (and sheet context for spreadsheets), while keeping stored chunk text unchanged.
+    """
+
+    filename = (filename or "").strip() or "document"
+    parts = [f"Document: {filename}"]
+    if sheet_name:
+        sheet_name = (sheet_name or "").strip()
+        if sheet_name:
+            parts.append(f"Sheet: {sheet_name}")
+    return "\n".join(parts)
+
 def has_index(doc_id: str) -> bool:
     res = collection.get(where={"doc_id": doc_id})
     ids = res.get("ids", [])
@@ -144,7 +159,11 @@ def _index_sections(doc_id: str, filename: str, sections: list, chunk_records_ou
                 continue
             seen.add(norm)
 
-            emb = generate_embeddings(c)
+            # Contextual Chunk Headers (CCH): prepend document/sheet context
+            # to the embedding input while keeping the stored chunk text intact.
+            header = _build_chunk_header(filename, sheet_name)
+            chunk_with_header = f"{header}\n\n{c}"
+            emb = generate_embeddings(chunk_with_header)
             if not emb:
                 continue
 
@@ -163,6 +182,9 @@ def _index_sections(doc_id: str, filename: str, sections: list, chunk_records_ou
             }
             if sheet_name:
                 meta["sheet"] = sheet_name
+
+            # Optional: persist header used for embedding for debugging/traceability.
+            meta["chunk_header"] = header
 
             batch_embeddings.append(emb)
             batch_documents.append(c)

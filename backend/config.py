@@ -47,7 +47,7 @@ EMBED_MODEL = os.environ.get("EMBED_MODEL", "models/gemini-embedding-2")
 # ====== INDEXING / PIPELINE VERSIONING ======
 # Bump this when you make changes that should force reindexing even if the
 # embedding model stays the same (e.g., new chunking strategy, new cleaners).
-INDEX_PIPELINE_VERSION = os.environ.get("INDEX_PIPELINE_VERSION", "1")
+INDEX_PIPELINE_VERSION = os.environ.get("INDEX_PIPELINE_VERSION", "2")
 
 # Batch size used by the indexer when upserting chunks into Chroma.
 # Can be tuned without code changes.
