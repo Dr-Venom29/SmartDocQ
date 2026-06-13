@@ -7,10 +7,8 @@ export default function ProfileMenu({ triggerRef, onProfile, onLogout, onClose }
 
   // Auto-focus first button on mount
   useEffect(() => {
-    const buttons = menuRef.current?.querySelectorAll("button");
-    if (buttons && buttons.length > 0) {
-      buttons[0].focus();
-    }
+    const firstButton = menuRef.current?.querySelector("button");
+    firstButton?.focus();
   }, []);
 
   // Handle Escape key to close the dropdown
@@ -61,9 +59,10 @@ export default function ProfileMenu({ triggerRef, onProfile, onLogout, onClose }
 
   // Restore focus to the trigger button on close/unmount
   useEffect(() => {
+    const triggerEl = triggerRef.current;
     return () => {
-      if (triggerRef.current && document.body.contains(triggerRef.current)) {
-        triggerRef.current.focus();
+      if (triggerEl && document.body.contains(triggerEl)) {
+        triggerEl.focus();
       }
     };
   }, [triggerRef]);
