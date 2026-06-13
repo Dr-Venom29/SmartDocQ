@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const User = require("../models/User");
+const UserSession = require("../models/UserSession");
 const multer = require("multer");
 const path = require("path");
 const streamifier = require("streamifier");
@@ -38,6 +39,36 @@ const clearAuthCookie = (res) => {
   res.clearCookie("auth_token", { ...COOKIE_OPTIONS, maxAge: 0 });
 };
 
+// Helper to extract device name from user-agent
+const getDeviceName = (req) => {
+  const ua = req.headers["user-agent"] || "";
+  let browser = "Browser";
+  if (/chrome|crios/i.test(ua) && !/edge|edg/i.test(ua) && !/opr/i.test(ua)) browser = "Chrome";
+  else if (/safari/i.test(ua) && !/chrome|crios/i.test(ua)) browser = "Safari";
+  else if (/firefox|fxios/i.test(ua)) browser = "Firefox";
+  else if (/edge|edg/i.test(ua)) browser = "Edge";
+  else if (/opr/i.test(ua)) browser = "Opera";
+
+  let os = "Unknown OS";
+  if (/windows/i.test(ua)) os = "Windows";
+  else if (/macintosh|mac os x/i.test(ua)) os = "macOS";
+  else if (/iphone/i.test(ua)) os = "iPhone";
+  else if (/ipad/i.test(ua)) os = "iPad";
+  else if (/android/i.test(ua)) os = "Android";
+  else if (/linux/i.test(ua)) os = "Linux";
+
+  return `${browser} on ${os}`;
+};
+
+// Helper to extract IP address safely
+const getIpAddress = (req) => {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  return req.ip || req.connection?.remoteAddress || "Unknown IP";
+};
+
 // Auth middleware: reads from cookie first, then Authorization header, and attaches user
 async function verifyToken(req, res, next) {
   try {
@@ -51,11 +82,36 @@ async function verifyToken(req, res, next) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    if (!decoded.sessionId) {
+      return sendError(res, 401, "Session verification required");
+    }
+
+    const session = await UserSession.findOne({
+      _id: decoded.sessionId,
+      userId: decoded.id,
+      isActive: true
+    });
+
+    if (!session) {
+      clearAuthCookie(res);
+      return sendError(res, 401, "Session expired or logged out");
+    }
+
     const user = await User.findById(decoded.id);
     if (!user) return sendError(res, 401, "User not found");
 
+    // Throttle lastSeen updates to database to once every 15 minutes
+    const now = Date.now();
+    const lastSeenTime = session.lastSeen ? new Date(session.lastSeen).getTime() : 0;
+    if (now - lastSeenTime > 15 * 60 * 1000) {
+      UserSession.updateOne({ _id: session._id }, { $set: { lastSeen: new Date() } }).catch((err) => {
+        logger.error({ err }, "Failed to update lastSeen in background");
+      });
+    }
+
     req.user = user;
     req.userId = user._id;
+    req.sessionId = session._id;
     return next();
   } catch (err) {
     return sendError(res, 401, "Invalid or expired token");
@@ -108,7 +164,21 @@ router.post("/login", validate(loginSchema), async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    // Create session in database
+    const session = new UserSession({
+      userId: user._id,
+      deviceName: getDeviceName(req),
+      ipAddress: getIpAddress(req),
+      isActive: true,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour session TTL (matches JWT)
+    });
+    await session.save();
+
+    const token = jwt.sign(
+      { id: user._id, sessionId: session._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
     setAuthCookie(res, token);
     return sendSuccess(res, 200, {
@@ -256,10 +326,45 @@ router.post("/reset-password", validate(resetPasswordSchema), async (req, res) =
   }
 });
 
-// Logout - clears httpOnly cookie
-router.post("/logout", (req, res) => {
+// Logout - clears httpOnly cookie and marks current session inactive
+router.post("/logout", async (req, res) => {
+  try {
+    const token =
+      req.cookies?.auth_token ||
+      (req.headers.authorization?.startsWith("Bearer ")
+        ? req.headers.authorization.slice(7)
+        : null);
+
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (decoded && decoded.sessionId) {
+        await UserSession.updateOne(
+          { _id: decoded.sessionId, userId: decoded.id },
+          { $set: { isActive: false } }
+        );
+      }
+    }
+  } catch (err) {
+    logger.info("Session deactivation skipped on logout: " + err.message);
+  }
+
   clearAuthCookie(res);
   return sendSuccess(res, 200, {}, "Logged out successfully");
+});
+
+// Logout all - deactivates all sessions for the user
+router.post("/logout-all", verifyToken, async (req, res) => {
+  try {
+    await UserSession.updateMany(
+      { userId: req.userId },
+      { $set: { isActive: false } }
+    );
+    clearAuthCookie(res);
+    return sendSuccess(res, 200, {}, "Logged out from all devices successfully");
+  } catch (err) {
+    logger.error({ err }, "Error in logout-all");
+    return sendError(res, 500, err.message || "Failed to log out from all devices");
+  }
 });
 
 // Verify session - checks if cookie is valid
@@ -536,8 +641,22 @@ router.post('/google', validate(googleSchema), async (req, res) => {
       return sendError(res, 403, 'Account is deactivated. Contact support.');
     }
 
+    // Create session in database
+    const session = new UserSession({
+      userId: user._id,
+      deviceName: getDeviceName(req),
+      ipAddress: getIpAddress(req),
+      isActive: true,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour session TTL (matches JWT)
+    });
+    await session.save();
+
     // Generate JWT
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign(
+      { id: user._id, sessionId: session._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
 
     setAuthCookie(res, token);
     return sendSuccess(res, 200, {

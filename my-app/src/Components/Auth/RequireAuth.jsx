@@ -1,11 +1,26 @@
 import React from "react";
 import Lottie from "lottie-react";
 import errorAnimation from "./assets/404-Error.json";
-import { safeParseUser } from "../Layout/Navbar/useAuth";
+import { useAuth } from "../Layout/Navbar/useAuth";
 import "./RequireAuth.css";
 
 const RequireAuth = ({ children }) => {
-  const user = safeParseUser(localStorage.getItem("user"));
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh",
+        background: "#0a0a0a",
+        color: "#e0e0e0"
+      }}>
+        Loading...
+      </div>
+    );
+  }
 
   if (!user) {
     return (

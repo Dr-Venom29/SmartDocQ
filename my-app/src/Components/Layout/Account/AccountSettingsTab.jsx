@@ -11,8 +11,8 @@ function AccountSettingsTab({
     <div className="settings-content">
       <div className="settings-options">
         <section className="settings-card warning">
-          <h3>Clear Chat History</h3>
-          <p>
+          <h3 id="history-title">Clear Chat History</h3>
+          <p id="history-desc">
             Delete all your saved conversations across all documents. This action cannot be undone.
           </p>
           <button
@@ -20,33 +20,33 @@ function AccountSettingsTab({
             className="settings-btn danger"
             onClick={onClearHistory}
             disabled={isClearingHistory}
-            aria-label="Clear all chat history across documents"
+            aria-describedby="history-desc"
           >
             {isClearingHistory ? "Clearing..." : "Clear History"}
           </button>
         </section>
 
         <section className="settings-card">
-          <h3>Logout from All Devices</h3>
-          <p>Secure your account by signing out everywhere you’re logged in.</p>
+          <h3 id="logout-title">Logout from All Devices</h3>
+          <p id="logout-desc">Secure your account by signing out everywhere you’re logged in.</p>
           <button
             type="button"
             className="settings-btn"
             onClick={onLogoutAll}
-            aria-label="Log out from all devices"
+            aria-describedby="logout-desc"
           >
             Logout All
           </button>
         </section>
 
-        <section className="settings-card danger-zone" role="alert">
-          <h3>Delete Account</h3>
-          <p>Once you delete your account, all your data will be permanently removed.</p>
+        <section className="settings-card danger-zone">
+          <h3 id="delete-title">Delete Account</h3>
+          <p id="delete-desc">Once you delete your account, all your data will be permanently removed.</p>
           <button
             type="button"
             className="settings-btn danger"
             onClick={onDeleteClick}
-            aria-label="Delete account permanently"
+            aria-describedby="delete-desc"
           >
             Delete Account
           </button>

@@ -46,6 +46,7 @@ export const apiFetch = async (
 
       try {
         localStorage.removeItem("user");
+        window.dispatchEvent(new Event("userChanged"));
       } catch {}
 
       // Defer event so other in-flight 401 responses hit the isRedirecting guard

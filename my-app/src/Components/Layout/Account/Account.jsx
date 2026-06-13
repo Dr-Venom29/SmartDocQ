@@ -5,11 +5,13 @@ import userIcon from "./assets/user.svg";
 import { useToast } from "../../ToastContext";
 import AccountProfileTab from "./AccountProfileTab";
 import AccountSettingsTab from "./AccountSettingsTab";
+import DeleteAccountModal from "./DeleteAccountModal";
 import {
   updateProfile,
   uploadAvatar,
   clearChatHistory,
   deleteAccount,
+  logoutAllDevices,
 } from "../../../Services/AccountService";
 import {
   compressImage,
@@ -70,6 +72,25 @@ function Account({ user, onClose, onUpdated, onHistoryCleared }) {
       return user.avatar || userIcon;
     });
   }, [user]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+
+      if (showDeleteModal) {
+        setShowDeleteModal(false);
+        return;
+      }
+
+      onClose?.();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose, showDeleteModal]);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
@@ -216,6 +237,19 @@ function Account({ user, onClose, onUpdated, onHistoryCleared }) {
     }
   };
 
+  const handleLogoutAll = async () => {
+    try {
+      await logoutAllDevices();
+      showToast("Logged out from all devices!", { type: "success" });
+      localStorage.removeItem("user");
+      window.dispatchEvent(new Event("userChanged"));
+      onClose?.();
+      navigate("/");
+    } catch (err) {
+      showToast(err?.message || "Failed to log out from all devices", { type: "error" });
+    }
+  };
+
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
@@ -241,21 +275,30 @@ function Account({ user, onClose, onUpdated, onHistoryCleared }) {
 
   return (
     <>
-      <div className="account-overlay" onClick={onClose}>
-        <div className="account-container" onClick={(e) => e.stopPropagation()}>
+      <div className="account-overlay" onClick={onClose} role="presentation">
+        <div
+          className="account-container"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Account Settings"
+        >
           <div className="sidebar-account-container">
             <div className="sidebar">
               <div className="sidebar-profile">
                 <div className="avatar-wrapper">
                   <img
                     src={effectiveAvatar}
-                    alt="User Avatar"
+                    alt={`${user.name}'s Avatar`}
+                    width="85"
+                    height="85"
                     className={`account-avatar${isDefaultAvatarIcon ? " account-avatar--icon" : ""}`}
                   />
                   {isEditing && (
-                    <label className="avatar-edit-btn">
+                    <label className="avatar-edit-btn" htmlFor="avatar-upload" aria-label="Edit avatar">
                       ✎
                       <input
+                        id="avatar-upload"
                         ref={avatarInputRef}
                         type="file"
                         accept="image/*"
@@ -268,9 +311,13 @@ function Account({ user, onClose, onUpdated, onHistoryCleared }) {
                 <h2 className="account-name">{user.name}</h2>
               </div>
 
-              <div className="sidebar-menu">
+              <div className="sidebar-menu" role="tablist" aria-label="Account navigation tabs">
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={activeTab === "account"}
+                  id="tab-account"
+                  aria-controls="panel-account"
                   className={`menu-btn ${activeTab === "account" ? "active" : ""}`}
                   onClick={() => setActiveTab("account")}
                   disabled={isSaving}
@@ -279,6 +326,10 @@ function Account({ user, onClose, onUpdated, onHistoryCleared }) {
                 </button>
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={activeTab === "settings"}
+                  id="tab-settings"
+                  aria-controls="panel-settings"
                   className={`menu-btn ${activeTab === "settings" ? "active" : ""}`}
                   onClick={() => setActiveTab("settings")}
                   disabled={isSaving}
@@ -290,77 +341,56 @@ function Account({ user, onClose, onUpdated, onHistoryCleared }) {
 
             <div className="account-content">
               {activeTab === "account" ? (
-                <AccountProfileTab
-                  user={user}
-                  isEditing={isEditing}
-                  isSaving={isSaving}
-                  formData={formData}
-                  handleChange={handleChange}
-                  handleSave={handleSave}
-                  onCancel={resetEditState}
-                  onEdit={() => {
-                    setFormData({ name: user.name, email: user.email });
-                    setIsEditing(true);
-                  }}
-                  onClose={onClose}
-                  joinedDate={joinedDate}
-                  lastLogin={lastLogin}
-                  passwordRef={passwordRef}
-                  confirmPasswordRef={confirmPasswordRef}
-                  showNewPassword={showNewPassword}
-                  setShowNewPassword={setShowNewPassword}
-                  showConfirmPassword={showConfirmPassword}
-                  setShowConfirmPassword={setShowConfirmPassword}
-                />
+                <div id="panel-account" role="tabpanel" aria-labelledby="tab-account">
+                  <AccountProfileTab
+                    user={user}
+                    isEditing={isEditing}
+                    isSaving={isSaving}
+                    formData={formData}
+                    handleChange={handleChange}
+                    handleSave={handleSave}
+                    onCancel={resetEditState}
+                    onEdit={() => {
+                      setFormData({ name: user.name, email: user.email });
+                      setIsEditing(true);
+                    }}
+                    onClose={onClose}
+                    joinedDate={joinedDate}
+                    lastLogin={lastLogin}
+                    passwordRef={passwordRef}
+                    confirmPasswordRef={confirmPasswordRef}
+                    showNewPassword={showNewPassword}
+                    setShowNewPassword={setShowNewPassword}
+                    showConfirmPassword={showConfirmPassword}
+                    setShowConfirmPassword={setShowConfirmPassword}
+                  />
+                </div>
               ) : (
-                <AccountSettingsTab
-                  onClearHistory={handleClearHistory}
-                  onLogoutAll={() =>
-                    showToast("Logged out from all devices!", { type: "info" })
-                  }
-                  onDeleteClick={() => {
-                    showToast("⚠️ Careful! Deletion is permanent.", {
-                      type: "warning",
-                    });
-                    setShowDeleteModal(true);
-                  }}
-                  isClearingHistory={isClearingHistory}
-                />
+                <div id="panel-settings" role="tabpanel" aria-labelledby="tab-settings">
+                  <AccountSettingsTab
+                    onClearHistory={handleClearHistory}
+                    onLogoutAll={handleLogoutAll}
+                    onDeleteClick={() => {
+                      showToast("⚠️ Careful! Deletion is permanent.", {
+                        type: "warning",
+                      });
+                      setShowDeleteModal(true);
+                    }}
+                    isClearingHistory={isClearingHistory}
+                  />
+                </div>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {showDeleteModal && (
-        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-            <h3>Confirm Account Deletion</h3>
-            <p>
-              Are you sure you want to permanently delete your account? <br />
-              This action <strong>cannot</strong> be undone.
-            </p>
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="modal-btn danger"
-                onClick={handleDeleteAccount}
-                disabled={isDeleting}
-              >
-                {isDeleting ? "Deleting..." : "Yes, Delete"}
-              </button>
-              <button
-                type="button"
-                className="modal-btn secondary"
-                onClick={() => setShowDeleteModal(false)}
-                disabled={isDeleting}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteAccountModal
+        isOpen={showDeleteModal}
+        isDeleting={isDeleting}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </>
   );
 }

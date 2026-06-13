@@ -14,7 +14,7 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  /* scroll-behavior: smooth; - Disabled globally to prevent conflicts with GSAP scroll updates */
 }
 
 body {

@@ -24,6 +24,7 @@ SmartDocQ is a comprehensive full-stack web application that enables users to up
 - **Jailbreak Attempt Filtering**: Blocks common prompt-injection/jailbreak phrases in user questions before invoking retrieval/LLM
 - **Hardened Error Handling**: Production-safe error responses return generic messages to clients while logging full server-side tracebacks. Detailed exception text is exposed only when `FLASK_DEBUG=1`, reducing information leakage and protecting internal service details.
 - **httpOnly Cookie Authentication**: Secure user sessions with role-based access control (User, Admin, Moderator)
+- **Server-Side Session Management**: Server-side session management with session invalidation and "logout from all devices" support
 - **Centralized Server-Side Validation**: Auth and admin APIs validate all inputs with Zod schemas before any business logic or database access.
 - **Strict Admin Authorization**: Admin endpoints are protected by middleware that requires an authenticated user with `isAdmin = true`; there are no hardcoded admin credentials or token backdoors.
 
@@ -208,6 +209,7 @@ The application will be running with:
 - `POST /api/auth/signup` - User registration
 - `POST /api/auth/login` - User login (sets httpOnly cookie)
 - `POST /api/auth/logout` - Logout (clears cookie)
+- `POST /api/auth/logout-all` - Invalidate all active sessions across devices (marks all sessions inactive)
 - `GET /api/auth/verify` - Verify session from cookie
  - `POST /api/auth/forgot-password` - Request password reset email (always returns a generic success message; Google-only accounts are instructed to continue with Google Sign-In)
  - `POST /api/auth/reset-password` - Reset password using a one-time, 15-minute token sent via email

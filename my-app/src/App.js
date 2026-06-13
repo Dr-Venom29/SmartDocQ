@@ -6,7 +6,6 @@ import { ToastProvider } from './Components/ToastContext';
 import Navbar from './Components/Layout/Navbar';
 import Hero from './Components/Layout/Hero_Section/HeroSection';
 import Body from './Components/Layout/Body_Section/BodySection';
-import Top from './Components/Top';
 import Footer from './Components/Layout/Footer/Footer';
 import Upload from './Components/Pages/Upload_Page/UploadPage';
 import Login from './Components/Auth/Login';
@@ -54,7 +53,7 @@ function Main() {
 
   return (
     <Routes>
-      <Route path="/"            element={<PageLayout><Hero /><Body /><Top /></PageLayout>} />
+      <Route path="/"            element={<PageLayout><Hero /><Body /></PageLayout>} />
       <Route path="/reset-password" element={<PageLayout><ResetPasswordPage /></PageLayout>} />
       <Route path="/help"        element={<PageLayout><HelpCenter /></PageLayout>} />
       <Route path="/privacy"     element={<PageLayout><PrivacyPolicy /></PageLayout>} />
@@ -96,12 +95,19 @@ function Main() {
 }
 
 function AppContent() {
-  const [revealStarted, setRevealStarted] = useState(false);
+  const [hasShownLanding, setHasShownLanding] = useState(() => {
+    try {
+      return !!sessionStorage.getItem('smartdocqLandingShown');
+    } catch (e) {
+      return false;
+    }
+  });
+  const [revealStarted, setRevealStarted] = useState(hasShownLanding);
   const [showLogin, setShowLogin] = useState(false);
   const location = useLocation();
 
   const isResetRoute = location.pathname === '/reset-password';
-  const shouldShowLanding = !isResetRoute;
+  const shouldShowLanding = !isResetRoute && !hasShownLanding;
   const isHomePage = location.pathname === '/';
 
   // Apply background only after opening animation completes on home page
@@ -154,7 +160,15 @@ function AppContent() {
   return (
     <>
       {shouldShowLanding && (
-        <LandingPage onRevealStart={() => setRevealStarted(true)} />
+        <LandingPage onRevealStart={() => {
+          try {
+            sessionStorage.setItem('smartdocqLandingShown', 'true');
+          } catch (e) {
+            console.error('SessionStorage error:', e);
+          }
+          setHasShownLanding(true);
+          setRevealStarted(true);
+        }} />
       )}
       {showLogin && (
         <div className="overlay" onClick={() => setShowLogin(false)} role="presentation">

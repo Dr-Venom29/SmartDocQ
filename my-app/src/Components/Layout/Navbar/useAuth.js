@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../ToastContext";
 import { logoutUser } from "../../../Services/AuthService";
+import { apiUrl } from "../../../config";
 
 const safeParseUser = (jsonStr) => {
   if (!jsonStr || typeof jsonStr !== "string") return null;
@@ -43,18 +44,100 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const hasForcedLogout = useRef(false);
 
-  // Initialize user state from localStorage
-  useEffect(() => {
-    try {
-      setUser(getStoredUser());
-    } catch (err) {
-      console.error("Auth init failed:", err);
-      setUser(null);
-    } finally {
-      setLoading(false);
+  // Logout function
+  const logout = useCallback(() => {
+    hasForcedLogout.current = false; // Reset ref on explicit logout/login
+    setUser(null);
+    try { localStorage.removeItem("user"); } catch {}
+    try { window.dispatchEvent(new Event("userChanged")); } catch {}
+    showToast("Logout successful", { type: "success" });
+    navigate("/");
+    logoutUser().catch((err) => {
+      console.error("Logout API failed:", err);
+    });
+  }, [navigate, showToast]);
+
+  // Force logout function (server-initiated)
+  const forceLogout = useCallback((options = {}) => {
+    if (hasForcedLogout.current) return;
+    hasForcedLogout.current = true;
+
+    setUser(null);
+    try { localStorage.removeItem("user"); } catch {}
+    try { window.dispatchEvent(new Event("userChanged")); } catch {}
+    if (!options.silent) {
+      showToast("Session expired. Please login again.", { type: "info" });
     }
-  }, []);
+    navigate("/");
+  }, [navigate, showToast]);
+
+  // Session check helper
+  const checkSession = useCallback(async (options = {}) => {
+    try {
+      const res = await fetch(apiUrl("/api/auth/verify"), {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        console.warn("Backend session invalid. Logging out...");
+        forceLogout(options);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn("Session verification failed (network/CORS):", err);
+      return false;
+    }
+  }, [forceLogout]);
+
+  // Session verification helper
+  const verifySession = useCallback(async () => {
+    const stored = getStoredUser();
+    if (!stored) return;
+
+    await checkSession();
+  }, [checkSession]);
+
+  // Initialize user state from localStorage and verify with backend on startup
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const stored = getStoredUser();
+        if (stored) {
+          setUser(stored);
+          await checkSession({ silent: true });
+        }
+      } catch (err) {
+        console.error("Auth init failed:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    init();
+  }, [checkSession]);
+
+  // Verify session on focus and visibility change
+  useEffect(() => {
+    const handleFocus = () => {
+      verifySession();
+    };
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        verifySession();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [verifySession]);
 
   // Keep auth state in sync across browser tabs and same-tab changes
   useEffect(() => {
@@ -90,22 +173,12 @@ export function useAuth() {
     try {
       localStorage.setItem("user", JSON.stringify(validated));
     } catch {}
+    hasForcedLogout.current = false; // Reset ref on successful login/user persist
     setUser(validated);
     try {
       window.dispatchEvent(new Event("userChanged"));
     } catch {}
   }, []);
-
-  const logout = useCallback(() => {
-    setUser(null);
-    try { localStorage.removeItem("user"); } catch {}
-    try { window.dispatchEvent(new Event("userChanged")); } catch {}
-    showToast("Logout successful", { type: "success" });
-    navigate("/");
-    logoutUser().catch((err) => {
-      console.error("Logout API failed:", err);
-    });
-  }, [navigate, showToast]);
 
   return { user, loading, persistUser, logout };
 }

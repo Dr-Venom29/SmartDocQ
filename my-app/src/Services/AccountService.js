@@ -53,3 +53,13 @@ export async function deleteAccount() {
 
   return parseResponse(res, "Failed to delete account");
 }
+
+export async function logoutAllDevices() {
+  const res = await fetch(apiUrl("/api/auth/logout-all"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  return parseResponse(res, "Failed to log out from all devices");
+}
