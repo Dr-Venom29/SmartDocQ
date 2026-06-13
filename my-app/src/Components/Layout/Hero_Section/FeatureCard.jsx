@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import Lottie from "lottie-react";
 
-const FeatureCard = ({ title, desc, anim }) => {
+const FeatureCard = ({ title, desc, anim, reduceMotion }) => {
   const cardRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -26,9 +26,19 @@ const FeatureCard = ({ title, desc, anim }) => {
   return (
     <article className="box" ref={cardRef} role="listitem">
       <div className="glass">
+        <div className="card-top-bar" aria-hidden="true" />
+        <div className="card-corner card-corner-tl" aria-hidden="true" />
+        <div className="card-corner card-corner-tr" aria-hidden="true" />
+        <div className="card-corner card-corner-bl" aria-hidden="true" />
+        <div className="card-corner card-corner-br" aria-hidden="true" />
         <div className="feature-lottie-wrapper" aria-hidden="true">
           {isVisible && (
-            <Lottie animationData={anim} loop className="feature-lottie" />
+            <Lottie
+              animationData={anim}
+              loop={!reduceMotion}
+              autoplay={!reduceMotion}
+              className="feature-lottie"
+            />
           )}
         </div>
         <div className="content">

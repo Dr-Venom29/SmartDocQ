@@ -118,24 +118,43 @@ const HeroSection = () => {
               <br />Powered by Gemini AI, SmartDocQ turns your static files into an intelligent, searchable knowledge base that actually works for you.
             </p>
             <button type="button" className="get-started-btn" onClick={handleGetStarted}>
-              Get Started →
+              Get Started <span className="btn-arrow">→</span>
             </button>
           </div>
           <div className="hero-right" aria-hidden="true">
-            <Lottie animationData={aiAnimation} loop className="hero-lottie" />
+            <Lottie
+              animationData={aiAnimation}
+              loop={!reduceMotion}
+              autoplay={!reduceMotion}
+              className="hero-lottie"
+            />
           </div>
         </div>
       </section>
 
-      <h2 id="feat" className="feature-title">Why SmartDocQ Stands Out</h2>
+      <h2 id="feat" className="feature-title">
+        <span className="title-diamond">◆</span>
+        Why SmartDocQ Stands Out
+        <span className="title-diamond">◆</span>
+      </h2>
 
       <section className="features-section" ref={sectionRef} aria-label="Product features">
         <div className="features-container" ref={containerRef} role="list">
           {FEATURES.map((f) => (
-            <FeatureCard key={f.title} title={f.title} desc={f.desc} anim={f.anim} />
+            <FeatureCard
+              key={f.title}
+              title={f.title}
+              desc={f.desc}
+              anim={f.anim}
+              reduceMotion={reduceMotion}
+            />
           ))}
         </div>
-        <h2 className="use-title">From Chaos to Clarity</h2>
+        <h2 className="use-title">
+          <span className="title-diamond">◆</span>
+          From Chaos to Clarity
+          <span className="title-diamond">◆</span>
+        </h2>
       </section>
     </>
   );

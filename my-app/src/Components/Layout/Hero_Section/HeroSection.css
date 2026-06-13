@@ -2,9 +2,38 @@
 
 .hero-section {
   color: white;
-  padding: 4rem 2rem;
+  padding: 5rem 2rem;
   display: flex;
   align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle, rich ambient background glows */
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: 15%;
+  left: 5%;
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-section::after {
+  content: '';
+  position: absolute;
+  bottom: 10%;
+  right: 12%;
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .hero-section * {
@@ -20,6 +49,8 @@
   margin: 0 auto;
   gap: 3rem;
   align-items: center;
+  position: relative;
+  z-index: 1;
 }
 
 .hero-left {
@@ -31,42 +62,58 @@
   text-align: left;
 }
 
+/* Premium micro-designed chip badge with unique gradient masked border */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  background: rgba(255, 255, 255, 0.05);
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 14px rgba(0, 0, 0, 0.2);
-  padding: 6px 16px;
+  padding: 6px 18px;
   border-radius: 9999px;
-  font-size: 0.8125rem;
-  letter-spacing: 0.02em;
   margin-bottom: 1.5rem;
-  transition: all 0.3s ease;
+  position: relative;
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(168, 85, 247, 0.06),
+    0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-.badge:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
+/* Sharp gradient border using CSS masking */
+.badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  padding: 1px; /* 1px pixel-perfect border */
+  background: linear-gradient(
+    120deg, 
+    #dfcfb7 0%, 
+    #a855f7 50%, 
+    #38bdf8 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 .badge span {
-  color: #a1a1aa;
+  color: #dfcfb7; /* elegant champagne gold */
   font-weight: 500;
-  font-size: 15px;
+  font-size: 13.5px;
+  letter-spacing: 0.02em;
 }
 
 .hero-heading {
   font-family: 'Outfit', system-ui, sans-serif;
   font-size: clamp(3rem, 5vw, 4.5rem);
   font-weight: 800;
-  line-height: 1.05;
-  margin-bottom: 1.25rem;
+  line-height: 1.08;
+  margin-bottom: 1.5rem;
   margin-top: 0;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   color: #f8fafc;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -82,9 +129,9 @@
 
 .hero-description {
   font-family: 'Outfit', system-ui, sans-serif;
-  color: #94a3b8;
-  font-size: clamp(1.125rem, 2vw, 1.25rem);
-  line-height: 1.6;
+  color: rgba(248, 250, 252, 0.7); /* clean high-end opacity */
+  font-size: clamp(1.1rem, 2vw, 1.2rem);
+  line-height: 1.7;
   margin-bottom: 2.5rem;
   max-width: 580px;
   font-weight: 400;
@@ -92,47 +139,104 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* Premium Interactive CTA button */
 .get-started-btn {
   font-family: 'Outfit', system-ui, sans-serif;
   background: #ffffff;
   color: #020617;
-  padding: 0.875rem 2.25rem;
+  padding: 0.95rem 2.5rem;
   border-radius: 9999px;
   font-size: 1.05rem;
   font-weight: 600;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.85);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
   will-change: transform;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 14px 0 rgba(255, 255, 255, 0.15);
+  gap: 8px;
+  box-shadow: 
+    0 4px 15px rgba(255, 255, 255, 0.12),
+    0 12px 30px rgba(0, 0, 0, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Shimmer metallic shine line */
+.get-started-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 150%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
+  transform: skewX(-20deg);
+}
+
+.get-started-btn:hover::before {
+  animation: btnShine 0.85s ease-in-out;
+}
+
+@keyframes btnShine {
+  100% {
+    left: 150%;
+  }
+}
+
+.btn-arrow {
+  display: inline-block;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .get-started-btn:hover {
   transform: translateY(-2px);
-  background: #f8fafc;
-  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.25);
+  background: #fdfaf4;
+  border-color: #dfcfb7;
+  box-shadow: 
+    0 8px 24px rgba(223, 207, 183, 0.25),
+    0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.get-started-btn:hover .btn-arrow {
+  transform: translateX(4px);
 }
 
 .get-started-btn:active {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.1);
 }
 
+/* Smooth organic floating animation for the Lottie robot */
 .hero-right {
   display: flex;
   justify-content: center;
   align-items: center;
+  animation: floatRobot 6s ease-in-out infinite;
+}
+
+@keyframes floatRobot {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
 }
 
 .hero-lottie {
   width: 100%;
   max-width: 500px;
   height: auto;
+  aspect-ratio: 1 / 1;
   margin-left: 60px;
-  filter: drop-shadow(0 10px 30px rgba(168, 85, 247, 0.15));
+  filter: drop-shadow(0 15px 45px rgba(168, 85, 247, 0.2));
 }
 
 @media (max-width: 1024px) {
@@ -232,14 +336,36 @@
   }
 }
 
+/* Constant diamond accent */
+.title-diamond {
+  font-size: clamp(10px, 2vw, 13px);
+  color: #dfcfb7;
+  text-shadow: 0 0 8px rgba(223, 207, 183, 0.6);
+  opacity: 0.85;
+  margin: 0 12px;
+  display: inline-block;
+  transform: scale(0.95);
+}
+
+/* Animated Shimmering Pulse Line dividers */
+@keyframes shimmerLineLeft {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes shimmerLineRight {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 .feature-title {
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: clamp(1.05rem, 3.2vw, 1.875rem);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: #ded1d1;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: #dfcfb7; /* elegant champagne gold */
   text-transform: uppercase;
   user-select: none;
   -webkit-user-drag: none;
@@ -247,13 +373,40 @@
   padding: 0 12px;
 }
 
-.feature-title::before,
+.feature-title::before {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg, 
+    transparent 0%, 
+    rgba(224, 211, 190, 0.15) 30%, 
+    #dfcfb7 50%, 
+    rgba(224, 211, 190, 0.5) 65%, 
+    rgba(224, 211, 190, 0.15) 80%, 
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerLineLeft 7s linear infinite;
+  margin: 0 20px;
+}
+
 .feature-title::after {
   content: "";
   flex: 1;
-  height: 2px;
-  background: linear-gradient(to right, #7b2ff7, #f107a3);
-  margin: 0 15px;
+  height: 1px;
+  background: linear-gradient(
+    90deg, 
+    transparent 0%, 
+    rgba(224, 211, 190, 0.15) 20%, 
+    rgba(224, 211, 190, 0.5) 35%, 
+    #dfcfb7 50%, 
+    rgba(224, 211, 190, 0.15) 70%, 
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerLineRight 7s linear infinite;
+  margin: 0 20px;
 }
 
 .features-section {
@@ -273,6 +426,7 @@
   align-items: center;
   padding-left: 20px;
   height: 80%;
+  will-change: transform;
 }
 
 .box {
@@ -289,58 +443,104 @@
 .box .glass {
   width: 370px;
   height: 500px;
-  border-radius: 20px;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  padding: 20px;
+  border-radius: 24px;
+  backdrop-filter: blur(20px); /* deeper glass blur */
+  -webkit-backdrop-filter: blur(20px);
+  background-image: 
+    radial-gradient(rgba(224, 211, 190, 0.025) 1px, transparent 0),
+    linear-gradient(180deg, rgba(15, 15, 20, 0.6) 0%, rgba(8, 8, 10, 0.75) 100%);
+  background-size: 16px 16px, 100% 100%;
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.65),
+    0 0 35px rgba(224, 211, 190, 0.08),
+    inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  padding: 30px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   overflow: hidden;
+  position: relative;
 }
 
-/* Feature card Lottie animation styles */
+/* Futuristic top light bar indicator (constantly active) */
+.card-top-bar {
+  position: absolute;
+  top: 0;
+  left: 15%;
+  width: 70%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(224, 211, 190, 0.8), transparent);
+  box-shadow: 0 1px 8px rgba(224, 211, 190, 0.4);
+  pointer-events: none;
+}
+
+/* Futuristic Sci-fi corners styling (constantly active & expanded) */
+.card-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(224, 211, 190, 0.8);
+  pointer-events: none;
+}
+
+.card-corner-tl { top: 18px; left: 18px; border-right: none; border-bottom: none; }
+.card-corner-tr { top: 18px; right: 18px; border-left: none; border-bottom: none; }
+.card-corner-bl { bottom: 18px; left: 18px; border-right: none; border-top: none; }
+.card-corner-br { bottom: 18px; right: 18px; border-left: none; border-top: none; }
+
+/* Feature card Lottie animation styles wrapper (constant orbital track design) */
 .feature-lottie-wrapper {
-  height: 150px;
-  width: 150px;
-  margin: 0 auto;
+  height: 140px;
+  width: 140px;
+  margin: 10px auto 25px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
+  background-color: rgba(224, 211, 190, 0.02);
+  background-image: radial-gradient(circle, rgba(224, 211, 190, 0.04) 0%, transparent 70%);
+  border: 1px solid rgba(224, 211, 190, 0.35);
+  position: relative;
 }
 
 .feature-lottie {
-  height: 150px;
-  width: 150px;
+  height: 110px;
+  width: 110px;
 }
 
+/* Unique gradient masked border (constantly active) */
 .glass::before {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 20px;
-  padding: 2px;
-  background: linear-gradient(135deg, #a855f7, #6b21a8);
-  mask: linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
+  border-radius: 24px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg, 
+    rgba(224, 211, 190, 0.5) 0%, 
+    rgba(224, 211, 190, 0.25) 50%, 
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
   z-index: 1;
 }
 
-/* Glow effect */
+/* Glow effect behind cards (constantly active) */
 .glass::after {
   content: '';
   position: absolute;
-  inset: -10px;
-  border-radius: 25px;
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.5), rgba(107, 33, 168, 0.5));
-  filter: blur(40px);
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  inset: -20px;
+  border-radius: 30px;
+  background: radial-gradient(
+    circle, 
+    rgba(224, 211, 190, 0.12) 0%, 
+    transparent 70%
+  );
+  filter: blur(45px);
+  opacity: 1;
   z-index: -1;
   pointer-events: none;
 }
@@ -362,22 +562,40 @@
   position: relative;
   text-align: center;
   color: white;
-  padding: 10px;
+  padding: 10px 5px;
   flex: 1;
   overflow: hidden;
 }
 
+.content h3 {
+  color: #dfcfb7; /* elegant champagne gold */
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+  transition: color 0.4s ease;
+}
+
+.box:hover .content h3 {
+  color: #ffffff; /* pure white on hover */
+}
+
 .content p {
-  font-size: 19px;
-  line-height: 1.5;
-  padding: 5px;
+  font-family: 'Outfit', system-ui, sans-serif;
+  color: rgba(248, 250, 252, 0.65); /* soft legible opacity */
+  font-size: 14.5px;
+  line-height: 1.6;
+  padding: 0;
   margin: 0;
   word-break: break-word;
   overflow-wrap: anywhere;
+  transition: color 0.4s ease;
 }
 
-.content h2 {
-  color: #c4b5fd;
+.box:hover .content p {
+  color: rgba(248, 250, 252, 0.85); /* brightens slightly on hover */
 }
 
 @media (max-width: 1024px) {
@@ -454,14 +672,14 @@
   align-items: center;
   justify-content: center;
   font-size: clamp(1.05rem, 3.2vw, 1.875rem);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: #ded1d1;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: #dfcfb7; /* elegant champagne gold */
   text-transform: uppercase;
   user-select: none;
   -webkit-user-drag: none;
-  margin-top: 24px;
-  margin-bottom: 8px;
+  margin-top: 48px;
+  margin-bottom: 24px;
   text-align: center;
   padding: 0 12px;
 }
@@ -476,11 +694,38 @@
   }
 }
 
-.use-title::before,
+.use-title::before {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg, 
+    transparent 0%, 
+    rgba(224, 211, 190, 0.15) 30%, 
+    #dfcfb7 50%, 
+    rgba(224, 211, 190, 0.5) 65%, 
+    rgba(224, 211, 190, 0.15) 80%, 
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerLineLeft 7s linear infinite;
+  margin: 0 20px;
+}
+
 .use-title::after {
   content: "";
   flex: 1;
-  height: 2px;
-  background: linear-gradient(to right, #7b2ff7, #f107a3);
-  margin: 0 15px;
+  height: 1px;
+  background: linear-gradient(
+    90deg, 
+    transparent 0%, 
+    rgba(224, 211, 190, 0.15) 20%, 
+    rgba(224, 211, 190, 0.5) 35%, 
+    #dfcfb7 50%, 
+    rgba(224, 211, 190, 0.15) 70%, 
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerLineRight 7s linear infinite;
+  margin: 0 20px;
 }
