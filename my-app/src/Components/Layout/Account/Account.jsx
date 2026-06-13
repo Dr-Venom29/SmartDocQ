@@ -22,6 +22,8 @@ import {
   MAX_AVATAR_BYTES,
 } from "./accountUtils";
 
+const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 function Account({ user, onClose, onUpdated, onHistoryCleared }) {
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -44,6 +46,8 @@ function Account({ user, onClose, onUpdated, onHistoryCleared }) {
   const passwordRef = useRef();
   const confirmPasswordRef = useRef();
   const avatarInputRef = useRef();
+  const containerRef = useRef();
+  const triggerRef = useRef(null);
 
   const revokeIfBlob = (url) => {
     if (url && typeof url === "string" && url.startsWith("blob:")) {
@@ -74,21 +78,52 @@ function Account({ user, onClose, onUpdated, onHistoryCleared }) {
   }, [user]);
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key !== "Escape") return;
+    // Save trigger element
+    triggerRef.current = document.activeElement;
 
-      if (showDeleteModal) {
-        setShowDeleteModal(false);
+    // Focus first focusable item
+    const focusable = containerRef.current?.querySelectorAll(FOCUSABLE_SELECTOR) || [];
+    if (focusable.length > 0) {
+      focusable[0].focus();
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (showDeleteModal) {
+          setShowDeleteModal(false);
+        } else {
+          onClose?.();
+        }
         return;
       }
 
-      onClose?.();
+      if (e.key === "Tab") {
+        const list = containerRef.current ? Array.from(containerRef.current.querySelectorAll(FOCUSABLE_SELECTOR)) : [];
+        if (list.length === 0) return;
+        const first = list[0];
+        const last = list[list.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            last.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === last) {
+            first.focus();
+            e.preventDefault();
+          }
+        }
+      }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      if (triggerRef.current && document.body.contains(triggerRef.current)) {
+        triggerRef.current.focus();
+      }
     };
   }, [onClose, showDeleteModal]);
 
@@ -277,6 +312,7 @@ function Account({ user, onClose, onUpdated, onHistoryCleared }) {
     <>
       <div className="account-overlay" onClick={onClose} role="presentation">
         <div
+          ref={containerRef}
           className="account-container"
           onClick={(e) => e.stopPropagation()}
           role="dialog"

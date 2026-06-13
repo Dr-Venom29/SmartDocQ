@@ -121,6 +121,7 @@ function Contact({ onSuccess }) {
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
+            aria-hidden="true"
           >
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
@@ -132,7 +133,7 @@ function Contact({ onSuccess }) {
       </div>
 
       {!loading && !isLoggedIn && (
-        <div className="info-item contact-login-warning">
+        <div className="info-item contact-login-warning" role="alert">
           <div className="info-content">
             <p className="contact-login-warning-text">
               Please log in to send us a message.
@@ -193,12 +194,12 @@ function Contact({ onSuccess }) {
             required
           />
           {errors.message ? (
-            <span id="contact-message-error" className="error-message">
+            <span id="contact-message-error" className="error-message" role="alert">
               {errors.message}
             </span>
           ) : (
             <span id="contact-message-help" className="message-counter">
-              {formData.message.length}/{MAX_MESSAGE_LENGTH}
+              {formData.message.length} of {MAX_MESSAGE_LENGTH} characters
             </span>
           )}
         </div>
@@ -229,6 +230,7 @@ function Contact({ onSuccess }) {
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
+              aria-hidden="true"
             >
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />

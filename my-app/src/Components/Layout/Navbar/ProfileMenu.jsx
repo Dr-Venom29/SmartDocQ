@@ -1,36 +1,32 @@
-import React, { useRef, useEffect, useCallback, useState } from "react";
-import { createPortal } from "react-dom";
+import React, { useRef, useEffect } from "react";
 import profileIcon from "./assets/profile.svg";
 import logoutIcon from "./assets/logout.svg";
 
 export default function ProfileMenu({ triggerRef, onProfile, onLogout, onClose }) {
   const menuRef = useRef(null);
-  const [pos, setPos] = useState(null);
 
-  const updatePos = useCallback(() => {
-    const trigger = triggerRef.current;
-    if (!trigger) return;
-    const rect = trigger.getBoundingClientRect();
-    setPos({
-      top: rect.bottom + 10,
-      right: Math.max(8, window.innerWidth - rect.right),
-    });
-  }, [triggerRef]);
-
-  // Position the menu on mount and keep it in sync on scroll/resize
+  // Auto-focus first button on mount
   useEffect(() => {
-    updatePos();
-    window.addEventListener("scroll", updatePos, true);
-    window.addEventListener("resize", updatePos);
-    return () => {
-      window.removeEventListener("scroll", updatePos, true);
-      window.removeEventListener("resize", updatePos);
+    const buttons = menuRef.current?.querySelectorAll("button");
+    if (buttons && buttons.length > 0) {
+      buttons[0].focus();
+    }
+  }, []);
+
+  // Handle Escape key to close the dropdown
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose?.();
+      }
     };
-  }, [updatePos]);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
-  // Close the menu when clicking outside of the trigger or menu
+  // Close the menu when clicking/tapping outside of the trigger or menu
   useEffect(() => {
-    const handleClickOutside = (e) => {
+    const handlePointerDown = (e) => {
       const trigger = triggerRef.current;
       const menu = menuRef.current;
       const path = typeof e.composedPath === "function" ? e.composedPath() : null;
@@ -38,33 +34,52 @@ export default function ProfileMenu({ triggerRef, onProfile, onLogout, onClose }
       const inMenu = menu && (path ? path.includes(menu) : menu.contains(e.target));
       if (!inTrigger && !inMenu && onClose) onClose();
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [triggerRef, onClose]);
 
-  const body = typeof document !== "undefined" ? document.body : null;
-  if (!body) return null;
+  // Close the menu when focus leaves the menu entirely (e.g. tabbing away)
+  useEffect(() => {
+    const handleFocusOut = (e) => {
+      const trigger = triggerRef.current;
+      const newFocus = e.relatedTarget;
+      if (menuRef.current && (!newFocus || !menuRef.current.contains(newFocus)) && newFocus !== trigger) {
+        onClose?.();
+      }
+    };
 
-  return createPortal(
+    const menu = menuRef.current;
+    if (menu) {
+      menu.addEventListener("focusout", handleFocusOut);
+    }
+    return () => {
+      if (menu) {
+        menu.removeEventListener("focusout", handleFocusOut);
+      }
+    };
+  }, [onClose, triggerRef]);
+
+  // Restore focus to the trigger button on close/unmount
+  useEffect(() => {
+    return () => {
+      if (triggerRef.current && document.body.contains(triggerRef.current)) {
+        triggerRef.current.focus();
+      }
+    };
+  }, [triggerRef]);
+
+  return (
     <div
       ref={menuRef}
       id="profile-menu"
-      className="profile-dropdown profile-dropdown--portal"
-      role="menu"
-      aria-label="User menu"
-      style={{
-        top: pos?.top ?? -9999,
-        right: pos?.right ?? -9999,
-        visibility: pos ? "visible" : "hidden",
-      }}
+      className="profile-dropdown"
     >
-      <button className="dd" type="button" role="menuitem" onClick={onProfile}>
+      <button className="dd" type="button" onClick={onProfile}>
         <img src={profileIcon} alt="" className="dpi" aria-hidden="true" />Profile
       </button>
-      <button className="dd" type="button" role="menuitem" onClick={onLogout}>
+      <button className="dd" type="button" onClick={onLogout}>
         <img src={logoutIcon} alt="" className="dpi" aria-hidden="true" />Logout
       </button>
-    </div>,
-    body
+    </div>
   );
 }

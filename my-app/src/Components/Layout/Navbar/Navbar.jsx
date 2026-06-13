@@ -15,6 +15,10 @@ const getActiveTab = (pathname) => {
   return null;
 };
 
+const MENU_DELAY = 300;
+const SCROLL_DURATION = 800;
+const ROUTE_SCROLL_DELAY = 100;
+
 export default function Navbar() {
   const navigate   = useNavigate();
   const location   = useLocation();
@@ -28,6 +32,23 @@ export default function Navbar() {
   const itemsRef         = useRef({});
   const pendingScrollRef = useRef(false);
   const profileRef       = useRef();
+  const menuTimeoutRef   = useRef(null);
+
+  // Clean up scheduled menu timeouts when component unmounts
+  useEffect(() => {
+    return () => {
+      if (menuTimeoutRef.current) {
+        clearTimeout(menuTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const clearMenuTimeout = useCallback(() => {
+    if (menuTimeoutRef.current) {
+      clearTimeout(menuTimeoutRef.current);
+      menuTimeoutRef.current = null;
+    }
+  }, []);
 
   const { showToast }                              = useToast();
   const { user, loading, persistUser, logout }     = useAuth();
@@ -47,8 +68,8 @@ export default function Navbar() {
     const onKeyDown = (e) => {
       if (e.key === "Escape") { setPopup(null); setShowProfileMenu(false); }
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
   // Lock page scroll while a popup is open
@@ -80,13 +101,13 @@ export default function Navbar() {
   }, [updateSlider]);
 
   // Smoothly scroll the page to a target element
-  const smoothScroll = (target, duration = 800) => {
+  const smoothScroll = useCallback((target, duration = SCROLL_DURATION) => {
     if (!target) return;
     const targetPos = target.getBoundingClientRect().top + window.pageYOffset;
     const startPos  = window.pageYOffset;
     const distance  = targetPos - startPos;
     let startTime   = null;
-    const animate   = (currentTime) => {
+    const animate = (currentTime) => {
       if (!startTime) startTime = currentTime;
       const elapsed  = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
@@ -97,37 +118,49 @@ export default function Navbar() {
       if (elapsed < duration) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
-  };
+  }, []);
 
   const scrollToFeatures = useCallback(() => {
     const el = document.getElementById("feat");
-    if (el) { smoothScroll(el, 800); }
+    if (el) { smoothScroll(el, SCROLL_DURATION); }
     else    { pendingScrollRef.current = true; navigate("/"); }
-  }, [navigate]);
+  }, [navigate, smoothScroll]);
 
   useEffect(() => {
     if (pendingScrollRef.current && location.pathname === "/") {
       pendingScrollRef.current = false;
       const el = document.getElementById("feat");
-      if (el) setTimeout(() => smoothScroll(el), 100);
+      if (el) setTimeout(() => smoothScroll(el), ROUTE_SCROLL_DELAY);
     }
-  }, [location.pathname]);
+  }, [location.pathname, smoothScroll]);
+
+  const openContact = useCallback(() => {
+    if (!user) {
+      showToast("Please log in to use Contact Us", { type: "error" });
+      return;
+    }
+    setPopup("contact");
+  }, [user, showToast]);
 
   // Central handler for mobile sheet navigation items
   const handleSheetItemClick = useCallback((itemId) => {
     setActiveTab(itemId);
     closeMobileMenu();
+    clearMenuTimeout();
     if (itemId === "Home") {
       navigate("/");
     } else if (itemId === "Features") {
-      setTimeout(() => scrollToFeatures(), 300);
+      menuTimeoutRef.current = setTimeout(() => {
+        menuTimeoutRef.current = null;
+        scrollToFeatures();
+      }, MENU_DELAY);
     } else if (itemId === "Contact") {
-      setTimeout(() => {
-        if (!user) { showToast("Please log in to use Contact Us", { type: "error" }); return; }
-        setPopup("contact");
-      }, 300);
+      menuTimeoutRef.current = setTimeout(() => {
+        menuTimeoutRef.current = null;
+        openContact();
+      }, MENU_DELAY);
     }
-  }, [navigate, scrollToFeatures, user, showToast, closeMobileMenu]);
+  }, [navigate, scrollToFeatures, openContact, closeMobileMenu, clearMenuTimeout]);
 
   return (
     <>
@@ -148,88 +181,109 @@ export default function Navbar() {
           <div
             id="nav-links"
             className="nav-links-container"
-            role="menubar"
-            aria-label="Main menu"
             ref={navContainerRef}>
             <div className="nav-slider" style={sliderStyle} />
 
-            <div
+            <button
+              type="button"
               className={`nav-item ${activeTab === "Home" ? "active" : ""}`}
-              onClick={() => { navigate("/"); setActiveTab("Home"); }}
-              role="menuitem"
+              aria-current={activeTab === "Home" ? "page" : undefined}
+              onClick={() => {
+                navigate("/");
+                setActiveTab("Home");
+                clearMenuTimeout();
+              }}
               ref={(el) => (itemsRef.current["Home"] = el)}>
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                 <path d="M2 6.5L8 2l6 4.5V13a1 1 0 01-1 1H3a1 1 0 01-1-1V6.5z"/>
               </svg>
               Home
-            </div>
+            </button>
 
-            <div className="nav-divider" />
+            <div className="nav-divider" aria-hidden="true" />
 
-            <div
+            <button
+              type="button"
               className={`nav-item ${activeTab === "Features" ? "active" : ""}`}
-              onClick={() => { setActiveTab("Features"); setTimeout(() => scrollToFeatures(), 300); }}
-              role="menuitem"
+              aria-current={activeTab === "Features" ? "page" : undefined}
+              onClick={() => {
+                setActiveTab("Features");
+                clearMenuTimeout();
+                menuTimeoutRef.current = setTimeout(() => {
+                  menuTimeoutRef.current = null;
+                  scrollToFeatures();
+                }, MENU_DELAY);
+              }}
               ref={(el) => (itemsRef.current["Features"] = el)}>
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                 <rect x="2" y="2" width="5" height="5" rx="1"/>
                 <rect x="9" y="2" width="5" height="5" rx="1"/>
                 <rect x="2" y="9" width="5" height="5" rx="1"/>
                 <rect x="9" y="9" width="5" height="5" rx="1"/>
               </svg>
               Features
-            </div>
+            </button>
 
-            <div className="nav-divider" />
+            <div className="nav-divider" aria-hidden="true" />
 
-            <div
+            <button
+              type="button"
               className={`nav-item ${activeTab === "Contact" ? "active" : ""}`}
+              aria-current={activeTab === "Contact" ? "page" : undefined}
               onClick={() => {
                 setActiveTab("Contact");
-                setTimeout(() => {
-                  if (!user) { showToast("Please log in to use Contact Us", { type: "error" }); return; }
-                  setPopup("contact");
-                }, 300);
+                clearMenuTimeout();
+                menuTimeoutRef.current = setTimeout(() => {
+                  menuTimeoutRef.current = null;
+                  openContact();
+                }, MENU_DELAY);
               }}
-              role="menuitem"
               ref={(el) => (itemsRef.current["Contact"] = el)}>
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                 <path d="M2 4h12M2 8h8M2 12h5"/>
                 <circle cx="13" cy="11" r="2.5"/>
                 <path d="M15 13.5l1.5 1.5"/>
               </svg>
               Contact Us
-            </div>
+            </button>
           </div>
 
           {/* Authentication actions (login button or profile avatar) */}
           <div className="login">
             {!loading && (
               user ? (
-                <div className="profile-section" ref={profileRef}>
-                  <img
-                    src={user.avatar || icon}
-                    alt="Profile"
-                    className="avatar"
-                    style={{ cursor: "pointer", userSelect: "none" }}
-                    onClick={() => setShowProfileMenu(true)}
-                  />
+                <div className="profile-section">
+                  <button
+                    ref={profileRef}
+                    type="button"
+                    className="profile-btn"
+                    onClick={() => setShowProfileMenu((prev) => !prev)}
+                    aria-label="User Profile Menu"
+                    aria-haspopup="menu"
+                    aria-expanded={showProfileMenu}
+                  >
+                    <img
+                      src={user.avatar || icon}
+                      alt=""
+                      className="avatar"
+                    />
+                  </button>
+                  {showProfileMenu && (
+                    <ProfileMenu
+                      triggerRef={profileRef}
+                      onProfile={() => { setPopup("account"); setShowProfileMenu(false); }}
+                      onLogout={() => { setShowProfileMenu(false); logout(); }}
+                      onClose={() => setShowProfileMenu(false)}
+                    />
+                  )}
                 </div>
               ) : (
-                <div
-                  aria-label="User Login Button"
-                  tabIndex={0}
-                  role="button"
+                <button
+                  type="button"
                   className="user-profile"
                   onClick={() => setPopup("login")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setPopup("login");
-                    }
-                  }}
                 >
-                  <div className="user-profile-inner">
+                  <span className="user-profile-inner">
                     <svg
                       aria-hidden="true"
                       xmlns="http://www.w3.org/2000/svg"
@@ -241,9 +295,9 @@ export default function Navbar() {
                         ></path>
                       </g>
                     </svg>
-                    <p>Log In</p>
-                  </div>
-                </div>
+                    <span>Log In</span>
+                  </span>
+                </button>
               )
             )}
           </div>
@@ -273,14 +327,6 @@ export default function Navbar() {
         onLogout={()  => { closeMobileMenu(); logout();             }}
       />
 
-      {showProfileMenu && (
-        <ProfileMenu
-          triggerRef={profileRef}
-          onProfile={() => { setPopup("account"); setShowProfileMenu(false); }}
-          onLogout={() => { setShowProfileMenu(false); logout(); }}
-          onClose={() => setShowProfileMenu(false)}
-        />
-      )}
 
       <NavDialogs
         popup={popup}

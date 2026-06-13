@@ -22,8 +22,8 @@ export function useMobileMenu() {
   // Close the mobile menu when the Escape key is pressed
   useEffect(() => {
     const onKeyDown = (e) => { if (e.key === "Escape") close(); };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
   // Lock page scroll while the mobile menu is open
