@@ -339,8 +339,8 @@
 /* Constant diamond accent */
 .title-diamond {
   font-size: clamp(10px, 2vw, 13px);
-  color: #dfcfb7;
-  text-shadow: 0 0 8px rgba(223, 207, 183, 0.6);
+  color: #818cf8; /* Electric Indigo */
+  text-shadow: 0 0 8px rgba(129, 140, 248, 0.6);
   opacity: 0.85;
   margin: 0 12px;
   display: inline-block;
@@ -365,7 +365,11 @@
   font-size: clamp(1.05rem, 3.2vw, 1.875rem);
   font-weight: 500;
   letter-spacing: 0.12em;
-  color: #dfcfb7; /* elegant champagne gold */
+  background: linear-gradient(135deg, #ffffff 40%, #818cf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
   text-transform: uppercase;
   user-select: none;
   -webkit-user-drag: none;
@@ -380,10 +384,10 @@
   background: linear-gradient(
     90deg, 
     transparent 0%, 
-    rgba(224, 211, 190, 0.15) 30%, 
-    #dfcfb7 50%, 
-    rgba(224, 211, 190, 0.5) 65%, 
-    rgba(224, 211, 190, 0.15) 80%, 
+    rgba(129, 140, 248, 0.15) 30%, 
+    #818cf8 50%, 
+    rgba(129, 140, 248, 0.5) 65%, 
+    rgba(129, 140, 248, 0.15) 80%, 
     transparent 100%
   );
   background-size: 200% 100%;
@@ -398,10 +402,10 @@
   background: linear-gradient(
     90deg, 
     transparent 0%, 
-    rgba(224, 211, 190, 0.15) 20%, 
-    rgba(224, 211, 190, 0.5) 35%, 
-    #dfcfb7 50%, 
-    rgba(224, 211, 190, 0.15) 70%, 
+    rgba(129, 140, 248, 0.15) 20%, 
+    rgba(129, 140, 248, 0.5) 35%, 
+    #818cf8 50%, 
+    rgba(129, 140, 248, 0.15) 70%, 
     transparent 100%
   );
   background-size: 200% 100%;
@@ -444,71 +448,59 @@
   width: 370px;
   height: 500px;
   border-radius: 24px;
-  backdrop-filter: blur(20px); /* deeper glass blur */
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   background-image: 
-    radial-gradient(rgba(224, 211, 190, 0.025) 1px, transparent 0),
-    linear-gradient(180deg, rgba(15, 15, 20, 0.6) 0%, rgba(8, 8, 10, 0.75) 100%);
+    radial-gradient(rgba(255, 255, 255, 0.01) 1px, transparent 0),
+    linear-gradient(180deg, rgba(10, 10, 12, 0.75) 0%, rgba(5, 5, 7, 0.9) 100%);
   background-size: 16px 16px, 100% 100%;
   box-shadow: 
-    0 25px 50px rgba(0, 0, 0, 0.65),
-    0 0 35px rgba(224, 211, 190, 0.08),
-    inset 0 1px 1px rgba(255, 255, 255, 0.08);
-  padding: 30px 24px;
+    0 20px 40px rgba(0, 0, 0, 0.65),
+    inset 0 1px 1px rgba(255, 255, 255, 0.06);
+  padding: 40px 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
   overflow: hidden;
   position: relative;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s ease;
+  will-change: transform;
 }
 
-/* Futuristic top light bar indicator (constantly active) */
-.card-top-bar {
-  position: absolute;
-  top: 0;
-  left: 15%;
-  width: 70%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(224, 211, 190, 0.8), transparent);
-  box-shadow: 0 1px 8px rgba(224, 211, 190, 0.4);
-  pointer-events: none;
+.box:hover .glass {
+  transform: translateY(-8px);
+  box-shadow: 
+    0 30px 60px rgba(0, 0, 0, 0.8),
+    0 0 25px rgba(129, 140, 248, 0.08);
 }
 
-/* Futuristic Sci-fi corners styling (constantly active & expanded) */
-.card-corner {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  border: 1px solid rgba(224, 211, 190, 0.8);
-  pointer-events: none;
-}
-
-.card-corner-tl { top: 18px; left: 18px; border-right: none; border-bottom: none; }
-.card-corner-tr { top: 18px; right: 18px; border-left: none; border-bottom: none; }
-.card-corner-bl { bottom: 18px; left: 18px; border-right: none; border-top: none; }
-.card-corner-br { bottom: 18px; right: 18px; border-left: none; border-top: none; }
-
-/* Feature card Lottie animation styles wrapper (constant orbital track design) */
+/* Feature card Lottie animation styles wrapper */
 .feature-lottie-wrapper {
-  height: 140px;
-  width: 140px;
-  margin: 10px auto 25px;
+  height: 160px;
+  width: 160px;
+  margin: 15px auto 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background-color: rgba(224, 211, 190, 0.02);
-  background-image: radial-gradient(circle, rgba(224, 211, 190, 0.04) 0%, transparent 70%);
-  border: 1px solid rgba(224, 211, 190, 0.35);
+  background-color: rgba(255, 255, 255, 0.015);
+  background-image: radial-gradient(circle, rgba(129, 140, 248, 0.04) 0%, transparent 70%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.box:hover .feature-lottie-wrapper {
+  border-color: rgba(129, 140, 248, 0.35);
+  box-shadow: 0 0 18px rgba(129, 140, 248, 0.08);
 }
 
 .feature-lottie {
-  height: 110px;
-  width: 110px;
+  height: 130px;
+  width: 130px;
 }
 
-/* Unique gradient masked border (constantly active) */
+/* Unique gradient masked border - always visible but brightens and tracks cursor on hover */
 .glass::before {
   content: '';
   position: absolute;
@@ -517,18 +509,89 @@
   padding: 1px;
   background: linear-gradient(
     135deg, 
-    rgba(224, 211, 190, 0.5) 0%, 
-    rgba(224, 211, 190, 0.25) 50%, 
-    rgba(255, 255, 255, 0.08) 100%
+    rgba(255, 255, 255, 0.08) 0%, 
+    rgba(255, 255, 255, 0.03) 50%, 
+    rgba(255, 255, 255, 0.04) 100%
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
   z-index: 1;
+  transition: background 0.3s ease;
 }
 
-/* Glow effect behind cards (constantly active) */
+/* --- Card Theme Variables (Cycling through 4 premium color spectrums) --- */
+/* Card 1, 5: Indigo */
+.box:nth-child(4n+1) {
+  --theme-glow-color: rgba(129, 140, 248, 0.05);
+  --theme-spotlight-border: rgba(129, 140, 248, 0.35);
+  --theme-border-glow: rgba(129, 140, 248, 0.08);
+  --theme-title-gradient: linear-gradient(135deg, #ffffff 30%, #818cf8 100%);
+}
+
+/* Card 2, 6: Cyber Cyan */
+.box:nth-child(4n+2) {
+  --theme-glow-color: rgba(56, 189, 248, 0.05);
+  --theme-spotlight-border: rgba(56, 189, 248, 0.35);
+  --theme-border-glow: rgba(56, 189, 248, 0.08);
+  --theme-title-gradient: linear-gradient(135deg, #ffffff 30%, #38bdf8 100%);
+}
+
+/* Card 3, 7: Neon Pink */
+.box:nth-child(4n+3) {
+  --theme-glow-color: rgba(236, 72, 153, 0.05);
+  --theme-spotlight-border: rgba(236, 72, 153, 0.35);
+  --theme-border-glow: rgba(236, 72, 153, 0.08);
+  --theme-title-gradient: linear-gradient(135deg, #ffffff 30%, #ec4899 100%);
+}
+
+/* Card 4, 8: Electric Purple */
+.box:nth-child(4n+4) {
+  --theme-glow-color: rgba(168, 85, 247, 0.05);
+  --theme-spotlight-border: rgba(168, 85, 247, 0.35);
+  --theme-border-glow: rgba(168, 85, 247, 0.08);
+  --theme-title-gradient: linear-gradient(135deg, #ffffff 30%, #a855f7 100%);
+}
+
+.box:hover .glass::before {
+  /* Spotlight border outline - highlights exactly under the cursor */
+  background: 
+    radial-gradient(
+      240px circle at var(--mouse-x, 0) var(--mouse-y, 0),
+      var(--theme-spotlight-border) 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      transparent 100%
+    ),
+    linear-gradient(
+      135deg, 
+      rgba(255, 255, 255, 0.12) 0%, 
+      rgba(255, 255, 255, 0.04) 50%, 
+      var(--theme-border-glow) 100%
+    );
+}
+
+/* Spotlight inner background glow that tracks the cursor */
+.glass .spotlight {
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  background: radial-gradient(
+    320px circle at var(--mouse-x, 0) var(--mouse-y, 0),
+    var(--theme-glow-color),
+    transparent 80%
+  );
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.box:hover .glass .spotlight {
+  opacity: 1;
+}
+
+/* Glow effect behind cards */
 .glass::after {
   content: '';
   position: absolute;
@@ -536,13 +599,18 @@
   border-radius: 30px;
   background: radial-gradient(
     circle, 
-    rgba(224, 211, 190, 0.12) 0%, 
+    var(--theme-glow-color) 0%, 
     transparent 70%
   );
   filter: blur(45px);
-  opacity: 1;
+  opacity: 0.5;
   z-index: -1;
   pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.box:hover .glass::after {
+  opacity: 1;
 }
 
 .box:before,
@@ -562,30 +630,40 @@
   position: relative;
   text-align: center;
   color: white;
-  padding: 10px 5px;
+  padding: 5px 0;
   flex: 1;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
 }
 
 .content h3 {
-  color: #ffffff; /* pure white constantly */
   font-family: 'Outfit', system-ui, sans-serif;
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.55rem;
+  font-weight: 800; /* Ultra-bold */
   margin-top: 0;
-  margin-bottom: 12px;
-  letter-spacing: -0.01em;
+  margin-bottom: 16px;
+  letter-spacing: -0.03em; /* Sleek tighter tracking */
+  line-height: 1.25;
+  background: var(--theme-title-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
 }
 
 .content p {
   font-family: 'Outfit', system-ui, sans-serif;
-  color: rgba(248, 250, 252, 0.85); /* bright white constantly */
-  font-size: 14.5px;
-  line-height: 1.6;
+  color: rgba(248, 250, 252, 0.95); /* bright white constantly */
+  font-size: 16.5px;
+  line-height: 1.7;
   padding: 0;
   margin: 0;
   word-break: break-word;
   overflow-wrap: anywhere;
+  font-weight: 400;
 }
 
 @media (max-width: 1024px) {
@@ -664,7 +742,11 @@
   font-size: clamp(1.05rem, 3.2vw, 1.875rem);
   font-weight: 500;
   letter-spacing: 0.12em;
-  color: #dfcfb7; /* elegant champagne gold */
+  background: linear-gradient(135deg, #ffffff 40%, #818cf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
   text-transform: uppercase;
   user-select: none;
   -webkit-user-drag: none;
@@ -691,10 +773,10 @@
   background: linear-gradient(
     90deg, 
     transparent 0%, 
-    rgba(224, 211, 190, 0.15) 30%, 
-    #dfcfb7 50%, 
-    rgba(224, 211, 190, 0.5) 65%, 
-    rgba(224, 211, 190, 0.15) 80%, 
+    rgba(129, 140, 248, 0.15) 30%, 
+    #818cf8 50%, 
+    rgba(129, 140, 248, 0.5) 65%, 
+    rgba(129, 140, 248, 0.15) 80%, 
     transparent 100%
   );
   background-size: 200% 100%;
@@ -709,10 +791,10 @@
   background: linear-gradient(
     90deg, 
     transparent 0%, 
-    rgba(224, 211, 190, 0.15) 20%, 
-    rgba(224, 211, 190, 0.5) 35%, 
-    #dfcfb7 50%, 
-    rgba(224, 211, 190, 0.15) 70%, 
+    rgba(129, 140, 248, 0.15) 20%, 
+    rgba(129, 140, 248, 0.5) 35%, 
+    #818cf8 50%, 
+    rgba(129, 140, 248, 0.15) 70%, 
     transparent 100%
   );
   background-size: 200% 100%;

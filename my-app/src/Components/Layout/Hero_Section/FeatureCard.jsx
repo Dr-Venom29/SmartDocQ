@@ -23,14 +23,28 @@ const FeatureCard = ({ title, desc, anim, reduceMotion }) => {
     return () => observer.disconnect();
   }, []);
 
+  const handleMouseMove = (e) => {
+    if (reduceMotion) return;
+    const card = cardRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    card.style.setProperty("--mouse-x", `${x}px`);
+    card.style.setProperty("--mouse-y", `${y}px`);
+  };
+
   return (
-    <article className="box" ref={cardRef} role="listitem">
+    <article 
+      className="box" 
+      ref={cardRef} 
+      role="listitem"
+      onMouseMove={handleMouseMove}
+    >
       <div className="glass">
-        <div className="card-top-bar" aria-hidden="true" />
-        <div className="card-corner card-corner-tl" aria-hidden="true" />
-        <div className="card-corner card-corner-tr" aria-hidden="true" />
-        <div className="card-corner card-corner-bl" aria-hidden="true" />
-        <div className="card-corner card-corner-br" aria-hidden="true" />
+        {/* Spotlight background glow */}
+        <div className="spotlight" aria-hidden="true" />
+        
         <div className="feature-lottie-wrapper" aria-hidden="true">
           {isVisible && (
             <Lottie

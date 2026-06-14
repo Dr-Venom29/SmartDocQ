@@ -25,6 +25,16 @@
   /* Background is transparent as requested */
 }
 
+@keyframes shimmerLineLeft {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes shimmerLineRight {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 /* --- Section Title --- */
 .work-title {
   display: flex;
@@ -37,100 +47,193 @@
   font-weight: 700;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: #ffffff;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.5); /* Subtle shadow for readability on any bg */
+  background: linear-gradient(135deg, #ffffff 40%, #818cf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
   padding: 0 20px;
 }
 
-/* Decorative gradient lines */
-.work-title::before,
+/* Decorative glowing shimmer lines */
+.work-title::before {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg, 
+    transparent 0%, 
+    rgba(129, 140, 248, 0.15) 30%, 
+    #818cf8 50%, 
+    rgba(129, 140, 248, 0.5) 65%, 
+    rgba(129, 140, 248, 0.15) 80%, 
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerLineLeft 7s linear infinite;
+  margin: 0 25px;
+}
+
 .work-title::after {
   content: "";
   flex: 1;
   height: 1px;
-  max-width: 120px;
-  background: linear-gradient(to right, transparent, rgba(196, 181, 253, 0.6), transparent);
+  background: linear-gradient(
+    90deg, 
+    transparent 0%, 
+    rgba(129, 140, 248, 0.15) 20%, 
+    rgba(129, 140, 248, 0.5) 35%, 
+    #818cf8 50%, 
+    rgba(129, 140, 248, 0.15) 70%, 
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerLineRight 7s linear infinite;
   margin: 0 25px;
-  opacity: 0.8;
 }
 
 /* --- Cards Grid --- */
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: clamp(24px, 4vw, 40px);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 60px 48px;
   max-width: 1200px;
   width: 100%;
   z-index: 2;
   position: relative;
 }
 
+@media (max-width: 1024px) {
+  .cards-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+}
+
 /* --- Premium Glass Card --- */
 .dark-card {
-  /* Glassmorphism: Semi-transparent dark with blur */
-  background: rgba(20, 20, 23, 0.65); 
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* Glassmorphism background texture */
+  background-image: 
+    radial-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 0),
+    linear-gradient(180deg, rgba(10, 10, 12, 0.75) 0%, rgba(5, 5, 7, 0.9) 100%);
+  background-size: 16px 16px, 100% 100%;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   
   border-radius: 20px;
   padding: 1px; /* Space for the gradient border */
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* Allow connectors to spill out */
   
-  /* Deep shadow to separate from transparent bg */
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 
-              0 5px 15px rgba(0, 0, 0, 0.2); 
-              
-  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
-              box-shadow 0.4s ease;
+  /* Subtle premium shadow */
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.5),
+    0 0 1px rgba(255, 255, 255, 0.05) inset;
+    
+  /* Entrance animation starting state */
+  opacity: 0;
+  transform: translateY(40px);
+  transition: 
+    opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s ease;
+  will-change: transform, opacity;
 }
 
-/* Hover: Lift and Glow */
 .dark-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), 
-              0 10px 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(-6px);
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.7),
+    0 0 30px var(--theme-color-glow);
 }
 
-/* --- Gradient Border using Masking --- */
+/* --- Entrance Animations via IntersectionObserver --- */
+.cards-grid.animate-in .dark-card {
+  opacity: 1;
+  transform: translateY(0);
+  /* Use a snappier transition for hover scaling/lifting AFTER it has animated in */
+  transition: 
+    opacity 0.6s ease,
+    transform 0.3s cubic-bezier(0.25, 1, 0.5, 1),
+    box-shadow 0.3s ease;
+}
+
+/* Staggered entry delays */
+.cards-grid.animate-in .dark-card:nth-child(1) { transition-delay: 0ms; }
+.cards-grid.animate-in .dark-card:nth-child(2) { transition-delay: 80ms; }
+.cards-grid.animate-in .dark-card:nth-child(3) { transition-delay: 160ms; }
+.cards-grid.animate-in .dark-card:nth-child(4) { transition-delay: 240ms; }
+.cards-grid.animate-in .dark-card:nth-child(5) { transition-delay: 320ms; }
+.cards-grid.animate-in .dark-card:nth-child(6) { transition-delay: 400ms; }
+
+/* Override delay on hover so the card responds instantly to mouse hover */
+.cards-grid.animate-in .dark-card:hover {
+  transition-delay: 0ms !important;
+}
+
+/* Ambient backing backlight glow - static and centered */
+.card-ambient-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    circle at center,
+    var(--theme-color-glow, rgba(129, 140, 248, 0.08)),
+    transparent 70%
+  );
+  opacity: 0.25;
+  transition: opacity 0.3s ease;
+  border-radius: 20px;
+}
+
+.dark-card:hover .card-ambient-glow {
+  opacity: 0.6;
+}
+
+/* --- Gradient Border using Masking - always visible for spectrum coloring --- */
 .card-border {
   position: absolute;
   inset: 0;
   border-radius: 20px;
-  padding: 1.5px; /* Border thickness */
+  padding: 1px; /* Border thickness */
   background: var(--card-gradient);
-  /* Masking for hollow center */
   -webkit-mask: 
     linear-gradient(#fff 0 0) content-box, 
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  opacity: 0.7;
-  transition: opacity 0.4s ease, filter 0.4s ease;
+  opacity: 0.4;
   pointer-events: none;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+  z-index: 2;
 }
 
 .dark-card:hover .card-border {
   opacity: 1;
-  filter: brightness(1.3); /* Slight glow on hover */
+  filter: brightness(1.2) drop-shadow(0 0 5px var(--theme-color-glow));
 }
 
 /* --- Card Content --- */
 .card-content {
   position: relative;
   z-index: 1;
-  /* Inner background to cover the center */
-  background: rgba(20, 20, 23, 0.4); 
-  margin: 1.5px; /* Match border padding */
-  border-radius: 18.5px; /* Outer radius - padding */
+  background: rgba(8, 8, 10, 0.7); 
+  margin: 1px; /* Match border padding */
+  border-radius: 19px; /* Outer radius - padding */
   padding: clamp(24px, 4vw, 36px);
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  transition: background 0.3s ease;
 }
 
-/* --- Card Icon --- */
+.dark-card:hover .card-content {
+  background: rgba(8, 8, 10, 0.45);
+}
+
+/* --- Card Icon - colored squircle in normal state --- */
 .card-icon {
   width: 56px;
   height: 56px;
@@ -138,30 +241,152 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 700;
-  color: white;
+  color: #ffffff; /* pure white numbers */
   margin-bottom: 24px;
-  background-color: var(--icon-bg);
-  
-  /* Inner glow and colored shadow */
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  opacity: 0.85;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
   box-shadow: 
-    inset 0 1px 1px rgba(255,255,255,0.3),
-    0 6px 14px -4px rgba(0,0,0,0.5),
-    0 0 10px -4px var(--icon-bg);
-  
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    inset 0 1px 1px rgba(255,255,255,0.05),
+    0 4px 10px rgba(0,0,0,0.3);
 }
 
 .dark-card:hover .card-icon {
-  transform: scale(1.1) rotate(-3deg);
+  background: var(--card-gradient);
+  border-color: rgba(255, 255, 255, 0.2);
+  opacity: 1;
+  transform: scale(1.04);
+  box-shadow: 
+    0 6px 14px rgba(0, 0, 0, 0.45),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+
+/* --- Flow Connectors --- */
+.card-connector {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.connector-line {
+  background: linear-gradient(
+    var(--connector-dir, to right),
+    var(--theme-color) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  width: 100%;
+  height: 100%;
+  opacity: 0.45;
+  transition: opacity 0.3s ease;
+}
+
+.dark-card:hover .connector-line {
+  opacity: 0.95;
+}
+
+.horizontal .connector-line {
+  --connector-dir: to right;
+  height: 2px;
+}
+
+.vertical .connector-line {
+  --connector-dir: to bottom;
+  width: 2px;
+}
+
+/* Glowing dot that pulses along the line */
+.connector-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 
+    0 0 10px #ffffff,
+    0 0 20px var(--theme-color);
+}
+
+@keyframes flowHorizontal {
+  0% { left: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+
+@keyframes flowVertical {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.horizontal .connector-dot {
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  animation: flowHorizontal 2s infinite linear;
+}
+
+.vertical .connector-dot {
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -50%);
+  animation: flowVertical 2s infinite linear;
+}
+
+/* Desktop: 3 columns */
+@media (min-width: 1025px) {
+  .dark-card[data-id="1"] .card-connector.horizontal,
+  .dark-card[data-id="2"] .card-connector.horizontal,
+  .dark-card[data-id="4"] .card-connector.horizontal,
+  .dark-card[data-id="5"] .card-connector.horizontal {
+    display: flex;
+    top: 50%;
+    right: -48px;
+    width: 48px;
+    height: 2px;
+    transform: translateY(-50%);
+  }
+
+  /* Hide unused connectors on desktop */
+  .dark-card .card-connector.vertical,
+  .dark-card[data-id="3"] .card-connector.horizontal,
+  .dark-card[data-id="6"] .card-connector {
+    display: none;
+  }
+}
+
+/* Mobile/Tablet: 1 column */
+@media (max-width: 1024px) {
+  .dark-card .card-connector.horizontal {
+    display: none;
+  }
+  
+  .dark-card .card-connector.vertical {
+    display: flex;
+    bottom: -40px;
+    left: 50%;
+    width: 2px;
+    height: 40px;
+    transform: translateX(-50%);
+  }
+  
+  .dark-card[data-id="6"] .card-connector {
+    display: none;
+  }
 }
 
 /* --- Typography --- */
 .card-title {
   font-size: clamp(1.15rem, 1.8vw, 1.4rem);
   font-weight: 700;
-  color: #ffffff; /* Pure white for contrast */
+  color: #ffffff;
   margin: 0 0 12px 0;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   line-height: 1.3;
@@ -170,10 +395,15 @@
 
 .card-description {
   font-size: clamp(0.9rem, 1.3vw, 1rem);
-  color: #d1d5db; /* Light grey for premium feel */
+  color: #9ca3af;
   line-height: 1.6;
   margin: 0;
   font-weight: 400;
+  transition: color 0.3s ease;
+}
+
+.dark-card:hover .card-description {
+  color: #e5e7eb;
 }
 
 /* --- How To Use Section --- */
@@ -273,16 +503,17 @@
   backdrop-filter: blur(10px);
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  
-  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* Hover for Step */
 .step:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(196, 181, 253, 0.4); /* Purple tint */
-  transform: translateX(6px);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(129, 140, 248, 0.3); /* Electric Indigo tint */
+  transform: translateY(-2px);
+  box-shadow: 
+    0 15px 35px rgba(0,0,0,0.3),
+    0 0 15px rgba(129, 140, 248, 0.05);
 }
 
 .step h3 {
@@ -295,7 +526,7 @@
 }
 
 .step h3 span {
-  color: #a78bfa; /* Muted lavender */
+  color: #818cf8; /* Electric Indigo */
   margin-right: 4px;
 }
 
@@ -391,8 +622,20 @@
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   .dark-card, .card-icon, .card-border, .step, .arrow {
-    transition: none;
-    transform: none;
-    animation: none;
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+    opacity: 1 !important;
   }
+}
+
+/* Step group container */
+.step-group {
+  display: contents;
+}
+
+/* Static fallback arrow for reduced motion preference */
+.static-arrow {
+  color: #818cf8; /* Electric Indigo */
+  display: block;
 }

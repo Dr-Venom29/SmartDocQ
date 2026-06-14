@@ -3,6 +3,7 @@ import Lottie from "lottie-react";
 import video from "./assets/Guide.mp4";
 import arrow from "./assets/Arrow.json";
 import thumb from "./assets/ThumbNail.png";
+import { useReducedMotion } from "../../../hooks/useReducedMotion";
 
 /* ============================================================================
  * CONSTANTS
@@ -61,6 +62,8 @@ const VideoSection = () => {
           alt=""
           aria-hidden="true"
           draggable="false"
+          width="640"
+          height="360"
         />
         <video
           ref={videoRef}
@@ -73,6 +76,8 @@ const VideoSection = () => {
           poster={thumb}
           preload="metadata"
           aria-label="SmartDocQ demo showing document upload and AI-powered question answering"
+          width="640"
+          height="360"
         >
           <source src={video} type="video/mp4" />
           Your browser does not support the video tag.
@@ -89,6 +94,7 @@ const VideoSection = () => {
 const StepsSection = () => {
   const sectionRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -111,14 +117,35 @@ const StepsSection = () => {
   return (
     <div className="steps-section" ref={sectionRef} role="list" aria-label="Getting started steps">
       {STEPS.map((step, index) => (
-        <div key={step.id} style={{ display: 'contents' }}>
+        <div key={step.id} className="step-group">
           <article className="step" role="listitem">
             <h3><span>Step {step.id}:</span> {step.title}</h3>
             <p>{step.description}</p>
           </article>
           {index < STEPS.length - 1 && (
             <div className="arrow-wrapper" aria-hidden="true">
-              {isVisible && <Lottie animationData={arrow} loop className="arrow" />}
+              {isVisible && (
+                reduceMotion ? (
+                  <svg
+                    className="arrow static-arrow"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <polyline points="19 12 12 19 5 12" />
+                  </svg>
+                ) : (
+                  <Lottie
+                    animationData={arrow}
+                    className="arrow"
+                  />
+                )
+              )}
             </div>
           )}
         </div>

@@ -45,15 +45,11 @@
   position: absolute;
   height: calc(100% - 8px);
   top: 4px;
-  background: linear-gradient(
-    180deg, 
-    rgba(255, 255, 255, 0.08) 0%, 
-    rgba(255, 255, 255, 0.03) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(129, 140, 248, 0.25);
   box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 4px 12px rgba(129, 140, 248, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
   border-radius: 100px;
   transition: left 0.38s cubic-bezier(0.25, 1, 0.5, 1), 
               width 0.38s cubic-bezier(0.25, 1, 0.5, 1);
@@ -71,7 +67,7 @@
   font-size: 14px;
   font-weight: 500;
   letter-spacing: -0.01em;
-  color: rgba(255, 255, 255, 0.4);
+  color: #71717a;
   cursor: pointer;
   border-radius: 100px;
   transition: color 0.25s cubic-bezier(0.25, 1, 0.5, 1);
@@ -91,28 +87,28 @@
 .nav-item svg {
   width: 16px;
   height: 16px;
-  color: rgba(224, 211, 190, 0.5); /* muted champagne gold */
+  color: rgba(129, 140, 248, 0.45); /* muted electric indigo icon */
   transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1),
               color 0.25s cubic-bezier(0.25, 1, 0.5, 1);
   flex-shrink: 0;
 }
 
 .nav-item.active {
-  color: rgba(255, 255, 255, 0.95);
+  color: #ffffff;
   font-weight: 550;
 }
 
 .nav-item.active svg {
-  color: #dfcfb7; /* solid champagne gold */
+  color: #818cf8; /* solid electric indigo icon */
   transform: scale(1.05);
 }
 
 .nav-item:hover:not(.active) {
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .nav-item:hover:not(.active) svg {
-  color: #e2d5c1;
+  color: rgba(129, 140, 248, 0.75);
   transform: translateY(-1px);
 }
 
