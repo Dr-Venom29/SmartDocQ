@@ -11,7 +11,7 @@ SmartDocQ is a comprehensive full-stack web application that enables users to up
 ## Features
 
 ### Core Functionality
-- **Document Upload & Processing**: Support for PDF, DOCX, and TXT files with intelligent text extraction and preprocessing
+- **Document Upload & Processing**: Support for PDF, DOC, DOCX, TXT, CSV, and XLSX files with intelligent text extraction and preprocessing
 - **AI-Powered Chat**: Interactive question-answering system that provides context-aware responses based on uploaded documents
 - **Quiz Generation**: Automatic creation of multiple-choice, true/false, and short-answer questions from document content
 - **Flashcard Creation**: Smart extraction of key concepts and definitions for effective learning and revision
@@ -195,7 +195,7 @@ The application will be running with:
 ## Usage Guide
 
 1. **Register/Login**: Create an account or sign in to access the platform
-2. **Upload Document**: Navigate to the upload page and select your document (PDF, DOCX, or TXT)
+2. **Upload Document**: Navigate to the upload page and select your document (PDF, DOC, DOCX, TXT, CSV, or XLSX)
 3. **Consent Review**: If sensitive data is detected, review and provide consent
 4. **Chat**: Ask questions about your document and receive AI-powered answers
 5. **Generate Quiz**: Create practice questions to test your understanding
@@ -285,7 +285,7 @@ Refer to `DEPLOYMENT_CHECKLIST.md` for detailed deployment instructions.
 - **httpOnly Cookie Authentication**: JWT tokens stored in secure httpOnly cookies to prevent XSS attacks
 - Cookies configured with `SameSite` and `Secure` flags in production
 - Client-side user data validated with `safeParseUser()` to prevent corrupted/malicious data
-- JWT tokens expire after 1 hour with automatic cleanup on logout
+- **Server-Side Session & Cookie Expiry**: JWT tokens and database session documents expire after 1 hour, with automatic session cleanup and invalidation on logout
 - **Sensitive Data Detection**: Advanced pattern-based detection with checksum/heuristic validation (Luhn for credit cards, Verhoeff for Aadhaar) and India-focused phone heuristics to reduce false positives
 - Content moderation filters inappropriate content
 - Shared chat links use high-entropy IDs, expire (~24h), and are rate-limited on the public endpoints
