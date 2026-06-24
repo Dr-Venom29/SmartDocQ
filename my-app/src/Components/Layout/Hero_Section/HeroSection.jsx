@@ -114,8 +114,8 @@ const HeroSection = () => {
               <span className="gradient-text">Supercharged.</span>
             </h1>
             <p className="hero-description">
-              Stop drowning in documents. Upload, ask questions, generate quizzes, and extract insights — all in seconds.
-              <br />Powered by Gemini AI, SmartDocQ turns your static files into an intelligent, searchable knowledge base that actually works for you.
+              Turn information overload into instant understanding.
+              <br />Upload documents, chat with your content, generate quizzes and flashcards, and discover insights faster than ever. SmartDocQ combines Gemini AI with hybrid search to make every document searchable, interactive, and actionable.
             </p>
             <button type="button" className="get-started-btn" onClick={handleGetStarted}>
               Get Started <span className="btn-arrow">→</span>

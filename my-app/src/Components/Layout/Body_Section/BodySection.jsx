@@ -11,7 +11,7 @@ const PROCESS_CARDS = [
   {
     id: 1,
     title: "Drop Your Docs",
-    description: "Upload PDFs, Word docs, plain text, or URLs. SmartDocQ reads the content and prepares it for indexing—no manual conversions needed.",
+    description: "Upload PDFs, Word documents, spreadsheets (.csv/.xlsx), or plain text files. SmartDocQ automatically processes and indexes your content—no manual conversions required.",
     icon: "1",
     themeColor: "#818cf8",
     gradient: "linear-gradient(135deg, #818cf8 0%, #3b82f6 100%)",
@@ -20,7 +20,7 @@ const PROCESS_CARDS = [
   {
     id: 2,
     title: "AI Breaks It Down",
-    description: "Your content is split into manageable chunks and converted to semantic embeddings so the system understands context, not just keywords.",
+    description: "SmartDocQ analyzes, structures, and understands your content so it can retrieve the most relevant information when you need it.",
     icon: "2",
     themeColor: "#3b82f6",
     gradient: "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)",
@@ -28,8 +28,8 @@ const PROCESS_CARDS = [
   },
   {
     id: 3,
-    title: "Index documents into a vector database",
-    description: "Those embeddings are stored in a vector database, making your documents semantically searchable across large collections.",
+    title: "Semantic Indexing",
+    description: "Document embeddings are securely stored and indexed, enabling fast and accurate semantic search across your content.",
     icon: "3",
     themeColor: "#06b6d4",
     gradient: "linear-gradient(135deg, #06b6d4 0%, #10b981 100%)",
@@ -38,7 +38,7 @@ const PROCESS_CARDS = [
   {
     id: 4,
     title: "Smart Retrieval",
-    description: "Ask questions in plain English. SmartDocQ retrieves the most relevant chunks from the vector database using semantic similarity instead of simple keyword matching.",
+    description: "SmartDocQ combines semantic vector search with BM25 keyword retrieval to surface the most relevant passages with exceptional accuracy.",
     icon: "4",
     themeColor: "#10b981",
     gradient: "linear-gradient(135deg, #10b981 0%, #fbbf24 100%)",
@@ -47,7 +47,7 @@ const PROCESS_CARDS = [
   {
     id: 5,
     title: "Gemini-Powered Answers",
-    description: "Retrieved chunks are passed to Google Gemini, which generates clear natural-language answers using only the provided document context.",
+    description: "Relevant document passages are retrieved and passed to Google Gemini, which generates context-aware answers grounded in your content.",
     icon: "5",
     themeColor: "#fbbf24",
     gradient: "linear-gradient(135deg, #fbbf24 0%, #f43f5e 100%)",
@@ -55,8 +55,8 @@ const PROCESS_CARDS = [
   },
   {
     id: 6,
-    title: "Get answers grounded in your documents",
-    description: "See answers together with supporting passages, so responses stay grounded in your own documents.",
+    title: "Verified Citations",
+    description: "Every answer is accompanied by highlighted supporting passages and citations, making responses transparent and easy to verify.",
     icon: "6",
     themeColor: "#ec4899",
     gradient: "linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)",

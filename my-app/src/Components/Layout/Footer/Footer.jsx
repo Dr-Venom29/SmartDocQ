@@ -52,7 +52,7 @@ const Footer = () => {
         <div className="footer-bottom">
           <div className="footer-bottom-content">
             <div className="copyright">
-              <p>&copy; {CURRENT_YEAR} SmartDocQ. Built for fast, context-aware document search.</p>
+              <p>&copy; {CURRENT_YEAR} SmartDocQ.<span className="copyright-extra"> Built for fast, context-aware document search.</span></p>
             </div>
             <nav className="legal-links" aria-label="Legal">
               <Link to="/privacy">Privacy Policy</Link>

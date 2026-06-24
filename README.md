@@ -81,45 +81,67 @@ SmartDocQ uses a Hybrid Retrieval-Augmented Generation (Hybrid RAG) architecture
 ```mermaid
 graph TD
     %% Styles
-    classDef client fill:#1A365D,stroke:#2A4365,stroke-width:2px,color:#fff;
-    classDef middleware fill:#2C7A7B,stroke:#319795,stroke-width:2px,color:#fff;
-    classDef aiservice fill:#2D3748,stroke:#4a5568,stroke-width:2px,color:#fff;
-    classDef database fill:#744210,stroke:#975A16,stroke-width:2px,color:#fff;
-    classDef external fill:#276749,stroke:#2f855a,stroke-width:2px,color:#fff;
+    classDef client fill:#1E293B,stroke:#38BDF8,stroke-width:2px,color:#F8FAFC;
+    classDef business fill:#064E3B,stroke:#34D399,stroke-width:2px,color:#F0FDF4;
+    classDef aiservice fill:#1E1B4B,stroke:#818CF8,stroke-width:2px,color:#EEF2FF;
+    classDef storage fill:#451A03,stroke:#F59E0B,stroke-width:2px,color:#FFFBEB;
+    classDef external fill:#14532D,stroke:#4ADE80,stroke-width:2px,color:#F0FDF4;
 
-    subgraph Client_Layer ["Presentation Layer (Client)"]
-        Frontend["React.js SPA<br/>(TailwindCSS, GSAP, i18next)"]:::client
+    %% Client Layer
+    subgraph Client_Layer ["Presentation Layer"]
+        ReactSPA["React SPA<br/>(i18next / GSAP / Lottie)"]:::client
     end
 
-    subgraph Middleware_Layer ["Business Logic Layer (Node.js API)"]
-        Express["Express.js Server<br/>(Router, Auth Middleware, Input Validation)"]:::middleware
+    %% Business Logic Layer
+    subgraph Middleware_Layer ["Business Logic Layer (Express Server)"]
+        ExpressRouter["Express API Router<br/>(/api/auth, /api/document, /api/chat)"]:::business
+        AuthGuard["Auth & Session Middleware<br/>(JWT httpOnly Cookie Validation)"]:::business
+        ZodValidator["Input Validation<br/>(Zod Schemas)"]:::business
+        MongooseDB["Mongoose ODM<br/>(User, Document, Chat, DocChunk models)"]:::business
     end
 
+    %% AI Processing Layer
     subgraph AI_Layer ["AI Processing Layer (Flask Service)"]
-        Flask["Flask AI Service<br/>(Orchestrator)"]:::aiservice
-        Parser["Document Parser<br/>(PyPDF2, python-docx, openpyxl)"]:::aiservice
-        Retrieval["Hybrid Retrieval Layer<br/>(Vector + BM25 + RRF)"]:::aiservice
+        FlaskApp["Flask API Router<br/>(/api/index-from-atlas, /api/document/ask)"]:::aiservice
+        Parser["Document Parser & Table Extractor<br/>(PyPDF2, python-docx, openpyxl)"]:::aiservice
+        VersionManager["Index Lifecycle watchdog<br/>(Version / Hash validation)"]:::aiservice
+        RetrievalPipeline["Hybrid Retrieval Engine<br/>(Vector Search + BM25 + RRF)"]:::aiservice
+        Sanitizer["Prompt Injection Sanitizer<br/>(sanitize_context)"]:::aiservice
     end
 
-    subgraph Database_Layer ["Storage & Database Layer"]
-        MongoDB["MongoDB Atlas<br/>(User, Document Metadata, Chats)"]:::database
-        ChromaDB["ChromaDB Vector Store<br/>(Document Chunks / Embeddings)"]:::database
-        BM25Cache["In-Memory BM25 Index<br/>(Tokenized Lexical Cache)"]:::database
+    %% Storage Layer
+    subgraph Storage_Layer ["Data & Storage Layer"]
+        MongoDB["MongoDB Atlas (Cloud)<br/>(Accounts, Metadata, Binary Files, Chunks)"]:::storage
+        ChromaDB["ChromaDB (Local Disk)<br/>(Vector embeddings & metadata)"]:::storage
+        BM25Cache["BM25 Index (In-Memory)<br/>(Tokenized Lexical Cache)"]:::storage
     end
 
-    subgraph External_API_Layer ["External APIs"]
-        Gemini["Google Gemini API<br/>(Gemini 2.5 Flash & text-embedding-004)"]:::external
+    %% External
+    subgraph External_APIs ["External API Layer"]
+        GeminiAPI["Google Gemini API<br/>(gemini-2.5-flash & text-embedding-004)"]:::external
     end
 
-    %% Interactions
-    Frontend <-->|"HTTPS / REST API (JWT HTTP-Only)"| Express
-    Express <-->|"Server-to-Server REST (Service Token Auth)"| Flask
-    Express <-->|"Mongoose / Driver"| MongoDB
+    %% Flow/Connections
+    ReactSPA <-->|"HTTPS API Calls<br/>(JWT in httpOnly Cookie)"| AuthGuard
+    AuthGuard --> ZodValidator
+    ZodValidator --> ExpressRouter
     
-    Flask <-->|"Text / Embeddings"| Gemini
-    Flask <-->|"Vector CRUD / Query"| ChromaDB
-    Flask -->|"Local Tokenizer / Cache"| BM25Cache
-    Flask -->|"Preprocesses Uploads"| Parser
+    ExpressRouter <-->|"CRUD Operations"| MongooseDB
+    MongooseDB <-->|"TCP / Driver"| MongoDB
+    
+    ExpressRouter -->|"Server-to-Server POST<br/>(Service Token Auth)"| FlaskApp
+    
+    FlaskApp --> Parser
+    Parser --> VersionManager
+    VersionManager --> RetrievalPipeline
+    RetrievalPipeline --> Sanitizer
+    
+    FlaskApp <-->|"Download Document Binary"| ExpressRouter
+    
+    FlaskApp <-->|"Vector query / write"| ChromaDB
+    RetrievalPipeline <-->|"Lexical query"| BM25Cache
+    
+    FlaskApp <-->|"HTTPS / REST"| GeminiAPI
 ```
 
 ## Architecture

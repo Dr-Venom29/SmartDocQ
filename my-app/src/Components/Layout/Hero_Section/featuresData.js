@@ -5,47 +5,47 @@ import f4 from "./assets/f4.json";
 import f5 from "./assets/f5.json";
 import f6 from "./assets/f6.json";
 import f8 from "./assets/f8.json";
-import f10 from "./assets/f10.json";
+import f7 from "./assets/f7.json";
 
 export const FEATURES = [
   {
     title: "Drop. Upload. Done.",
-    desc: "Drag or upload PDFs, Word (.doc/.docx), or text files with instant processing and live previews. No friction, no delays.",
+    desc: "Drag or upload PDFs, Word documents, spreadsheets (.csv/.xlsx), or text files with instant processing and live previews. No friction, no delays.",
     anim: f1
   },
   {
     title: "Ask Anything. Get Answers.",
-    desc: "Ask questions in plain English and get precise, context-aware answers directly from your documents, instantly.",
+    desc: "Ask questions in plain English and get precise, context-aware answers grounded in your document content, instantly.",
     anim: f2
   },
   {
+    title: "Instant Summaries",
+    desc: "Turn lengthy documents into concise, easy-to-read summaries that capture the most important information in seconds.",
+    anim: f7
+  },
+  {
     title: "Quizzes & Flashcards",
-    desc: "Generate MCQs, True/False, and flashcards with explanations and instant feedback, tailored to your document content.",
+    desc: "Turn any document into interactive quizzes, flashcards, and practice questions with explanations and instant feedback.",
     anim: f3
   },
   {
     title: "Document Chat Memory",
-    desc: "Each document keeps its own chat history for follow-ups and continuous context, so you can revisit past answers anytime.",
+    desc: "Pick up where you left off. Every document retains its own chat history, context, and answers for seamless ongoing conversations.",
     anim: f4
   },
   {
-    title: "You Rate It. It Gets Better.",
-    desc: "Rate responses to improve answer quality and refine results over time, helping the system learn what works best for you.",
+    title: "Your Feedback Matters",
+    desc: "Rate responses and help improve answer quality, relevance, and overall document understanding over time.",
     anim: f5
   },
   {
     title: "Your Digital Workspace",
-    desc: "Manage files, rename documents, export chats, and keep everything structured in one place, with quick access to your entire workspace.",
+    desc: "Keep documents, chats, summaries, quizzes, and exports organized in one place with quick access to everything you've created.",
     anim: f6
   },
   {
     title: "Built-In Safety",
-    desc: "Your data stays protected with secure authentication, sensitive content checks, and smart filtering for links and unsafe content.",
+    desc: "From secure access controls to sensitive data detection and intelligent content safeguards, SmartDocQ is designed with safety at every step.",
     anim: f8
-  },
-  {
-    title: "Effortless Doc Control",
-    desc: "Batch uploads, chat exports, document search, renaming, and pinned files help you manage your growing workspace with ease.",
-    anim: f10
   }
 ];

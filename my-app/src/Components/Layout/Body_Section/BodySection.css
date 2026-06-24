@@ -493,7 +493,7 @@
 .step {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 20px;
   position: relative;
   padding: 24px;
@@ -516,18 +516,34 @@
     0 0 15px rgba(129, 140, 248, 0.05);
 }
 
-.step h3 {
-  font-size: clamp(0.85rem, 1.2vw, 0.95rem);
-  margin: 0 0 6px 0;
+.step-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #ffffff;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(129, 140, 248, 0.3);
 }
 
-.step h3 span {
-  color: #818cf8; /* Electric Indigo */
-  margin-right: 4px;
+.step-content-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.step h3 {
+  font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+  margin: 0;
+  color: #818cf8; /* Restored previous electric indigo title color */
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .step p {

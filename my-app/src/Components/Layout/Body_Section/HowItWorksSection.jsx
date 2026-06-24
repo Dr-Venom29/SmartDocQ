@@ -9,9 +9,24 @@ import { useReducedMotion } from "../../../hooks/useReducedMotion";
  * CONSTANTS
  * ============================================================================ */
 const STEPS = [
-  { id: 1, title: "Upload Your Documents", description: "Drag and drop PDFs, DOCX, or TXT files into SmartDocQ." },
-  { id: 2, title: "Ask in Natural Language", description: "Ask questions in natural, conversational language—no special syntax needed." },
-  { id: 3, title: "See Document-Grounded Answers", description: "SmartDocQ returns answers grounded in your documents, alongside the supporting text." }
+  { 
+    id: 1, 
+    title: "Upload Your Documents", 
+    description: "Drag and drop PDFs, DOCX, TXT, CSV, or XLSX files into SmartDocQ.",
+    gradient: "linear-gradient(135deg, #818cf8 0%, #3b82f6 100%)" 
+  },
+  { 
+    id: 2, 
+    title: "Ask in Natural Language", 
+    description: "Ask questions in natural, conversational language—no special syntax needed.",
+    gradient: "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)" 
+  },
+  { 
+    id: 3, 
+    title: "See Document-Grounded Answers", 
+    description: "SmartDocQ returns answers grounded in your documents, alongside the supporting text.",
+    gradient: "linear-gradient(135deg, #06b6d4 0%, #10b981 100%)" 
+  }
 ];
 
 /* ============================================================================
@@ -88,7 +103,7 @@ const VideoSection = () => {
 };
 
 /* ============================================================================
- * STEPS SECTION COMPONENT
+ * HOW-TO STEPS SECTION
  * How-to-use guide with viewport-triggered Lottie arrows.
  * ============================================================================ */
 const StepsSection = () => {
@@ -119,8 +134,13 @@ const StepsSection = () => {
       {STEPS.map((step, index) => (
         <div key={step.id} className="step-group">
           <article className="step" role="listitem">
-            <h3><span>Step {step.id}:</span> {step.title}</h3>
-            <p>{step.description}</p>
+            <div className="step-badge" style={{ background: step.gradient }}>
+              {step.id}
+            </div>
+            <div className="step-content-text">
+              <h3>{step.title}</h3>
+              <p>{step.description}</p>
+            </div>
           </article>
           {index < STEPS.length - 1 && (
             <div className="arrow-wrapper" aria-hidden="true">
