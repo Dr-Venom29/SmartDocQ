@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
 import "./PrivacyPolicy.css";
 
 export default function PrivacyPolicy() {
   const location = useLocation();
-  const [activeSection, setActiveSection] = useState("section-1");
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -23,56 +22,6 @@ export default function PrivacyPolicy() {
     }
   }, [location]);
 
-  useEffect(() => {
-    const sections = document.querySelectorAll(".privacy-section");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort(
-            (a, b) =>
-              Math.abs(a.boundingClientRect.top) -
-              Math.abs(b.boundingClientRect.top)
-          )[0];
-        if (visible) {
-          setActiveSection(visible.target.id);
-        }
-      },
-      {
-        rootMargin: "-15% 0px -75% 0px",
-        threshold: 0,
-      }
-    );
-
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
-  }, []);
-
-  const sectionsList = [
-    { id: "section-1", num: "1", label: "Introduction" },
-    { id: "section-2", num: "2", label: "Information We Collect" },
-    { id: "section-3", num: "3", label: "How We Use Data" },
-    { id: "section-4", num: "4", label: "Storage & Security" },
-    { id: "section-5", num: "5", label: "Third-Party Services" },
-    { id: "section-6", num: "6", label: "Retention & Deletion" },
-    { id: "section-7", num: "7", label: "Your Rights" },
-    { id: "section-8", num: "8", label: "Children's Privacy" },
-    { id: "section-9", num: "9", label: "Changes to Policy" },
-    { id: "section-10", num: "10", label: "International Transfers" },
-    { id: "section-11", num: "11", label: "AI Disclaimer" },
-    { id: "section-12", num: "12", label: "Cookies & Auth" },
-    { id: "section-13", num: "13", label: "Contact Us" },
-  ];
-
-  const handleSidebarClick = (id) => {
-    const el = document.getElementById(id);
-    if (el) {
-      const y = el.getBoundingClientRect().top + window.pageYOffset - 100;
-      window.scrollTo({ top: y, behavior: "smooth" });
-      setActiveSection(id);
-    }
-  };
-
   return (
     <main className="privacy-page" aria-label="Privacy Policy Page">
       <div className="privacy-container">
@@ -83,28 +32,6 @@ export default function PrivacyPolicy() {
         </header>
 
         <div className="privacy-layout">
-          {/* Sticky Navigation Sidebar */}
-          <aside className="privacy-sidebar-wrapper" aria-label="Table of Contents Sidebar">
-            <nav className="privacy-sidebar" aria-label="Table of Contents">
-              <div className="sidebar-header">Table of Contents</div>
-              <ul className="sidebar-links">
-                {sectionsList.map((sec) => (
-                  <li key={sec.id}>
-                    <button
-                      onClick={() => handleSidebarClick(sec.id)}
-                      className={`sidebar-btn ${activeSection === sec.id ? "active" : ""}`}
-                      aria-label={`Go to Section ${sec.num}: ${sec.label}`}
-                      aria-current={activeSection === sec.id ? "true" : "false"}
-                    >
-                      <span className="section-num">{sec.num}</span>
-                      <span className="section-label">{sec.label}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          </aside>
-
           {/* Policy Document Content */}
           <div className="privacy-content">
             <section id="section-1" className="privacy-section" aria-labelledby="title-section-1">

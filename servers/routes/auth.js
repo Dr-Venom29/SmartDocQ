@@ -18,6 +18,16 @@ const logger = require("../lib/logger");
 const { validate } = require("../middlewares/validate");
 const { sendError, sendSuccess } = require("../middlewares/apiResponse");
 const { signupSchema, loginSchema, updateMeSchema, forgotPasswordSchema, resetPasswordSchema, googleSchema } = require("../validators/authSchemas");
+const rateLimit = require("express-rate-limit");
+
+// Rate limiter for sensitive authentication endpoints to prevent brute-force attacks and spamming
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // Limit each IP to 30 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many authentication requests, please try again after 15 minutes." },
+});
 
 // Cookie configuration for httpOnly auth
 const isProduction = process.env.NODE_ENV === "production";
@@ -119,7 +129,7 @@ async function verifyToken(req, res, next) {
 }
 
 // Signup
-router.post("/signup", validate(signupSchema), async (req, res) => {
+router.post("/signup", authLimiter, validate(signupSchema), async (req, res) => {
   const { name, email, password, googleId } = req.validated.body;
   try {
     const existingUser = await User.findOne({ email });
@@ -146,19 +156,26 @@ router.post("/signup", validate(signupSchema), async (req, res) => {
 });
 
 // Login
-router.post("/login", validate(loginSchema), async (req, res) => {
+router.post("/login", authLimiter, validate(loginSchema), async (req, res) => {
   const { email, password } = req.validated.body;
   try {
     const user = await User.findOne({ email });
-    if (!user) return sendError(res, 400, "User not found");
+    
+    // Generic error message to prevent user enumeration
+    if (!user) return sendError(res, 400, "Invalid email or password");
 
     // Block immediately if deactivated
     if (user.isActive === false) {
       return sendError(res, 403, "Account is deactivated. Contact support.");
     }
 
+    // Google-only users won't have a local password set, prevent bcrypt compare crash
+    if (!user.password) {
+      return sendError(res, 400, "Invalid email or password");
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return sendError(res, 400, "Invalid password");
+    if (!isMatch) return sendError(res, 400, "Invalid email or password");
 
     // ✅ Update lastLogin
     user.lastLogin = new Date();
@@ -200,7 +217,7 @@ router.post("/login", validate(loginSchema), async (req, res) => {
 });
 
 // Forgot password - request reset link
-router.post("/forgot-password", validate(forgotPasswordSchema), async (req, res) => {
+router.post("/forgot-password", authLimiter, validate(forgotPasswordSchema), async (req, res) => {
   try {
     const { email: normalizedEmail } = req.validated.body;
     const user = await User.findOne({ email: normalizedEmail });
@@ -289,7 +306,7 @@ router.post("/forgot-password", validate(forgotPasswordSchema), async (req, res)
 });
 
 // Reset password - consume token and set new password
-router.post("/reset-password", validate(resetPasswordSchema), async (req, res) => {
+router.post("/reset-password", authLimiter, validate(resetPasswordSchema), async (req, res) => {
   try {
     const { token, password } = req.validated.body;
 
@@ -464,8 +481,8 @@ router.put("/me", verifyToken, validate(updateMeSchema), async (req, res) => {
 
     // Update password with 3 changes allowed per 24h, then cooldown until window resets
     if (typeof password === "string" && password.length > 0) {
-      // Prevent setting the same password again
-      const isSame = await bcrypt.compare(password, user.password);
+      // Prevent setting the same password again, safely handle Google OAuth users with null passwords
+      const isSame = user.password ? await bcrypt.compare(password, user.password) : false;
       if (isSame) {
         return sendError(res, 400, "New password must be different from current password");
       }
@@ -590,7 +607,7 @@ router.post("/me/avatar", verifyToken, avatarUpload.single("avatar"), async (req
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Google Sign-In (verify token from frontend)
-router.post('/google', validate(googleSchema), async (req, res) => {
+router.post('/google', authLimiter, validate(googleSchema), async (req, res) => {
   try {
     const { credential } = req.validated.body; // Google JWT token from @react-oauth/google
     

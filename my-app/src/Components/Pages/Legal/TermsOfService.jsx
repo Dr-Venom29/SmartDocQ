@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
 import "./TermsOfService.css";
 
 export default function TermsOfService() {
   const location = useLocation();
-  const [activeSection, setActiveSection] = useState("section-1");
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -23,56 +22,6 @@ export default function TermsOfService() {
     }
   }, [location]);
 
-  useEffect(() => {
-    const sections = document.querySelectorAll(".terms-section");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort(
-            (a, b) =>
-              Math.abs(a.boundingClientRect.top) -
-              Math.abs(b.boundingClientRect.top)
-          )[0];
-        if (visible) {
-          setActiveSection(visible.target.id);
-        }
-      },
-      {
-        rootMargin: "-15% 0px -75% 0px",
-        threshold: 0,
-      }
-    );
-
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
-  }, []);
-
-  const sectionsList = [
-    { id: "section-1", num: "1", label: "Acceptance of Terms" },
-    { id: "section-2", num: "2", label: "Description of Service" },
-    { id: "section-3", num: "3", label: "User Content & License" },
-    { id: "section-4", num: "4", label: "Account Registration" },
-    { id: "section-5", num: "5", label: "Acceptable Use Policy" },
-    { id: "section-6", num: "6", label: "AI-Generated Content" },
-    { id: "section-7", num: "7", label: "Service Availability" },
-    { id: "section-8", num: "8", label: "Data & Termination" },
-    { id: "section-9", num: "9", label: "Intellectual Property" },
-    { id: "section-10", num: "10", label: "Disclaimers & Liability" },
-    { id: "section-11", num: "11", label: "Changes to Terms" },
-    { id: "section-12", num: "12", label: "General Provisions" },
-    { id: "section-13", num: "13", label: "Contact Us" },
-  ];
-
-  const handleSidebarClick = (id) => {
-    const el = document.getElementById(id);
-    if (el) {
-      const y = el.getBoundingClientRect().top + window.pageYOffset - 100;
-      window.scrollTo({ top: y, behavior: "smooth" });
-      setActiveSection(id);
-    }
-  };
-
   return (
     <main className="terms-page" aria-label="Terms of Service Page">
       <div className="terms-container">
@@ -83,28 +32,6 @@ export default function TermsOfService() {
         </header>
 
         <div className="terms-layout">
-          {/* Sticky Navigation Sidebar */}
-          <aside className="terms-sidebar-wrapper" aria-label="Table of Contents Sidebar">
-            <nav className="terms-sidebar" aria-label="Table of Contents">
-              <div className="sidebar-header">Table of Contents</div>
-              <ul className="sidebar-links">
-                {sectionsList.map((sec) => (
-                  <li key={sec.id}>
-                    <button
-                      onClick={() => handleSidebarClick(sec.id)}
-                      className={`sidebar-btn ${activeSection === sec.id ? "active" : ""}`}
-                      aria-label={`Go to Section ${sec.num}: ${sec.label}`}
-                      aria-current={activeSection === sec.id ? "true" : "false"}
-                    >
-                      <span className="section-num">{sec.num}</span>
-                      <span className="section-label">{sec.label}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          </aside>
-
           {/* Policy Document Content */}
           <div className="terms-content">
             <section id="section-1" className="terms-section" aria-labelledby="title-section-1">

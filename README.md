@@ -34,6 +34,8 @@ SmartDocQ uses a Hybrid Retrieval-Augmented Generation (Hybrid RAG) architecture
 - **Server-Side Session Management**: Server-side session management with session invalidation and "logout from all devices" support
 - **Centralized Server-Side Validation**: Auth and admin APIs validate all inputs with Zod schemas before any business logic or database access.
 - **Strict Admin Authorization**: Admin endpoints are protected by middleware that requires an authenticated user with `isAdmin = true`; there are no hardcoded admin credentials or token backdoors.
+- **Authentication Rate Limiting**: Sensitive auth endpoints (login, signup, password resets) are rate-limited per IP to prevent brute-force attacks.
+- **User Enumeration Protection**: Authentication endpoints utilize unified, generic error responses to avoid leaking database user existence.
 
 ### Administrative Tools
 - **User Management**: Comprehensive admin dashboard for user oversight and role assignment
@@ -56,6 +58,7 @@ SmartDocQ uses a Hybrid Retrieval-Augmented Generation (Hybrid RAG) architecture
 - **JWT & bcryptjs**: Authentication and password security
 - **Multer**: File upload handling
 - **CORS**: Cross-origin resource sharing configuration
+- **express-rate-limit**: API rate limiting for public sharing and authentication endpoints
 
 ### AI Service
 - **Flask 3.x**: Python web framework for AI processing

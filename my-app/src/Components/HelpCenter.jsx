@@ -19,12 +19,22 @@ const QA = ({ q, a }) => (
 export default function HelpCenter() {
   const location = useLocation();
 
+  useEffect(() => {
+    if (!location.hash) {
+      window.scrollTo(0, 0);
+    }
+    document.title = "Help Center - SmartDocQ";
+  }, [location]);
+
   // Smoothly scroll to section when hash is present (e.g., /help#faq)
   useEffect(() => {
     if (!location.hash) return;
     const el = document.querySelector(location.hash);
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(() => {
+        const y = el.getBoundingClientRect().top + window.pageYOffset - 160;
+        window.scrollTo({ top: y, behavior: "smooth" });
+      }, 100);
     }
   }, [location]);
 
@@ -33,93 +43,101 @@ export default function HelpCenter() {
       <div className="help-center">
         <header id="top" className="hc-hero">
           <h1>Help Center</h1>
-          <p>Quick answers and guides for SmartDocQ.</p>
+          <p className="hc-subtitle">Quick answers and guides for SmartDocQ.</p>
+          <div className="hc-hero-divider"></div>
         </header>
 
         <nav className="hc-nav" aria-label="Help Center navigation">
           <a href="#getting-started">Getting Started</a>
           <a href="#uploads">Uploads</a>
+          <a href="#security">Security & Consent</a>
           <a href="#qa">Chat & Q/A</a>
-          <a href="#study">Study</a>
+          <a href="#study">Study Tools</a>
           <a href="#account">Account</a>
           <a href="#faq">FAQ</a>
           <a href="#troubleshooting">Troubleshoot</a>
           <a href="#contact">Contact</a>
         </nav>
 
-      <Section id="getting-started" title="Getting Started">
-        <ul>
-          <li>Sign up or sign in using email/password or Google.</li>
-          <li>Use <strong>Upload</strong> to add your documents.</li>
-          <li>Open <strong>Chat</strong> to ask questions about your documents.</li>
-        </ul>
-      </Section>
+        <Section id="getting-started" title="Getting Started">
+          <ul>
+            <li>Sign up or sign in securely using email/password credentials or Google Sign-In.</li>
+            <li>Go to the <strong>Upload</strong> page to add your learning materials or corporate documents.</li>
+            <li>Navigate to your document dashboard and start a <strong>Chat</strong> session to query, summarize, and revise your content.</li>
+          </ul>
+        </Section>
 
-      <Section id="uploads" title="Uploading Documents">
-        <ul>
-          <li>Supported: PDF, DOCX, TXT. Max size may be limited by your plan/environment.</li>
-          <li>Upload status: queued → indexing → done. Large files take longer.</li>
-          <li>Converted files (e.g., Word→PDF) retain links to the original in history.</li>
-        </ul>
-      </Section>
+        <Section id="uploads" title="Uploading & Supported Formats">
+          <ul>
+            <li><strong>Supported Formats:</strong> PDF, DOCX, DOC, TXT, CSV, and XLSX (Excel) files.</li>
+            <li><strong>Spreadsheet Analysis:</strong> Tables inside CSV and Excel documents are automatically parsed and structured for highly accurate cell-level Q&A.</li>
+            <li><strong>Processing Pipeline:</strong> Document status updates from <code>queued</code> → <code>indexing</code> → <code>done</code>. Please allow extra time for heavy spreadsheets or long PDFs.</li>
+          </ul>
+        </Section>
 
-      <Section id="qa" title="Chat & Q/A">
-        <ul>
-          <li>Ask natural questions. Results are grounded in your uploaded content.</li>
-          <li>Use feedback (👍/👎) to improve future responses.</li>
-          <li>Rate limiting may apply—retry in a moment if you hit limits.</li>
-        </ul>
-      </Section>
+        <Section id="security" title="Sensitive Data Scanner & Consent">
+          <p>
+            To protect your privacy and ensure compliance, SmartDocQ scans documents for sensitive personal data (PII) before performing vector indexing.
+          </p>
+          <ul>
+            <li><strong>Scanned Patterns:</strong> Email addresses, Phone numbers (Indian mobile formats), Credit cards (validated using the Luhn checksum), Indian PAN cards, Aadhaar cards (validated via Verhoeff checksums), and SSN-like patterns.</li>
+            <li><strong>Consent Step:</strong> If sensitive information is detected, indexing is deferred. You must confirm your consent on the dashboard to proceed with indexing the document.</li>
+            <li>Your document contents are never used to train global AI models.</li>
+          </ul>
+        </Section>
 
-      <Section id="study" title="Flashcards & Quizzes">
-        <ul>
-          <li>Generate flashcards or quizzes from your documents for quick revision.</li>
-          <li>Track attempts and review explanations to improve understanding.</li>
-        </ul>
-      </Section>
+        <Section id="qa" title="Conversational Chat & Q/A">
+          <ul>
+            <li><strong>Grounded Answers:</strong> SmartDocQ utilizes Retrieval-Augmented Generation (RAG) to ensure responses are grounded in your uploaded documents, minimizing AI hallucinations.</li>
+            <li><strong>Hybrid Retrieval:</strong> We combine Dense Vector Search (semantic meaning matching) with BM25 Keyword Search (lexical keyword matching) and Reciprocal Rank Fusion (RRF) to retrieve the most relevant passages.</li>
+            <li><strong>Gemini AI:</strong> Integrated with Google Gemini models to generate fluid, context-aware answers.</li>
+          </ul>
+        </Section>
 
-      <Section id="account" title="Account & Admin">
-        <ul>
-          <li>Update profile and avatar from your account page.</li>
-          <li>Admins can manage users, documents, and view system stats in the Admin panel.</li>
-          <li>Deactivated users cannot sign in until reactivated by an admin.</li>
-        </ul>
-      </Section>
+        <Section id="study" title="Study Tools: Flashcards & Quizzes">
+          <ul>
+            <li><strong>Interactive Flashcards:</strong> Instantly generate interactive study cards based on the key concepts of your documents.</li>
+            <li><strong>Smart Quizzes:</strong> Auto-generate customized multiple-choice tests from your documents to test your recall, complete with score tracking and rationales.</li>
+          </ul>
+        </Section>
 
-      <Section id="faq" title="FAQ">
-        <QA q="Which file types are supported?" a={<p>PDF, DOCX and TXT are supported. Other formats may be converted to PDF before processing.</p>} />
-        <QA q="Why do I see 'indexing'?" a={<p>We create embeddings and cache your content for fast Q/A. Large files or first-time uploads take longer. You can continue once the status shows <em>done</em>.</p>} />
-        <QA q="Is there a file size limit?" a={<p>Yes, uploads may be limited by your deployment plan. If uploads fail, try splitting the document or compressing it.</p>} />
-        <QA q="How is my data used?" a={<p>Your files are stored and processed to power search, Q/A, flashcards and quizzes. See <a href="#privacy">Privacy Policy</a> for details and data removal.</p>} />
-        <QA q="Can I delete my account and data?" a={<p>Yes. Deleting your account removes your profile and attempts to delete associated documents, chats, and reports. Some cached data may take time to purge.</p>} />
-        <QA q="I don't get good answers" a={<p>Make sure the document finished indexing and your question refers to its content. Try more specific queries or smaller chunks. Use feedback buttons to improve results.</p>} />
-        <QA q="Where are avatars stored?" a={<p>Avatars are hosted on Cloudinary. You can replace or remove them anytime from your account profile.</p>} />
-        <QA q="Google Sign-In doesn't work" a={<p>Make sure pop-ups are allowed and you’re signed into the correct Google account. If the problem persists, try email/password login or contact support.</p>} />
-        <QA q="My account is deactivated" a={<p>Deactivated users can’t sign in. Contact an administrator to reactivate your account.</p>} />
-        <QA q="Admin access denied" a={<p>You must be an admin user. Ask an existing admin to grant you admin rights, or use the configured admin credentials if provided for your deployment.</p>} />
-        <QA q="Quiz/Flashcards missing" a={<p>Ensure the document is indexed and contains enough content. Very short or image-only PDFs may not produce meaningful questions.</p>} />
-        <QA q="Upload stuck or failed" a={<p>Check file type/size, network connection, and try again. If it keeps failing, reach out via the Contact form and include the file name.</p>} />
-      </Section>
+        <Section id="account" title="Account & Admin Roles">
+          <ul>
+            <li><strong>Profile Settings:</strong> Update your name, password, or change your profile avatar (stored securely on Cloudinary).</li>
+            <li><strong>Admin Features:</strong> Admins can access the Admin panel to manage users, delete documents, reset statuses, and monitor system metrics.</li>
+            <li><strong>Deactivation:</strong> If your account is deactivated by an admin, sign-in access is restricted until reactivated.</li>
+          </ul>
+        </Section>
 
-      <Section id="troubleshooting" title="Troubleshooting">
-        <ul>
-          <li>Upload failed: check file size/type and try again.</li>
-          <li>No answers returned: ensure the document finished indexing and your question references its content.</li>
-          <li>Login issues: reset password or sign in with Google if enabled.</li>
-        </ul>
-      </Section>
+        <Section id="faq" title="Frequently Asked Questions (FAQ)">
+          <QA q="Which file formats can I upload?" a={<p>You can upload PDF, DOCX, DOC, TXT, CSV, and XLSX files. Document tables are extracted and prepared for structured retrieval.</p>} />
+          <QA q="Why does my upload say 'require confirmation' or 'sensitive data detected'?" a={<p>Our automatic compliance scanner detected possible sensitive details (like Aadhaar, PAN, emails, phones, or credit cards). You simply need to click "Confirm Consent" on the document list to proceed with indexing.</p>} />
+          <QA q="Why does indexing take longer for Excel/CSV sheets?" a={<p>Spreadsheet files contain structured tables. We extract and parse row/column relationships to enable correct table Q&A, which requires deeper preprocessing than regular plain text.</p>} />
+          <QA q="Are my documents private?" a={<p>Yes, all documents are private to your user account and are not shared. They are processed using secure APIs and are never used to train public AI models.</p>} />
+          <QA q="Can I share my chat sessions?" a={<p>Yes! You can generate a shareable link for any document chat. Anyone with the link can view the conversation history in read-only mode.</p>} />
+          <QA q="How do I delete my documents and data?" a={<p>Deleting a document from your dashboard permanently deletes the source file, its text chunks, its vector embeddings, and all associated chat logs. Deleting your account purges all profile data.</p>} />
+          <QA q="Google Sign-In is failing, what should I do?" a={<p>Ensure that pop-up blockers are disabled in your browser settings and you are logged into your Google account. If issues persist, try signing up via email/password.</p>} />
+        </Section>
 
-      <Section id="contact" title="Contact Support">
-        <p>Use the <strong>Contact</strong> form to report issues or request features. Include screenshots and document names when possible.</p>
-      </Section>
+        <Section id="troubleshooting" title="Troubleshooting">
+          <ul>
+            <li><strong>File Indexing Stuck:</strong> If a file stays in the <code>indexing</code> state, refresh the page. Large files (50+ pages or heavy spreadsheets) may take 1-2 minutes to finish vectorizing.</li>
+            <li><strong>Inaccurate AI Responses:</strong> Ensure your question is related to the document content. Try referencing specific terms or narrowing down your query.</li>
+            <li><strong>Admin Dashboard Access Denied:</strong> Only accounts flagged as admin in the database are allowed to view the admin controls.</li>
+          </ul>
+        </Section>
 
-      <Section id="privacy" title="Privacy Policy">
-        <p>We store metadata and content needed to provide features like search, Q/A, and history. Avatars are hosted on Cloudinary. Remove your account to delete associated data where possible.</p>
-      </Section>
+        <Section id="contact" title="Contact Support">
+          <p>If you run into issues or have feature requests, please submit a message using the Contact form in your dashboard or email support.</p>
+        </Section>
 
-      <Section id="terms" title="Terms of Service">
-        <p>Use SmartDocQ responsibly. Avoid uploading sensitive or illegal content. Service availability and features may change over time.</p>
-      </Section>
+        <Section id="privacy" title="Privacy Policy Quick Reference">
+          <p>For more detailed privacy statements, please read our full <a href="/privacy">Privacy Policy</a> page.</p>
+        </Section>
+
+        <Section id="terms" title="Terms of Service Quick Reference">
+          <p>For usage policies, guidelines, and terms of service, please visit our full <a href="/terms">Terms of Service</a> page.</p>
+        </Section>
       </div>
     </div>
   );

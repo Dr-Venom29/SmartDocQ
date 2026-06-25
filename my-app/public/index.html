@@ -4,39 +4,63 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
-    <title>SmartDocQ – AI Document Intelligence Platform</title>
+    <title>SmartDocQ – AI PDF Chat, Document Summarizer & Research Assistant</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SmartDocQ" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    
+    <!-- DNS Prefetch & Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+    <link rel="preconnect" href="https://www.googletagmanager.com" />
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600;700&family=Inter:wght@400;500;600&family=Outfit:wght@300;500;700;800&display=swap" rel="stylesheet" />
+    
     <link rel="canonical" href="https://smartdocq.vercel.app/" />
-    <link rel="icon" href="web-logo.png" />
-    <link rel="apple-touch-icon" href="/web-logo.png" />
+    
+    <!-- Favicon Sizes -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/web-logo-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/web-logo-512.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/web-logo-192.png" />
+    
     <link rel="manifest" href="/manifest.json" />
     <meta name="robots" content="index, follow" />
     <meta
       name="description"
-      content="SmartDocQ – an AI-powered document intelligence platform that helps users query, summarize, and learn from digital content using Gemini AI and Retrieval-Augmented Generation (RAG)."
+      content="Chat with PDFs, summarize documents, generate quizzes, flashcards, and extract insights using Gemini AI and Retrieval-Augmented Generation (RAG). Supports PDF, Word, Excel, CSV, and TXT files."
     />
     <meta name="msvalidate.01" content="BA35AD74616909ECB50B40204283007F" />
     <meta name="google-site-verification" content="4r0ckJseI91_09QBYEXff08wW5ew-9KsgwvJVnYCqzs" />
 
     <!-- SEO Tags -->
-    <meta name="keywords" content="SmartDocQ, AI Document Intelligence, Gemini AI, RAG, SmartDocQ Platform, SmartDocQ App, Document Summarization, Smart Study AI" />
+    <meta
+      name="keywords"
+      content="AI PDF Chat, Chat with PDF, Document AI, Document Intelligence, RAG, Gemini AI, AI Summarizer, PDF Summarizer, Research Assistant, Study AI, Flashcards, Quiz Generator, Excel AI, Word AI, SmartDocQ"
+    />
     <meta name="author" content="SmartDocQ Team" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@SmartDocQ" />
     <meta name="twitter:creator" content="@SmartDocQ" />
-    <meta name="twitter:title" content="SmartDocQ – AI Document Intelligence Platform" />
-    <meta name="twitter:description" content="Query, summarize, and learn from your documents using Gemini AI and Retrieval-Augmented Generation (RAG)." />
+    <meta name="twitter:title" content="SmartDocQ – AI PDF Chat, Document Summarizer & Research Assistant" />
+    <meta name="twitter:description" content="Chat with PDFs, summarize documents, generate quizzes, flashcards, and extract insights using Gemini AI and Retrieval-Augmented Generation (RAG). Supports PDF, Word, Excel, CSV, and TXT files." />
     <meta name="twitter:image" content="https://smartdocq.vercel.app/og-preview.png" />
+    <meta name="twitter:image:alt" content="SmartDocQ AI Document Intelligence Platform" />
 
     <!-- Open Graph  -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="SmartDocQ" />
     <meta property="og:locale" content="en_US" />
-    <meta property="og:title" content="SmartDocQ – AI Document Intelligence Platform" />
-    <meta property="og:description" content="Query, summarize, and learn from your documents using Gemini AI and RAG." />
+    <meta property="og:title" content="SmartDocQ – AI PDF Chat, Document Summarizer & Research Assistant" />
+    <meta property="og:description" content="Chat with PDFs, summarize documents, generate quizzes, flashcards, and extract insights using Gemini AI and Retrieval-Augmented Generation (RAG). Supports PDF, Word, Excel, CSV, and TXT files." />
     <meta property="og:url" content="https://smartdocq.vercel.app/" />
     <meta property="og:image" content="https://smartdocq.vercel.app/og-preview.png" />
+    <meta property="og:image:secure_url" content="https://smartdocq.vercel.app/og-preview.png" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:alt" content="SmartDocQ AI Document Intelligence platform preview" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -72,7 +96,7 @@
         "url": "https://smartdocq.vercel.app/",
         "applicationCategory": "EducationalApplication",
         "operatingSystem": "Web",
-        "description": "SmartDocQ is an AI-powered document intelligence platform that lets users query, summarize, and learn from documents using Gemini AI and Retrieval-Augmented Generation (RAG).",
+        "description": "Chat with PDFs, summarize documents, generate quizzes, flashcards, and extract insights using Gemini AI and Retrieval-Augmented Generation (RAG). Supports PDF, Word, Excel, CSV, and TXT files.",
         "image": "https://smartdocq.vercel.app/og-preview.png",
         "creator": {
           "@type": "Organization",
@@ -82,9 +106,30 @@
           "@type": "Offer",
           "price": "0",
           "priceCurrency": "INR"
-        }
+        },
+        "featureList": [
+          "AI PDF Chat",
+          "Document Summarization",
+          "AI Question Answering",
+          "Quiz Generator",
+          "Flashcard Generator",
+          "Excel Table Analysis"
+        ],
+        "softwareVersion": "2.0",
+        "browserRequirements": "Requires JavaScript-enabled browser"
       }
     </script>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "SmartDocQ",
+        "url": "https://smartdocq.vercel.app/"
+      }
+    </script>
+
+
 
   </head>
   <body>

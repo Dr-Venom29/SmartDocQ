@@ -19,6 +19,11 @@ Uses httpOnly cookies for JWT storage. Key endpoints:
 - POST `/api/auth/logout` — Clears auth cookie
 - GET `/api/auth/verify` — Validates session from cookie
 
+### Security Controls
+- **Rate Limiting**: Core authentication routes (`login`, `signup`, `forgot-password`, `reset-password`, `google`) are protected by an `express-rate-limit` guard restricting IPs to 30 authentication-related requests per 15 minutes.
+- **Enumeration Protection**: Login failures return generic `"Invalid email or password"` responses to prevent scanning/enumeration of active emails.
+- **Google OAuth Compatibility**: Safe checks prevent server crashes during credential comparison or profile updates for accounts created via Google Sign-In.
+
 ## Validation & Responses
 - Auth and admin routes use centralized Zod schemas via a `validate` middleware to enforce strict shapes for `body`, `query`, and `params`.
 - Successful API responses include `success: true` along with any payload fields.

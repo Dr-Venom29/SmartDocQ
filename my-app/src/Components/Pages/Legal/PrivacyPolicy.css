@@ -3,7 +3,7 @@
   position: relative;
   background: #050508;
   min-height: 100vh;
-  padding: 80px 0 100px 0;
+  padding: 40px 0 80px 0;
   color: #f8fafc;
   overflow: hidden;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -22,7 +22,7 @@
 /* Hero Section */
 .privacy-hero {
   text-align: center;
-  margin-bottom: 60px;
+  margin-bottom: 30px;
 }
 .privacy-badge {
   display: inline-block;
@@ -57,15 +57,14 @@
   height: 4px;
   background: linear-gradient(90deg, #818cf8, #c084fc);
   border-radius: 2px;
-  margin: 24px auto 0 auto;
+  margin: 16px auto 0 auto;
 }
 
 /* Layout Grid */
 .privacy-layout {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 60px;
-  align-items: start;
+  display: block;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 /* Sidebar Navigation Wrapper */
@@ -161,7 +160,7 @@
   background: rgba(15, 15, 25, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.03);
   border-radius: 16px;
-  padding: 32px 36px;
+  padding: 40px 48px;
   backdrop-filter: blur(12px);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
@@ -171,21 +170,21 @@
   box-shadow: 0 10px 40px rgba(129, 140, 248, 0.04);
 }
 .privacy-section h2 {
-  font-size: 1.6rem;
+  font-size: 1.7rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #f1f5f9;
-  margin: 0 0 18px 0;
-  background: linear-gradient(135deg, #ffffff 60%, #94a3b8 100%);
+  color: #f8fafc;
+  margin: 0 0 20px 0;
+  background: linear-gradient(135deg, #ffffff 60%, #a5b4fc 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 .privacy-section h3 {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  color: #e2e8f0;
-  margin: 28px 0 12px 0;
+  color: #f1f5f9;
+  margin: 36px 0 16px 0;
   position: relative;
   padding-left: 14px;
 }
@@ -200,10 +199,10 @@
   border-radius: 2px;
 }
 .privacy-section p {
-  color: #cbd5e1;
-  font-size: 1.02rem;
-  line-height: 1.8;
-  margin: 0 0 16px 0;
+  color: #e2e8f0;
+  font-size: 1.05rem;
+  line-height: 1.85;
+  margin: 0 0 18px 0;
 }
 .privacy-section p:last-child {
   margin-bottom: 0;
@@ -212,15 +211,15 @@
 .privacy-section ul {
   list-style: none;
   padding: 0;
-  margin: 16px 0;
+  margin: 18px 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 .privacy-section li {
-  color: #cbd5e1;
-  font-size: 1.02rem;
-  line-height: 1.6;
+  color: #e2e8f0;
+  font-size: 1.05rem;
+  line-height: 1.75;
   position: relative;
   padding-left: 20px;
 }
@@ -232,7 +231,7 @@
   font-weight: bold;
 }
 .privacy-section strong {
-  color: #f1f5f9;
+  color: #ffffff;
 }
 
 /* Callout Box */

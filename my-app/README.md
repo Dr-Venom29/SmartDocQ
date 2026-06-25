@@ -42,10 +42,16 @@ npm install
 npm start
 ```
 
-## Shared chat security & previews
-
 - Shared chat rendering is sanitized with DOMPurify (prevents XSS in shared views).
 - Shared chat API calls are centralized in `src/Services/ServiceChat.js`.
+
+## Authentication Security
+
+- **httpOnly Cookie Authentication**: Authentication tokens are stored in secure httpOnly cookies rather than browser storage.
+- **Server-Side Session Validation**: Every authenticated request is validated against an active server-side session.
+- **Secure Client State Handling**: User data restored from localStorage is validated with `safeParseUser()`, while authentication credentials are never stored client-side.
+- **Authentication Rate Limiting**: Login, signup, and password reset endpoints are rate-limited to mitigate brute-force attacks.
+- **User Enumeration Protection**: Authentication endpoints return generic error messages to prevent account enumeration.
 
 ### Open Graph (WhatsApp/FB) preview image
 

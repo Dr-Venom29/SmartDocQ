@@ -1,19 +1,98 @@
 # SmartDocQ
 
-SmartDocQ is an AI-powered document intelligence platform that allows users to upload documents and query them using Gemini AI and Retrieval-Augmented Generation (RAG).
+SmartDocQ is an AI-powered document intelligence platform that enables users to upload, analyze, and interact with documents using Gemini AI and Retrieval-Augmented Generation (RAG).
+
+## Overview
+
+SmartDocQ helps users extract insights from documents through conversational AI. The platform supports document understanding, semantic search, summarization, study tools, and intelligent question answering across multiple file formats.
+
+## Capabilities
+
+- Upload and analyze documents
+- Answer questions using uploaded documents as context
+- Generate concise AI summaries
+- Produce flashcards for studying
+- Generate quizzes from document content
+- Search documents using semantic retrieval
+- Extract structured information from tables
 
 ## Features
-- Document question answering
-- PDF and DOCX support
-- AI-generated summaries
-- Flashcards and quizzes
-- Shareable chat sessions
 
-## Product URL
+- AI-powered PDF Chat
+- Document Question Answering
+- AI Document Summarization
+- Research Paper Analysis
+- Flashcard Generation
+- Quiz Generation
+- Selection Summarization
+- Table Extraction
+- Semantic Search with RAG
+- Hybrid Retrieval (Vector Search + BM25)
+- Gemini AI Integration
+- Shareable AI Chat Sessions
+
+## Supported Formats
+
+- PDF
+- DOCX
+- TXT
+- CSV
+- XLSX
+
+## Use Cases
+
+- Research paper analysis
+- Student study assistant
+- Enterprise document search
+- Technical documentation Q&A
+- Knowledge management
+- Report summarization
+
+## Audience
+
+- Students
+- Researchers
+- Educators
+- Professionals
+- Technical Teams
+
+## AI Models
+
+- Google Gemini
+
+## AI Architecture
+
+- Retrieval-Augmented Generation (RAG)
+- Hybrid Retrieval
+- Dense Vector Search
+- BM25 Keyword Search
+- Reciprocal Rank Fusion (RRF)
+
+## Technology
+
+- React
+- Flask
+- ChromaDB Vector Database
+- Gemini AI
+- Retrieval-Augmented Generation (RAG)
+- Semantic Vector Embeddings
+- BM25 Retrieval
+- Reciprocal Rank Fusion (RRF)
+
+## Product
+
+Homepage:
 https://smartdocq.vercel.app/
 
-## Documentation
+Help:
 https://smartdocq.vercel.app/help
 
+Privacy Policy:
+https://smartdocq.vercel.app/privacy
+
+Terms:
+https://smartdocq.vercel.app/terms
+
 ## Company
-SmartDocQ
+
+Name: SmartDocQ
