@@ -4,18 +4,15 @@ import io
 import os
 import sys
 import types
-
+import threading
 import pytest
-
 
 # Ensure backend/config.py can import in test environments.
 os.environ.setdefault("SERVICE_TOKEN", "test")
 
-
 # ---------------------------------------------------------------------------
 # Stub external deps BEFORE importing indexer / retrieval_service
 # ---------------------------------------------------------------------------
-
 
 class _ImportCollectionStub:
     def upsert(self, *args, **kwargs):
@@ -40,23 +37,23 @@ fake_embedding_service = types.ModuleType("services.embedding_service")
 fake_embedding_service.generate_embeddings = lambda *_a, **_k: [0.0]
 sys.modules["services.embedding_service"] = fake_embedding_service
 
+
 # bm25_service is imported by retrieval_service; stub the search function only
 # so the module loads without rank_bm25 needing a live corpus.
-import importlib
 try:
-    import services.bm25_service as _bm25_mod  # real module if rank_bm25 installed
+    import services.bm25_service as _bm25_mod
 except Exception:
-    _bm25_mod = types.ModuleType("services.bm25_service")  # type: ignore
-    _bm25_mod.bm25_search = lambda *_a, **_k: []  # type: ignore
+    _bm25_mod = types.ModuleType("services.bm25_service")
+    _bm25_mod.bm25_search = lambda *_a, **_k: []
     sys.modules["services.bm25_service"] = _bm25_mod
 
 
-from indexing import indexer  # noqa: E402
-from services import retrieval_service  # noqa: E402
-from services import bm25_service  # noqa: E402
+from indexing import indexer
+from services import retrieval_service
+from services import bm25_service
 
-from utils.extraction import extract_text_from_docx_bytes  # noqa: E402
-from utils.table_extraction import (  # noqa: E402
+from utils.extraction import extract_text_from_docx_bytes
+from utils.table_extraction import (
     extract_tables_from_csv_bytes,
     extract_tables_from_docx_bytes,
     extract_tables_from_xlsx_bytes,
@@ -65,11 +62,9 @@ from utils.table_extraction import (  # noqa: E402
 )
 
 
-# =========================
-# Retrieval keyword extraction
-# (tokenize() lives in bm25_service after the hybrid-search refactor)
-# =========================
-
+# ============================================================================
+# 1. Retrieval keyword extraction Tests (tokenize)
+# ============================================================================
 
 def _kw(text: str) -> set:
     """Wrapper around bm25_service.tokenize that returns a set, matching
@@ -119,10 +114,9 @@ def test_keywords_filters_noise_and_stopwords():
     assert terms == {"1"}
 
 
-# =========================
-# Table extraction
-# =========================
-
+# ============================================================================
+# 2. Table extraction Tests
+# ============================================================================
 
 def test_markdown_generation_basic():
     md = render_markdown_table(
@@ -231,7 +225,6 @@ def test_docx_paragraph_extraction_normalizes_whitespace():
     text = extract_text_from_docx_bytes(bio.getvalue())
     assert "Hello world" in text
     assert "internal whitespace" in text
-    # Ensure empty paragraphs do not introduce empty lines.
     assert "\n\n\n" not in text
 
 
@@ -256,8 +249,6 @@ def test_large_csv_extraction_completes_reasonably():
 
     assert len(tables) == 1
     assert len(tables[0]["rows"]) == 10000
-
-    # Loose sanity threshold only (avoid brittle microbenchmarks).
     assert elapsed < 15
 
 
@@ -266,14 +257,12 @@ def test_corrupted_xlsx_returns_empty_tables():
         b"corrupted content",
         source_key="bad_doc",
     )
-
     assert tables == []
 
 
-# =========================
-# Hybrid indexing (text + tables)
-# =========================
-
+# ============================================================================
+# 3. Hybrid indexing (text + tables)
+# ============================================================================
 
 class FakeIndexerCollection:
     def __init__(self):
@@ -333,7 +322,7 @@ def test_csv_indexes_table_chunks_with_metadata(fake_indexer_collection):
 
     metas = [v["metadata"] for v in fake_indexer_collection.store.values()]
     table_metas = [m for m in metas if m.get("is_table")]
-    assert table_metas, "expected at least one table chunk"
+    assert table_metas
 
     m0 = table_metas[0]
     assert m0.get("table_id")
@@ -342,7 +331,6 @@ def test_csv_indexes_table_chunks_with_metadata(fake_indexer_collection):
     assert m0.get("row_start") == 0
     assert m0.get("row_end") == 2
 
-    # Flattened semantic storage is primary; markdown is preserved in metadata.
     any_table_id = next(
         _id for _id, v in fake_indexer_collection.store.items() if v["metadata"].get("is_table")
     )
@@ -380,23 +368,14 @@ def test_table_deduplication_skips_duplicate_docx_tables(fake_indexer_collection
     )
 
     assert ok is True
-    # Two identical tables should dedup to one indexed table chunk.
     table_chunks = [v for v in fake_indexer_collection.store.values() if v["metadata"].get("is_table")]
     assert len(table_chunks) == 1
 
 
 def test_chunk_id_uniqueness_uses_next_chunk_index(fake_indexer_collection, monkeypatch):
-    """Regression test for chunk-id collisions when added != next_chunk_index.
-
-    We simulate a divergence by monkeypatching _flush_batch to return 0 while
-    still writing vectors to the collection.
-    """
-
-    # Force two text chunks
     monkeypatch.setattr(indexer, "split_sheet_sections", lambda _t: [(None, "body")])
     monkeypatch.setattr(indexer, "chunk_text", lambda _b: ["A" * 400, "B" * 400])
 
-    # Fake a flush_batch that writes but reports 0 added
     real_upsert = fake_indexer_collection.upsert
 
     def fake_flush_batch(collection_ref, batch_embeddings, batch_documents, batch_metadatas, batch_ids):
@@ -405,7 +384,6 @@ def test_chunk_id_uniqueness_uses_next_chunk_index(fake_indexer_collection, monk
 
     monkeypatch.setattr(indexer, "_flush_batch", fake_flush_batch)
 
-    # Provide one table via extractor
     monkeypatch.setattr(
         indexer,
         "extract_tables_for_file",
@@ -428,12 +406,10 @@ def test_chunk_id_uniqueness_uses_next_chunk_index(fake_indexer_collection, monk
     )
 
     assert ok is True
-    # We should have 3 unique ids: doc_collision_0, _1 (text) and _2 (table)
     assert set(fake_indexer_collection.store.keys()) == {"doc_collision_0", "doc_collision_1", "doc_collision_2"}
 
 
 def test_deterministic_chunk_numbering_consumes_indices_on_embedding_fail(fake_indexer_collection, monkeypatch):
-    # Force two text chunks in a deterministic order.
     monkeypatch.setattr(indexer, "split_sheet_sections", lambda _t: [(None, "body")])
     monkeypatch.setattr(indexer, "chunk_text", lambda _b: ["A" * 400, "B" * 400])
 
@@ -441,7 +417,6 @@ def test_deterministic_chunk_numbering_consumes_indices_on_embedding_fail(fake_i
 
     def flaky_embeddings(_t):
         calls["n"] += 1
-        # First chunk fails, second succeeds.
         return None if calls["n"] == 1 else [0.0, 0.1, 0.2]
 
     monkeypatch.setattr(indexer, "generate_embeddings", flaky_embeddings)
@@ -450,14 +425,12 @@ def test_deterministic_chunk_numbering_consumes_indices_on_embedding_fail(fake_i
     assert ok is True
     assert added == 1
 
-    # Chunk 0 was reserved but not stored; second chunk must be stored as chunk 1.
     assert set(fake_indexer_collection.store.keys()) == {"doc_det_1"}
     meta = fake_indexer_collection.store["doc_det_1"]["metadata"]
     assert meta.get("chunk") == 1
 
 
 def test_markdown_truncation_in_metadata(fake_indexer_collection, monkeypatch):
-    # Force markdown to exceed the metadata cap while keeping the table tiny.
     monkeypatch.setattr(
         indexer,
         "render_markdown_table",
@@ -522,10 +495,9 @@ def test_docx_table_only_is_indexed(fake_indexer_collection):
     assert any(m.get("is_table") for m in metas)
 
 
-# =========================
-# Retrieval ranking
-# =========================
-
+# ============================================================================
+# 4. Retrieval service query and ranking Tests
+# ============================================================================
 
 class FakeRetrievalCollection:
     def __init__(self, docs, dists, metas):
@@ -551,7 +523,7 @@ def test_table_question_boosts_table_chunks(monkeypatch):
     non_table_doc = ("This document explains grading policies and rules." * 2).strip()
 
     docs = [non_table_doc, table_doc]
-    dists = [0.20, 0.25]  # non-table slightly closer
+    dists = [0.20, 0.25]
     metas = [
         {"is_table": False},
         {"is_table": True, "table_id": "t1", "table_index": 0},
@@ -578,7 +550,7 @@ def test_generic_question_does_not_unfairly_boost_tables(monkeypatch):
     non_table_doc = ("This document explains grading policies and rules." * 2).strip()
 
     docs = [non_table_doc, table_doc]
-    dists = [0.10, 0.20]  # non-table is closer, and query is generic.
+    dists = [0.10, 0.20]
     metas = [
         {"is_table": False},
         {"is_table": True, "table_id": "t1", "table_index": 0},
@@ -597,5 +569,263 @@ def test_generic_question_does_not_unfairly_boost_tables(monkeypatch):
 
     assert err is None
     assert ctx is not None
-    # With no table intent, ranking should rely on similarity/overlap, not table boosts.
     assert ctx.strip().startswith("This document explains grading policies")
+
+
+# ============================================================================
+# 5. Metadata Cache Tests (TTL, Cache Miss, Invalidation, Concurrency)
+# ============================================================================
+
+@pytest.fixture(autouse=True)
+def _reset_meta_cache(monkeypatch):
+    from services import retrieval_service
+    with retrieval_service._doc_meta_cache_lock:
+        retrieval_service._doc_meta_cache.clear()
+
+    monkeypatch.setattr(
+        retrieval_service,
+        "_DOC_META_CACHE_TTL",
+        300,
+        raising=False,
+    )
+    yield
+    with retrieval_service._doc_meta_cache_lock:
+        retrieval_service._doc_meta_cache.clear()
+
+
+def test_cache_miss_triggers_underlying_fetch(monkeypatch):
+    from services import retrieval_service
+
+    calls = {"n": 0}
+
+    def fake_fetch(doc_id):
+        calls["n"] += 1
+        return {"contentHash": "h1"}
+
+    monkeypatch.setattr(
+        retrieval_service,
+        "fetch_doc_meta_from_node",
+        fake_fetch,
+    )
+
+    meta = retrieval_service.fetch_doc_meta_cached("doc1")
+
+    assert meta.get("contentHash") == "h1"
+    assert calls["n"] == 1
+
+
+def test_cache_hit_avoids_repeated_fetch(monkeypatch):
+    from services import retrieval_service
+
+    calls = {"n": 0}
+
+    def fake_fetch(doc_id):
+        calls["n"] += 1
+        return {"contentHash": "h1"}
+
+    monkeypatch.setattr(
+        retrieval_service,
+        "fetch_doc_meta_from_node",
+        fake_fetch,
+    )
+
+    meta1 = retrieval_service.fetch_doc_meta_cached("doc1")
+    meta2 = retrieval_service.fetch_doc_meta_cached("doc1")
+
+    assert meta1.get("contentHash") == "h1"
+    assert meta2.get("contentHash") == "h1"
+    assert calls["n"] == 1
+
+
+def test_expired_entry_is_refreshed(monkeypatch):
+    from services import retrieval_service
+
+    now = {"t": 1000.0}
+
+    def fake_time():
+        return now["t"]
+
+    monkeypatch.setattr(retrieval_service.time, "time", fake_time)
+
+    calls = {"n": 0}
+
+    def fake_fetch(doc_id):
+        calls["n"] += 1
+        return {"contentHash": f"h{calls['n']}"}
+
+    monkeypatch.setattr(
+        retrieval_service,
+        "fetch_doc_meta_from_node",
+        fake_fetch,
+    )
+
+    meta1 = retrieval_service.fetch_doc_meta_cached("doc1")
+    assert meta1.get("contentHash") == "h1"
+    assert calls["n"] == 1
+
+    now["t"] += retrieval_service._DOC_META_CACHE_TTL + 1
+
+    meta2 = retrieval_service.fetch_doc_meta_cached("doc1")
+    assert meta2.get("contentHash") == "h2"
+    assert calls["n"] == 2
+
+
+def test_invalidate_cached_doc_meta_removes_entry(monkeypatch):
+    from services import retrieval_service
+
+    calls = {"n": 0}
+
+    def fake_fetch(doc_id):
+        calls["n"] += 1
+        return {"contentHash": f"h{calls['n']}"}
+
+    monkeypatch.setattr(
+        retrieval_service,
+        "fetch_doc_meta_from_node",
+        fake_fetch,
+    )
+
+    assert retrieval_service.fetch_doc_meta_cached("doc1")["contentHash"] == "h1"
+
+    retrieval_service.invalidate_cached_doc_meta("doc1")
+
+    assert retrieval_service.fetch_doc_meta_cached("doc1")["contentHash"] == "h2"
+    assert calls["n"] == 2
+
+
+def test_blank_doc_id_is_handled_safely(monkeypatch):
+    from services import retrieval_service
+
+    calls = {"n": 0}
+
+    def fake_fetch(_doc_id):
+        calls["n"] += 1
+        return {"contentHash": "h"}
+
+    monkeypatch.setattr(
+        retrieval_service,
+        "fetch_doc_meta_from_node",
+        fake_fetch,
+    )
+
+    assert retrieval_service.get_cached_doc_meta("") is None
+    assert retrieval_service.fetch_doc_meta_cached("") == {"contentHash": "h"}
+    assert calls["n"] == 1
+
+
+def test_failed_fetch_is_cached_if_it_returns_empty_dict(monkeypatch):
+    from services import retrieval_service
+
+    calls = {"n": 0}
+
+    def fake_fetch(doc_id):
+        calls["n"] += 1
+        return {}
+
+    monkeypatch.setattr(
+        retrieval_service,
+        "fetch_doc_meta_from_node",
+        fake_fetch,
+    )
+
+    assert retrieval_service.fetch_doc_meta_cached("doc1") == {}
+    assert retrieval_service.fetch_doc_meta_cached("doc1") == {}
+    assert calls["n"] == 1
+
+
+def test_concurrent_cache_miss_is_thread_safe(monkeypatch):
+    from services import retrieval_service
+
+    calls = {"n": 0}
+    start_barrier = threading.Barrier(2)
+
+    def fake_fetch(doc_id):
+        start_barrier.wait()
+        calls["n"] += 1
+        return {"contentHash": "h1"}
+
+    monkeypatch.setattr(
+        retrieval_service,
+        "fetch_doc_meta_from_node",
+        fake_fetch,
+    )
+
+    results = []
+
+    def worker():
+        results.append(retrieval_service.fetch_doc_meta_cached("doc1"))
+
+    t1 = threading.Thread(target=worker)
+    t2 = threading.Thread(target=worker)
+
+    t1.start()
+    t2.start()
+    t1.join(timeout=5)
+    t2.join(timeout=5)
+
+    assert not t1.is_alive()
+    assert not t2.is_alive()
+
+    assert len(results) == 2
+    assert all(result.get("contentHash") == "h1" for result in results)
+
+    assert 1 <= calls["n"] <= 2
+
+    cached = retrieval_service.get_cached_doc_meta("doc1")
+    assert cached is not None
+    assert cached.get("contentHash") == "h1"
+
+
+# ============================================================================
+# 6. End-to-End PDF Indexing and Retrieval Integration Test
+# ============================================================================
+
+def test_end_to_end_pdf_indexing_and_retrieval(monkeypatch):
+    # Create a shared fake collection simulating a real vector database
+    fake_db = FakeIndexerCollection()
+    
+    def fake_query(query_embeddings, n_results, where=None, **kwargs):
+        doc_id = where.get("doc_id") if where else None
+        docs, dists, metas = [], [], []
+        for item in fake_db.store.values():
+            if not doc_id or item["metadata"].get("doc_id") == doc_id:
+                docs.append(item["document"])
+                dists.append(0.1)  # Simulated close distance
+                metas.append(item["metadata"])
+        return {
+            "documents": [docs],
+            "distances": [dists],
+            "metadatas": [metas]
+        }
+        
+    fake_db.query = fake_query
+    
+    monkeypatch.setattr(indexer, "collection", fake_db)
+    monkeypatch.setattr(retrieval_service, "collection", fake_db)
+    
+    # Mock PyMuPDF4LLM extraction response
+    mock_pages = [
+        {"page": 1, "text": "# Section A\nThis is page 1 content."},
+        {"page": 2, "text": "# Section B\nThis is page 2 content explaining optimizer."}
+    ]
+    monkeypatch.setattr(indexer, "_extract_pdf_pages", lambda _d: mock_pages)
+    
+    # Index the simulated PDF bytes
+    ok, added = indexer.index_bytes(
+        doc_id="end_to_end_doc",
+        filename="manual.pdf",
+        mimetype="application/pdf",
+        data=b"pdf_bytes"
+    )
+    
+    assert ok is True
+    assert added >= 2
+    
+    # Retrieve context for a query targeting page 2 content
+    ctx, err = retrieval_service.retrieve_context("optimizer", "end_to_end_doc")
+    
+    assert err is None
+    assert ctx is not None
+    # Ensure correct contextual retrieval and page contents return
+    assert "page 2 content" in ctx
+

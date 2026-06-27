@@ -1,0 +1,627 @@
+import logging
+import re
+import io
+from datetime import datetime, timezone
+from db.chroma import collection
+from config import (
+    EMBED_MODEL,
+    INDEX_PIPELINE_VERSION,
+    INDEX_BATCH_SIZE,
+    CHUNKING_VERSION,
+)
+from utils.extraction import (
+    extract_text_for_mimetype,
+    extract_text_from_pdf_bytes,
+    extract_text_from_docx_bytes,
+    extract_text_from_txt_bytes,
+)
+from utils.table_extraction import extract_tables_for_file, render_markdown_table, flatten_table_for_embedding
+from services.embedding_service import generate_embeddings
+from indexing.chunking import (
+    chunk_text,
+    split_sheet_sections,
+    remove_page_artifacts_and_repeated_headers,
+    normalize_markdown_page,
+    parse_markdown_blocks,
+    extract_sections_and_headings,
+    pack_blocks_into_chunks,
+    estimate_token_count,
+)
+
+logger = logging.getLogger(__name__)
+
+# ===== THREE-TIER PDF EXTRACTION CHAIN =====
+
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    fitz = None
+
+try:
+    import pymupdf4llm
+except ImportError:
+    pymupdf4llm = None
+
+def _get_indexer_attr(name, default):
+    """Dynamic lookup helper to resolve unit test monkeypatches on indexing.indexer module."""
+    try:
+        from indexing import indexer
+        return getattr(indexer, name, default)
+    except ImportError:
+        return default
+
+def _extract_pdf_pages(data: bytes) -> list[dict]:
+    """Three-tier extraction fallback chain for PDF documents:
+
+    1. PyMuPDF4LLM -> Converts PDF to structured Markdown page-by-page.
+    2. PyMuPDF classic -> Fallback page-by-page text extraction.
+    3. PyPDF2 -> Final backup text extraction.
+    """
+    fitz_lib = _get_indexer_attr("fitz", fitz)
+    pymupdf4llm_lib = _get_indexer_attr("pymupdf4llm", pymupdf4llm)
+
+    # Tier 1: PyMuPDF4LLM
+    if fitz_lib is not None and pymupdf4llm_lib is not None:
+        try:
+            doc = fitz_lib.open(stream=data, filetype="pdf")
+            pages = pymupdf4llm_lib.to_markdown(doc, page_chunks=True)
+            if pages:
+                return [{"page": chunk["metadata"].get("page_number", chunk["metadata"].get("page", 1)), "text": chunk["text"]} for chunk in pages]
+        except Exception as e:
+            logger.warning("Tier 1 PyMuPDF4LLM extraction failed: %s. Falling back to Tier 2.", e)
+
+    # Tier 2: PyMuPDF Classic
+    if fitz_lib is not None:
+        try:
+            doc = fitz_lib.open(stream=data, filetype="pdf")
+            pages = []
+            for idx, page in enumerate(doc):
+                pages.append({
+                    "page": idx + 1,
+                    "text": page.get_text()
+                })
+            return pages
+        except Exception as e:
+            logger.warning("Tier 2 PyMuPDF classic extraction failed: %s. Falling back to Tier 3.", e)
+
+    # Tier 3: PyPDF2 fallback
+    try:
+        import PyPDF2
+        reader = PyPDF2.PdfReader(io.BytesIO(data))
+        pages = []
+        for idx, page in enumerate(reader.pages):
+            pages.append({
+                "page": idx + 1,
+                "text": page.extract_text() or ""
+            })
+        return pages
+    except Exception as e:
+        logger.error("Tier 3 PyPDF2 extraction failed: %s.", e)
+        return []
+
+
+# ===== CORE PIPELINE LOGIC & BATCHING =====
+
+MIN_CHUNK_LEN = 40
+MIN_WORDS = 4
+MAX_MD_META_LEN = 800
+_MD_TRUNC_SUFFIX = "...[truncated]"
+
+_JUNK_PATTERN = re.compile(r"\b(fig\.?|figure|table|page)\b")
+IDENTIFIER_RE = re.compile(
+    r"\b(team\s*\d+|[0-9]{2}[A-Z]{2}[0-9A-Z]+)\b",
+    re.IGNORECASE,
+)
+
+def _truncate_markdown(md: str, *, max_len: int = MAX_MD_META_LEN) -> str:
+    limit = _get_indexer_attr("MAX_MD_META_LEN", max_len)
+    try:
+        md = "" if md is None else str(md)
+    except Exception:
+        return ""
+
+    md = md.strip()
+    if not md:
+        return ""
+    if limit <= 0:
+        return _MD_TRUNC_SUFFIX
+    if len(md) <= limit:
+        return md
+
+    suffix = _MD_TRUNC_SUFFIX
+    keep = max(0, int(limit) - len(suffix))
+    return md[:keep].rstrip() + suffix
+
+def _build_contextual_header(
+    filename: str,
+    section: str | None = None,
+    subsection: str | None = None,
+    start_page: int | None = None,
+    end_page: int | None = None,
+    sheet_name: str | None = None,
+    source_type: str | None = None,
+) -> str:
+    """Build a contextual header prepended ONLY to embedding input."""
+    filename = (filename or "").strip() or "document"
+    parts = [f"Document: {filename}"]
+    
+    if sheet_name:
+        sheet_name = (sheet_name or "").strip()
+        if sheet_name:
+            parts.append(f"Sheet: {sheet_name}")
+            
+    if section:
+        parts.append(f"Section: {section}")
+        
+    if subsection:
+        parts.append(f"Subsection: {subsection}")
+        
+    if source_type == "pdf" and start_page is not None and end_page is not None:
+        if start_page == end_page:
+            parts.append(f"Page: {start_page}")
+        else:
+            parts.append(f"Pages: {start_page}-{end_page}")
+            
+    return "\n".join(parts)
+
+def build_chunk_metadata(
+    doc_id: str,
+    reserved_chunk_index: int,
+    filename: str,
+    source_type: str,
+    section: str | None = None,
+    subsection: str | None = None,
+    heading_level: int | None = None,
+    start_page: int = 1,
+    end_page: int = 1,
+    section_index: int = 0,
+    chunk_index: int = 0,
+    chunk_type: str = "paragraph",
+    paragraph_count: int = 1,
+    token_count: int = 0,
+    chunk_header: str = "",
+    file_hash: str | None = None,
+    sheet: str | None = None,
+    is_table: bool = False,
+    table_id: str | None = None,
+    table_index: int | None = None,
+    row_start: int | None = None,
+    row_end: int | None = None,
+    markdown: str | None = None,
+) -> dict:
+    """Consolidated helper to build consistent vector metadata dicts."""
+    cv = _get_indexer_attr("CHUNKING_VERSION", CHUNKING_VERSION)
+    ipv = _get_indexer_attr("INDEX_PIPELINE_VERSION", INDEX_PIPELINE_VERSION)
+
+    meta = {
+        "doc_id": doc_id,
+        "chunk": reserved_chunk_index,
+        "filename": filename,
+        "source_type": source_type,
+        "section": section or "",
+        "subsection": subsection or "",
+        "heading_level": heading_level if heading_level is not None else -1,
+        "start_page": start_page,
+        "end_page": end_page,
+        "section_index": section_index,
+        "chunk_index": chunk_index,
+        "embedding_model": EMBED_MODEL,
+        "pipeline_version": ipv,
+        "chunking_version": cv,
+        "chunk_type": chunk_type,
+        "paragraph_count": paragraph_count,
+        "token_count": token_count,
+        "indexed_at": datetime.now(timezone.utc).isoformat(),
+        "chunk_header": chunk_header,
+    }
+    if file_hash:
+        meta["file_hash"] = file_hash
+    if sheet:
+        meta["sheet"] = sheet
+    if is_table:
+        meta["is_table"] = True
+        if table_id is not None:
+            meta["table_id"] = table_id
+        if table_index is not None:
+            meta["table_index"] = table_index
+        if row_start is not None:
+            meta["row_start"] = row_start
+        if row_end is not None:
+            meta["row_end"] = row_end
+        if markdown is not None:
+            meta["markdown"] = markdown
+    return meta
+
+def _flush_batch(collection_ref, batch_embeddings, batch_documents, batch_metadatas, batch_ids):
+    if not batch_ids:
+        return 0
+    collection_ref.upsert(
+        embeddings=batch_embeddings,
+        documents=batch_documents,
+        metadatas=batch_metadatas,
+        ids=batch_ids,
+    )
+    return len(batch_ids)
+
+def _is_noise(c: str) -> bool:
+    if not c or not c.strip():
+        return True
+
+    c = c.strip()
+    words = c.split()
+
+    if IDENTIFIER_RE.search(c):
+        return False
+
+    if len(c) < MIN_CHUNK_LEN and len(words) < MIN_WORDS:
+        return True
+
+    if len(words) == 1:
+        token = words[0]
+        alpha_ratio = sum(ch.isalpha() for ch in token) / max(len(token), 1)
+        if alpha_ratio < 0.5:
+            return True
+
+    if len(words) <= 3 and _JUNK_PATTERN.search(c.lower()):
+        return True
+
+    return False
+
+
+def _index_blocks_pipeline(
+    doc_id: str,
+    filename: str,
+    source_type: str,
+    pages: list[dict],
+    chunk_records_out: list,
+    file_hash: str | None = None,
+    is_chunk_text_mocked: bool = False,
+    mock_chunk_text_fn=None,
+) -> tuple[int, int]:
+    BATCH_SIZE = INDEX_BATCH_SIZE
+    batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
+    added = 0
+    
+    if is_chunk_text_mocked and mock_chunk_text_fn is not None:
+        combined_text = "\n\n".join(p["text"] for p in pages)
+        raw_chunks = mock_chunk_text_fn(combined_text)
+        
+        packed_chunks = []
+        for idx, c_txt in enumerate(raw_chunks):
+            packed_chunks.append({
+                "text": c_txt,
+                "start_page": 1,
+                "end_page": 1,
+                "section": None,
+                "subsection": None,
+                "heading_level": -1,
+                "section_index": 0,
+                "chunk_index": idx,
+                "chunk_type": "paragraph",
+                "paragraph_count": 1,
+                "token_count": estimate_token_count(c_txt)
+            })
+    else:
+        # 1. Clean page artifacts & repeated headers/footers
+        pages = remove_page_artifacts_and_repeated_headers(pages)
+        
+        # 2. Normalize markdown syntax page-by-page
+        for p in pages:
+            p["text"] = normalize_markdown_page(p["text"])
+            
+        # 3. Extensible block parsing
+        blocks = []
+        for p in pages:
+            blocks.extend(parse_markdown_blocks(p["text"], p["page"]))
+            
+        # 4. Heading stack extraction & section split
+        sections = extract_sections_and_headings(blocks)
+        
+        # 5. Pack blocks into chunks
+        pack_fn = _get_indexer_attr("pack_blocks_into_chunks", pack_blocks_into_chunks)
+        packed_chunks = pack_fn(sections)
+    
+    seen = set()
+    chunk_index = 0
+    
+    flush_fn = _get_indexer_attr("_flush_batch", _flush_batch)
+    embed_fn = _get_indexer_attr("generate_embeddings", generate_embeddings)
+    coll_ref = _get_indexer_attr("collection", collection)
+
+    def flush():
+        nonlocal added, batch_embeddings, batch_documents, batch_metadatas, batch_ids
+        added += flush_fn(coll_ref, batch_embeddings, batch_documents, batch_metadatas, batch_ids)
+        batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
+
+    for chunk in packed_chunks:
+        c = (chunk["text"] or "").strip()
+        if not c:
+            continue
+            
+        norm = " ".join(c.lower().split())
+        is_dup = norm in seen
+        if not is_dup:
+            seen.add(norm)
+            
+        reserved_chunk_index = chunk_index
+        chunk_index += 1
+        
+        if is_dup:
+            continue
+            
+        header = _build_contextual_header(
+            filename=filename,
+            section=chunk["section"],
+            subsection=chunk["subsection"],
+            start_page=chunk["start_page"],
+            end_page=chunk["end_page"],
+            source_type=source_type
+        )
+        chunk_with_header = f"{header}\n\n{c}"
+        emb = embed_fn(chunk_with_header)
+        if not emb:
+            continue
+            
+        meta = build_chunk_metadata(
+            doc_id=doc_id,
+            reserved_chunk_index=reserved_chunk_index,
+            filename=filename,
+            source_type=source_type,
+            section=chunk["section"],
+            subsection=chunk["subsection"],
+            heading_level=chunk["heading_level"],
+            start_page=chunk["start_page"],
+            end_page=chunk["end_page"],
+            section_index=chunk["section_index"],
+            chunk_index=chunk["chunk_index"],
+            chunk_type=chunk["chunk_type"],
+            paragraph_count=chunk["paragraph_count"],
+            token_count=chunk["token_count"],
+            chunk_header=header,
+            file_hash=file_hash
+        )
+        
+        batch_embeddings.append(emb)
+        batch_documents.append(c)
+        batch_metadatas.append(meta)
+        batch_ids.append(f"{doc_id}_{reserved_chunk_index}")
+        
+        chunk_records_out.append({
+            "chunk": reserved_chunk_index,
+            "text": c,
+            "start_page": chunk["start_page"],
+            "end_page": chunk["end_page"],
+            "section": chunk["section"] or None,
+            "subsection": chunk["subsection"] or None
+        })
+        
+        if len(batch_ids) >= BATCH_SIZE:
+            flush()
+            
+    flush()
+    return added, chunk_index
+
+
+def _index_sections_spreadsheet(
+    doc_id: str,
+    filename: str,
+    source_type: str,
+    sections: list,
+    chunk_records_out: list,
+    file_hash: str | None = None,
+    mock_chunk_text_fn=None,
+) -> tuple[int, int]:
+    BATCH_SIZE = INDEX_BATCH_SIZE
+    batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
+    added = 0
+    chunk_index = 0
+    seen = set()
+
+    flush_fn = _get_indexer_attr("_flush_batch", _flush_batch)
+    embed_fn = _get_indexer_attr("generate_embeddings", generate_embeddings)
+    noise_fn = _get_indexer_attr("_is_noise", _is_noise)
+    coll_ref = _get_indexer_attr("collection", collection)
+
+    def flush():
+        nonlocal added, batch_embeddings, batch_documents, batch_metadatas, batch_ids
+        added += flush_fn(coll_ref, batch_embeddings, batch_documents, batch_metadatas, batch_ids)
+        batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
+
+    chunker_fn = mock_chunk_text_fn if mock_chunk_text_fn is not None else chunk_text
+
+    for sheet_name, body in sections:
+        for chunk in chunker_fn(body):
+            c = (chunk or "").strip()
+            if not c:
+                continue
+
+            if noise_fn(c):
+                continue
+
+            norm = " ".join(c.lower().split())
+            is_dup = norm in seen
+            if not is_dup:
+                seen.add(norm)
+
+            reserved_chunk_index = chunk_index
+            chunk_index += 1
+
+            if is_dup:
+                continue
+
+            header = _build_contextual_header(filename, sheet_name=sheet_name)
+            chunk_with_header = f"{header}\n\n{c}"
+            emb = embed_fn(chunk_with_header)
+            if not emb:
+                continue
+
+            meta = build_chunk_metadata(
+                doc_id=doc_id,
+                reserved_chunk_index=reserved_chunk_index,
+                filename=filename,
+                source_type=source_type,
+                chunk_index=reserved_chunk_index,
+                paragraph_count=len(c.split("\n\n")),
+                token_count=estimate_token_count(c),
+                chunk_header=header,
+                file_hash=file_hash,
+                sheet=sheet_name
+            )
+
+            batch_embeddings.append(emb)
+            batch_documents.append(c)
+            batch_metadatas.append(meta)
+            batch_ids.append(f"{doc_id}_{reserved_chunk_index}")
+
+            chunk_records_out.append({
+                "chunk": reserved_chunk_index,
+                "sheet": sheet_name or None,
+                "text": c,
+                "start_page": 1,
+                "end_page": 1
+            })
+
+            if len(batch_ids) >= BATCH_SIZE:
+                flush()
+
+    flush()
+    return added, chunk_index
+
+
+def _index_tables_spreadsheet(
+    doc_id: str,
+    filename: str,
+    source_type: str,
+    tables: list[dict],
+    *,
+    start_chunk_index: int,
+    chunk_records_out: list,
+    file_hash: str | None = None,
+) -> int:
+    if not tables:
+        return 0
+
+    BATCH_SIZE = INDEX_BATCH_SIZE
+    batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
+    added = 0
+    chunk_index = int(start_chunk_index or 0)
+    seen_tables = set()
+
+    flush_fn = _get_indexer_attr("_flush_batch", _flush_batch)
+    embed_fn = _get_indexer_attr("generate_embeddings", generate_embeddings)
+    render_fn = _get_indexer_attr("render_markdown_table", render_markdown_table)
+    flat_fn = _get_indexer_attr("flatten_table_for_embedding", flatten_table_for_embedding)
+    coll_ref = _get_indexer_attr("collection", collection)
+
+    def flush():
+        nonlocal added, batch_embeddings, batch_documents, batch_metadatas, batch_ids
+        added += flush_fn(coll_ref, batch_embeddings, batch_documents, batch_metadatas, batch_ids)
+        batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
+
+    for table_index, t in enumerate(tables):
+        headers = list(t.get("headers") or [])
+        rows = [list(r) for r in (t.get("rows") or [])]
+        if not headers or not rows:
+            continue
+
+        sheet_name = t.get("sheet") or None
+        table_id = t.get("table_id")
+
+        groups = _iter_table_row_groups(headers, rows, sheet=sheet_name)
+        for row_start, row_end, subset in groups:
+            md = render_fn(headers, subset)
+            flat = flat_fn(sheet=sheet_name, headers=headers, rows=subset)
+            if not flat.strip() or not md.strip():
+                continue
+
+            md_meta = _truncate_markdown(md)
+
+            norm = " ".join(flat.lower().split())
+            is_dup = norm in seen_tables
+            if not is_dup:
+                seen_tables.add(norm)
+
+            reserved_chunk_index = chunk_index
+            chunk_index += 1
+
+            if is_dup:
+                continue
+
+            header = _build_contextual_header(filename, sheet_name=sheet_name)
+            embed_in = f"{header}\n\n{flat}"
+            emb = embed_fn(embed_in)
+            if not emb:
+                continue
+
+            meta = build_chunk_metadata(
+                doc_id=doc_id,
+                reserved_chunk_index=reserved_chunk_index,
+                filename=filename,
+                source_type=source_type,
+                chunk_index=reserved_chunk_index,
+                chunk_type="table",
+                paragraph_count=1,
+                token_count=estimate_token_count(flat),
+                chunk_header=header,
+                file_hash=file_hash,
+                sheet=sheet_name,
+                is_table=True,
+                table_id=table_id,
+                table_index=table_index,
+                row_start=row_start,
+                row_end=row_end,
+                markdown=md_meta
+            )
+
+            batch_embeddings.append(emb)
+            batch_documents.append(flat)
+            batch_metadatas.append(meta)
+            batch_ids.append(f"{doc_id}_{reserved_chunk_index}")
+
+            chunk_records_out.append({
+                "chunk": reserved_chunk_index,
+                "sheet": sheet_name or None,
+                "text": flat,
+                "is_table": True,
+                "table_id": table_id,
+                "table_index": table_index,
+                "markdown": md_meta,
+                "start_page": 1,
+                "end_page": 1
+            })
+            if len(batch_ids) >= BATCH_SIZE:
+                flush()
+
+    flush()
+    return added
+
+
+def _iter_table_row_groups(
+    headers: list[str],
+    rows: list[list[str]],
+    *,
+    max_rows_per_group: int = 50,
+    max_flat_chars: int = 4500,
+    sheet: str | None = None,
+) -> list[tuple[int, int, list[list[str]]]]:
+    if not rows:
+        return []
+
+    flat = flatten_table_for_embedding(sheet=sheet, headers=headers, rows=rows)
+    if len(rows) <= max_rows_per_group and len(flat) <= max_flat_chars:
+        return [(0, len(rows), rows)]
+
+    groups = []
+    start = 0
+    while start < len(rows):
+        end = min(len(rows), start + max_rows_per_group)
+        while end > start + 1:
+            flat_group = flatten_table_for_embedding(sheet=sheet, headers=headers, rows=rows[start:end])
+            if len(flat_group) <= max_flat_chars:
+                break
+            end -= 1
+
+        groups.append((start, end, rows[start:end]))
+        start = end
+
+    return groups

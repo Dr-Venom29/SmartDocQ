@@ -808,3 +808,155 @@ def test_index_bytes_doc_legacy_supported(fake_collection, mock_embedding, disab
     assert ok is True
     assert added == 1
     assert len(fake_collection.store) == 1
+
+
+def test_extract_pdf_pages_fallback(monkeypatch):
+    # Mock Tier 1 failure
+    monkeypatch.setattr(indexer, "pymupdf4llm", None)
+    
+    # Mock Tier 2 PyMuPDF classic extraction
+    class MockPage:
+        def get_text(self):
+            return "Tier 2 text content"
+            
+    class MockDoc:
+        def __iter__(self):
+            return iter([MockPage()])
+            
+    mock_fitz = types.ModuleType("fitz")
+    mock_fitz.open = lambda stream, filetype: MockDoc()
+    monkeypatch.setattr(indexer, "fitz", mock_fitz)
+    
+    pages = indexer._extract_pdf_pages(b"pdfdata")
+    assert len(pages) == 1
+    assert pages[0]["text"] == "Tier 2 text content"
+    assert pages[0]["page"] == 1
+
+
+# ============================================================================
+# Upgraded PDF Indexing Pipeline Integration Tests
+# ============================================================================
+
+def test_extract_pdf_pages_tier1_success(monkeypatch):
+    # Mock Tier 1 Success
+    class MockDoc:
+        pass
+        
+    mock_fitz = types.ModuleType("fitz")
+    mock_fitz.open = lambda stream, filetype: MockDoc()
+    monkeypatch.setattr(indexer, "fitz", mock_fitz)
+    
+    mock_pymupdf4llm = types.ModuleType("pymupdf4llm")
+    mock_pymupdf4llm.to_markdown = lambda doc, page_chunks: [
+        {"metadata": {"page_number": 1}, "text": "Tier 1 Markdown Content"}
+    ]
+    monkeypatch.setattr(indexer, "pymupdf4llm", mock_pymupdf4llm)
+    
+    pages = indexer._extract_pdf_pages(b"pdfdata")
+    assert len(pages) == 1
+    assert pages[0]["text"] == "Tier 1 Markdown Content"
+    assert pages[0]["page"] == 1
+
+
+def test_extract_pdf_pages_tier3_fallback(monkeypatch):
+    # Mock Tiers 1 and 2 failures
+    monkeypatch.setattr(indexer, "pymupdf4llm", None)
+    monkeypatch.setattr(indexer, "fitz", None)
+    
+    # Mock Tier 3 PDF Reader
+    class MockPage:
+        def extract_text(self):
+            return "Tier 3 text content"
+            
+    class MockReader:
+        def __init__(self, stream):
+            self.pages = [MockPage()]
+            
+    mock_pypdf2 = types.ModuleType("PyPDF2")
+    mock_pypdf2.PdfReader = MockReader
+    sys.modules["PyPDF2"] = mock_pypdf2
+    
+    pages = indexer._extract_pdf_pages(b"pdfdata")
+    assert len(pages) == 1
+    assert pages[0]["text"] == "Tier 3 text content"
+    assert pages[0]["page"] == 1
+
+
+def test_extract_pdf_pages_all_fail(monkeypatch):
+    # Force all fallback paths to raise errors or return empty
+    monkeypatch.setattr(indexer, "pymupdf4llm", None)
+    monkeypatch.setattr(indexer, "fitz", None)
+    sys.modules.pop("PyPDF2", None) # Ensure PyPDF2 import fails
+    
+    pages = indexer._extract_pdf_pages(b"pdfdata")
+    assert pages == []
+
+
+def test_rich_metadata_validation(fake_collection, mock_embedding, disable_node_push, monkeypatch):
+    # Verify all detailed block metadata keys are correctly stored
+    body = "# Introduction\n\nMethodology paragraph body content goes here."
+    ok, added = indexer.index_text("doc_meta_val", "sample.txt", body)
+    
+    assert ok is True
+    assert added == 1
+    
+    item = next(iter(fake_collection.store.values()))
+    meta = item["metadata"]
+    
+    # Assert newly added metadata properties
+    assert "start_page" in meta
+    assert "end_page" in meta
+    assert "heading_level" in meta
+    assert "section" in meta
+    assert "subsection" in meta
+    assert "chunk_type" in meta
+    assert "paragraph_count" in meta
+    assert "token_count" in meta
+    assert "chunking_version" in meta
+    
+    assert meta["chunking_version"] == "2"
+    assert meta["chunk_type"] == "paragraph"
+    assert meta["start_page"] == 1
+    assert meta["end_page"] == 1
+
+
+def test_contextual_embedding_header(fake_collection, disable_node_push, monkeypatch):
+    captured_inputs = []
+    
+    def capture_embeddings(text):
+        captured_inputs.append(text)
+        return [0.1, 0.2, 0.3]
+        
+    monkeypatch.setattr(indexer, "generate_embeddings", capture_embeddings)
+    
+    # We will mock the parser output to simulate a nested block structure
+    blocks = [
+        {"type": "heading", "content": "# Section Title", "page": 2, "section": "Section Title", "subsection": "Subsection Title", "heading_level": 1},
+        {"type": "heading", "content": "## Subsection Title", "page": 3, "section": "Section Title", "subsection": "Subsection Title", "heading_level": 2},
+        {"type": "paragraph", "content": "A paragraph inside subsection.", "page": 3, "section": "Section Title", "subsection": "Subsection Title", "heading_level": 2}
+    ]
+    
+    monkeypatch.setattr(indexer, "_extract_pdf_pages", lambda _d: [{"page": 1, "text": "body"}])
+    
+    # Monkeypatch extraction & chunking to return our custom structured chunk
+    from indexing.chunking import create_chunk_dict
+    custom_chunk = create_chunk_dict(blocks, section_index=0, chunk_index=0)
+    # Force pages to map start_page=2, end_page=3
+    custom_chunk["start_page"] = 2
+    custom_chunk["end_page"] = 3
+    
+    monkeypatch.setattr(indexer, "pack_blocks_into_chunks", lambda _s: [custom_chunk])
+    
+    ok, added = indexer.index_bytes("doc_context", "ML_paper.pdf", "application/pdf", b"data")
+    assert ok is True
+    
+    # Verify contextual header content prepended to embedding service
+    assert len(captured_inputs) == 1
+    header_input = captured_inputs[0]
+    
+    assert "Document: ML_paper.pdf" in header_input
+    assert "Section: Section Title" in header_input
+    assert "Subsection: Subsection Title" in header_input
+    assert "Pages: 2-3" in header_input
+
+
