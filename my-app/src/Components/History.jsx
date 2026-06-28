@@ -69,7 +69,64 @@ const History = ({
   const [itemToDelete, setItemToDelete] = useState(null);
   const [actionLock, setActionLock] = useState(false);
 
-  const getFileIcon = useCallback(() => '📄', []);
+  const getFileIcon = useCallback((fileName) => {
+    if (!fileName) return (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z" />
+        <path d="M14 2v6h6" />
+      </svg>
+    );
+    const ext = fileName.split('.').pop().toLowerCase();
+    if (ext === 'pdf') {
+      return (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#f87171' }}>
+          <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z" />
+          <path d="M14 2v6h6" />
+          <line x1="8" y1="10" x2="14" y2="10" strokeWidth="1.5" />
+          <line x1="8" y1="13" x2="16" y2="13" strokeWidth="1.5" />
+          <line x1="8" y1="16" x2="12" y2="16" strokeWidth="1.5" />
+        </svg>
+      );
+    }
+    if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
+      return (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#4ade80' }}>
+          <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z" />
+          <path d="M14 2v6h6" />
+          <rect x="7" y="11" width="10" height="7" rx="1" strokeWidth="1.5" />
+          <line x1="12" y1="11" x2="12" y2="18" strokeWidth="1" />
+          <line x1="7" y1="14" x2="17" y2="14" strokeWidth="1" />
+        </svg>
+      );
+    }
+    if (ext === 'doc' || ext === 'docx') {
+      return (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#60a5fa' }}>
+          <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z" />
+          <path d="M14 2v6h6" />
+          <line x1="8" y1="12" x2="16" y2="12" strokeWidth="1.5" />
+          <line x1="8" y1="15" x2="14" y2="15" strokeWidth="1.5" />
+        </svg>
+      );
+    }
+    if (ext === 'txt') {
+      return (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a1a1aa' }}>
+          <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z" />
+          <path d="M14 2v6h6" />
+          <line x1="8" y1="10" x2="14" y2="10" strokeWidth="1.5" />
+          <line x1="8" y1="13" x2="16" y2="13" strokeWidth="1.5" />
+          <line x1="8" y1="16" x2="12" y2="16" strokeWidth="1.5" />
+        </svg>
+      );
+    }
+    return (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a1a1aa' }}>
+        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z" />
+        <path d="M14 2v6h6" />
+      </svg>
+    );
+  }, []);
 
   const formatFileType = useCallback((fileType) => {
     if (!fileType) return 'unknown';
@@ -139,7 +196,23 @@ const History = ({
   }, [newName, editingId, onRename, actionLock]);
 
   const handleCancelEdit = useCallback((e) => {
-    e.stopPropagation();
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (actionLock) return;
+    setEditingId(null);
+    setNewName('');
+  }, [actionLock]);
+
+  const handleSaveMouseDown = useCallback((e) => {
+    e.preventDefault();
+    handleSaveRename(e);
+  }, [handleSaveRename]);
+
+  const handleCancelMouseDown = useCallback((e) => {
+    e.preventDefault();
+    handleCancelEdit(e);
+  }, [handleCancelEdit]);
+
+  const handleInputBlur = useCallback(() => {
     if (actionLock) return;
     setEditingId(null);
     setNewName('');
@@ -193,21 +266,30 @@ const History = ({
     <>
       <div className={`history-section ${isOpen ? "open" : "closed"}`}>
         <div className="history-header">
-          <h2>Upload History</h2>
+          <h2>Documents</h2>
           <button
             className="history-toggle"
             title={isOpen ? "Close sidebar (Ctrl+B)" : "Open sidebar (Ctrl+B)"}
             aria-label="Toggle history sidebar"
             onClick={onToggle}
             disabled={actionLock}
-          >🗂️</button>
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            </svg>
+          </button>
         </div>
 
         {isOpen && (
           <div className="history-list-wrapper">
             <div className="history-controls">
               <div className="search-container">
-                <div className="search-icon">🔍</div>
+                <div className="search-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </div>
                 <input
                   type="text"
                   placeholder="Search files..."
@@ -268,7 +350,7 @@ const History = ({
                     onClick={() => !actionLock && onSelect(item)}
                   >
                     <div className="file-info">
-                      <div className="file-icon">{getFileIcon()}</div>
+                      <div className="file-icon">{getFileIcon(item.name)}</div>
                       <div className="file-size">{formatBytes(item.size)}</div>
                     </div>
 
@@ -280,6 +362,7 @@ const History = ({
                             value={newName}
                             onChange={(e) => setNewName(e.target.value)}
                             onKeyDown={handleKeyDown}
+                            onBlur={handleInputBlur}
                             className="rename-input"
                             autoFocus
                             disabled={actionLock}
@@ -288,16 +371,25 @@ const History = ({
                           <div className="edit-actions">
                             <button
                               className="save-btn"
-                              onClick={handleSaveRename}
+                              onMouseDown={handleSaveMouseDown}
                               title="Save"
                               disabled={actionLock}
-                            >✓</button>
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            </button>
                             <button
                               className="cancel-btn"
-                              onClick={handleCancelEdit}
+                              onMouseDown={handleCancelMouseDown}
                               title="Cancel"
                               disabled={actionLock}
-                            >✕</button>
+                            >
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
                           </div>
                         </div>
                       ) : (
@@ -312,12 +404,16 @@ const History = ({
                       {/* Pin/Unpin Button - Enhanced Styling */}
                       <button
                         className={`pin-button ${item.pinned ? 'pinned' : ''}`}
-                        title={item.pinned ? "Unpin from favorites" : "Pin to favorites"}
-                        aria-label={item.pinned ? "Unpin document" : "Pin document"}
+                        title={item.pinned ? "Remove bookmark" : "Bookmark document"}
+                        aria-label={item.pinned ? "Remove bookmark" : "Bookmark document"}
                         onClick={(e) => handlePinClick(item, e)}
                         disabled={actionLock || editingId !== null}
                       >
-                        <span className="pin-icon">{item.pinned ? '📌' : '📍'}</span>
+                        <span className="pin-icon">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill={item.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                          </svg>
+                        </span>
                       </button>
 
                       <button
@@ -326,7 +422,12 @@ const History = ({
                         aria-label="Rename document"
                         onClick={(e) => handleEditClick(item, e)}
                         disabled={actionLock || editingId !== null}
-                      >✏️</button>
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
 
                       <button
                         className="history-delete"
@@ -334,7 +435,12 @@ const History = ({
                         aria-label="Remove from history"
                         onClick={(e) => handleDeleteClick(item, e)}
                         disabled={actionLock || editingId !== null}
-                      >🗑️</button>
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
                     </div>
                   </li>
                 ))}

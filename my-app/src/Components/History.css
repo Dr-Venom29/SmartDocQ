@@ -1,8 +1,8 @@
 /* History Section - Black Theme */
 .history-section {
   padding: 0;
-  background: linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: #000000; /* Solid pitch black */
+  border-right: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 16px 0 0 16px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
   overflow: hidden;
@@ -11,7 +11,9 @@
   flex-direction: column;
   user-select: none;
   -webkit-user-drag: none;
-  max-height:90vh;
+  max-height: 90vh;
+  position: relative;
+  z-index: 2; /* Elevate above background ambient glows */
 }
 
 .history-header {
@@ -19,16 +21,17 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  background: linear-gradient(90deg, #0f0f0f 0%, #050505 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: #070708; /* Solid dark gray header */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .history-section h2 {
+  font-family: 'Outfit', 'Montserrat', 'Plus Jakarta Sans', sans-serif;
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 800;
   margin: 0;
-  color: #e0e0e0;
-  letter-spacing: 0.3px;
+  color: #ffffff;
+  letter-spacing: -0.2px;
   padding-left: 8px;
 }
 
@@ -59,8 +62,8 @@
 .history-item {
   position: relative;
   padding: 16px;
-  background: linear-gradient(135deg, #0f0f0f 0%, #080808 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #09090b; /* Solid dark card background */
+  border: 1px solid #2e2e33;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.25s ease;
@@ -77,16 +80,15 @@
   left: 0;
   width: 4px;
   height: 100%;
-  background: linear-gradient(180deg, #4a4a4a 0%, #2a2a2a 100%);
+  background: #3f3f46; /* Solid dark indicator */
   transform: scaleY(0);
   transition: transform 0.3s ease;
 }
 
 .history-item:hover {
-  background: linear-gradient(135deg, #121212 0%, #0a0a0a 100%);
-  border-color: rgba(255, 255, 255, 0.15);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  background: #0e0e11;
+  border-color: #3f3f46;
+  transform: translateY(-1.5px);
 }
 
 .history-item:hover::before {
@@ -122,9 +124,6 @@
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   text-align: center;
-  max-width: 60px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -170,18 +169,19 @@
 .rename-input {
   width: 100%;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #09090b;
+  border: 1px solid #27272a;
   border-radius: 6px;
-  color: #e0e0e0;
-  font-size: 0.9rem;
+  color: #ffffff;
+  font-size: 0.88rem;
   outline: none;
-  text-align: center;
+  text-align: left;
+  transition: all 0.2s ease;
 }
 
 .rename-input:focus {
-  border-color: #4a4a4a;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+  border-color: #52525b; /* Muted gray focus */
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
 }
 
 .edit-actions {
@@ -194,31 +194,35 @@
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 14px;
   transition: all 0.2s ease;
 }
 
 .save-btn {
-  background: rgba(76, 175, 80, 0.2);
-  color: #4CAF50;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #34d399;
 }
 
 .save-btn:hover {
-  background: rgba(76, 175, 80, 0.3);
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
 }
 
 .cancel-btn {
-  background: rgba(244, 67, 54, 0.2);
-  color: #F44336;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #f87171;
 }
 
 .cancel-btn:hover {
-  background: rgba(244, 67, 54, 0.3);
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
 }
 
 .item-actions {
@@ -241,13 +245,13 @@
 }
 
 .history-edit:hover {
-  background: rgba(255, 193, 7, 0.2);
-  color: #FFC107;
+  background: rgba(223, 207, 183, 0.15);
+  color: #dfcfb7;
 }
 
 .history-delete:hover {
-  background: rgba(244, 67, 54, 0.2);
-  color: #F44336;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
 }
 
 .history-empty-state {
@@ -350,7 +354,7 @@
   display: flex;
   align-items: center;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
   padding: 0 12px;
   transition: all 0.2s ease;
@@ -359,12 +363,12 @@
 }
 
 .search-container:hover {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.28);
   background: rgba(255, 255, 255, 0.07);
 }
 
 .search-container:focus-within {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.38);
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -423,7 +427,7 @@
 .sort-select {
   flex: 1;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 6px;
   color: #e0e0e0;
   padding: 8px 12px;
@@ -437,11 +441,11 @@
 
 .sort-select:hover {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 .sort-select:focus {
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.38);
 }
 
 .sort-select option {
@@ -453,7 +457,7 @@
   width: 32px;
   height: 32px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 6px;
   color: #a0a0a0;
   cursor: pointer;
@@ -509,8 +513,8 @@
 }
 
 .delete-confirm-popup {
-  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #09090b;
+  border: 1px solid #27272a;
   border-radius: 12px;
   padding: 24px;
   max-width: 400px;
@@ -626,28 +630,28 @@
 }
 
 .pin-button:hover {
-  background: rgba(255, 193, 7, 0.2);
-  color: #FFC107;
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
 }
 
 .pin-button.pinned {
-  background: rgba(255, 193, 7, 0.15);
-  color: #FFC107;
-  border: 1px solid rgba(255, 193, 7, 0.3);
+  background: rgba(168, 85, 247, 0.12);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.3);
 }
 
 .pin-button.pinned:hover {
-  background: rgba(255, 193, 7, 0.25);
-  border-color: rgba(255, 193, 7, 0.4);
+  background: rgba(168, 85, 247, 0.22);
+  border-color: rgba(168, 85, 247, 0.4);
 }
 
 /* Pinned Item Styling - Matching theme */
 .history-item.pinned-item {
-  border-left: 3px solid #FFC107;
-  background: linear-gradient(135deg, #1a1505 0%, #0f0a00 100%);
+  border-left: 3px solid #a855f7;
+  background: linear-gradient(135deg, #0e0518 0%, #06020c 100%) !important;
 }
 
 .history-item.pinned-item:hover {
-  background: linear-gradient(135deg, #1f1808 0%, #120d02 100%);
+  background: linear-gradient(135deg, #180a28 0%, #0a0312 100%) !important;
   border-color: rgba(255, 255, 255, 0.15);
 }
