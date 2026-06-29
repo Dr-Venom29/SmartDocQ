@@ -1,5 +1,5 @@
 import './History.css';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import Lottie from "lottie-react";
 import hd from "../Animations/H-D.json";
 import dl from "../Animations/Bin.json";
@@ -68,6 +68,18 @@ const History = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [actionLock, setActionLock] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const getFileIcon = useCallback((fileName) => {
     if (!fileName) return (
@@ -128,13 +140,23 @@ const History = ({
     );
   }, []);
 
-  const formatFileType = useCallback((fileType) => {
-    if (!fileType) return 'unknown';
+  const formatFileType = useCallback((fileType, fileName) => {
+    const name = fileName || '';
+    const ext = name.split('.').pop().toLowerCase();
+    if (ext === 'pdf') return 'PDF';
+    if (ext === 'xlsx' || ext === 'xls') return 'XLSX';
+    if (ext === 'csv') return 'CSV';
+    if (ext === 'doc' || ext === 'docx') return 'DOCX';
+    if (ext === 'txt') return 'TXT';
+
+    if (!fileType) return 'FILE';
     const type = fileType.toLowerCase();
     if (type.includes('pdf')) return 'PDF';
-    if (type.includes('word') || type.includes('document') || type.includes('docx')) return 'Document';
-    if (type.includes('text') || type.includes('txt')) return 'Text';
-    return 'File';
+    if (type.includes('sheet') || type.includes('excel') || type.includes('spreadsheet')) return 'XLSX';
+    if (type.includes('csv')) return 'CSV';
+    if (type.includes('word') || type.includes('document') || type.includes('docx')) return 'DOCX';
+    if (type.includes('text') || type.includes('txt')) return 'TXT';
+    return 'FILE';
   }, []);
 
   const filteredAndSortedHistory = useMemo(() => {
@@ -309,16 +331,43 @@ const History = ({
               </div>
 
               <div className="sort-container">
-                <select
-                  value={sortBy}
-                  onChange={handleSortChange}
-                  className="sort-select"
-                  disabled={actionLock}
-                >
-                  <option value="name">Sort by Name</option>
-                  <option value="date">Sort by Date</option>
-                  <option value="size">Sort by Size</option>
-                </select>
+                <div className="custom-dropdown-container" ref={dropdownRef}>
+                  <button
+                    className="custom-dropdown-trigger"
+                    onClick={() => !actionLock && setIsDropdownOpen(!isDropdownOpen)}
+                    disabled={actionLock}
+                    aria-label="Sort documents options dropdown"
+                  >
+                    <span>
+                      {sortBy === 'name' ? 'Sort by Name' : sortBy === 'date' ? 'Sort by Date' : 'Sort by Size'}
+                    </span>
+                    <svg className={`chevron-icon ${isDropdownOpen ? 'open' : ''}`} width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="1 1 5 5 9 1" />
+                    </svg>
+                  </button>
+                  {isDropdownOpen && (
+                    <ul className="custom-dropdown-options">
+                      <li
+                        className={`custom-dropdown-option ${sortBy === 'name' ? 'active' : ''}`}
+                        onClick={() => { setSortBy('name'); setIsDropdownOpen(false); }}
+                      >
+                        Sort by Name
+                      </li>
+                      <li
+                        className={`custom-dropdown-option ${sortBy === 'date' ? 'active' : ''}`}
+                        onClick={() => { setSortBy('date'); setIsDropdownOpen(false); }}
+                      >
+                        Sort by Date
+                      </li>
+                      <li
+                        className={`custom-dropdown-option ${sortBy === 'size' ? 'active' : ''}`}
+                        onClick={() => { setSortBy('size'); setIsDropdownOpen(false); }}
+                      >
+                        Sort by Size
+                      </li>
+                    </ul>
+                  )}
+                </div>
                 <button
                   className="sort-order"
                   onClick={toggleSortOrder}
@@ -395,7 +444,7 @@ const History = ({
                       ) : (
                         <>
                           <div className="history-name">{item.name}</div>
-                          <div className="file-type">{formatFileType(item.type)}</div>
+                          <div className="file-type">{formatFileType(item.type, item.name)}</div>
                         </>
                       )}
                     </div>

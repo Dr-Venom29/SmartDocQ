@@ -598,9 +598,18 @@
 
 @media (max-width: 768px) {
   .body-section {
-    padding: 24px 16px 40px;
-    gap: 40px;
+    display: none;
   }
+
+  .how-to-use {
+    display: none;
+  }
+
+  .work-title {
+    display: none;
+  }
+
+  /* work-title is inside HowItWorksSection, hidden via how-to-use parent */
 
   .work-title {
     font-size: 1.3rem;
@@ -654,4 +663,185 @@
 .static-arrow {
   color: #818cf8; /* Electric Indigo */
   display: block;
+}
+
+/* ============================================================
+   MOBILE BODY SECTION — Vertical Timeline
+   ============================================================ */
+.mobile-body-section {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-body-section {
+    display: block;
+    padding: 1rem 1.5rem 2rem;
+    color: white;
+  }
+
+  /* Header */
+  .mtl-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .mtl-title {
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: #f8fafc;
+    margin: 0 0 0.75rem 0;
+  }
+
+  .mtl-title-accent {
+    background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .mtl-subtitle {
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 0.9rem;
+    color: rgba(248, 250, 252, 0.55);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* Timeline container */
+  .mtl-timeline {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Individual step row */
+  .mtl-step {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    opacity: 0;
+    transform: translateX(-16px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .mtl-step--visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* Staggered delays */
+  .mtl-step:nth-child(1) { transition-delay: 0ms; }
+  .mtl-step:nth-child(2) { transition-delay: 120ms; }
+  .mtl-step:nth-child(3) { transition-delay: 240ms; }
+  .mtl-step:nth-child(4) { transition-delay: 360ms; }
+
+  /* Left column: icon + line */
+  .mtl-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 48px;
+  }
+
+  .mtl-icon-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 0 20px var(--step-glow, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    margin-top: 22px;
+  }
+
+  /* Connector line + animated dot */
+  .mtl-connector {
+    position: relative;
+    width: 2px;
+    flex: 1;
+    min-height: 48px;
+    margin: 6px 0;
+  }
+
+  .mtl-connector-line {
+    position: absolute;
+    inset: 0;
+    width: 2px;
+    background: linear-gradient(
+      to bottom,
+      var(--step-color, #60a5fa),
+      rgba(255, 255, 255, 0.06)
+    );
+    opacity: 0.3;
+    border-radius: 2px;
+  }
+
+  @keyframes mtlDotFlow {
+    0%   { top: 0%;   opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .mtl-connector-dot {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--step-color, #60a5fa);
+    box-shadow: 0 0 8px var(--step-color, #60a5fa);
+    animation: mtlDotFlow 2.2s ease-in-out infinite;
+  }
+
+  /* Right: text content */
+  .mtl-content {
+    padding-top: 0;
+    padding-bottom: 40px;
+    flex: 1;
+  }
+
+  .mtl-step:last-child .mtl-content {
+    padding-bottom: 0;
+  }
+
+  .mtl-step-id {
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--step-color, #60a5fa);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .mtl-step-title {
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0 0 6px 0;
+    line-height: 1.3;
+  }
+
+  .mtl-step-desc {
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 0.85rem;
+    color: rgba(248, 250, 252, 0.55);
+    line-height: 1.6;
+    margin: 0;
+  }
 }

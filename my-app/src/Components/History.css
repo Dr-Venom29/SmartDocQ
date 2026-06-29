@@ -2,7 +2,7 @@
 .history-section {
   padding: 0;
   background: #000000; /* Solid pitch black */
-  border-right: 1px solid rgba(255, 255, 255, 0.16);
+  border-right: 1px solid rgba(255, 255, 255, 0.2); /* Light line */
   border-radius: 16px 0 0 16px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
   overflow: hidden;
@@ -22,7 +22,7 @@
   justify-content: space-between;
   padding: 20px;
   background: #070708; /* Solid dark gray header */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Light line */
 }
 
 .history-section h2 {
@@ -63,7 +63,7 @@
   position: relative;
   padding: 16px;
   background: #09090b; /* Solid dark card background */
-  border: 1px solid #2e2e33;
+  border: 1px solid #222225; /* Subtle dark border */
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.25s ease;
@@ -80,14 +80,14 @@
   left: 0;
   width: 4px;
   height: 100%;
-  background: #3f3f46; /* Solid dark indicator */
+  background: #3f3f46; /* Subtle indicator */
   transform: scaleY(0);
   transition: transform 0.3s ease;
 }
 
 .history-item:hover {
-  background: #0e0e11;
-  border-color: #3f3f46;
+  background: #0e0e11; /* Solid hover background */
+  border-color: #2d2d30; /* Faint hover border */
   transform: translateY(-1.5px);
 }
 
@@ -354,7 +354,7 @@
   display: flex;
   align-items: center;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 0 12px;
   transition: all 0.2s ease;
@@ -363,12 +363,12 @@
 }
 
 .search-container:hover {
-  border-color: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.07);
 }
 
 .search-container:focus-within {
-  border-color: rgba(255, 255, 255, 0.38);
+  border-color: rgba(255, 255, 255, 0.25);
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -424,10 +424,17 @@
   gap: 8px;
 }
 
-.sort-select {
+.custom-dropdown-container {
+  position: relative;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.custom-dropdown-trigger {
+  width: 100%;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   color: #e0e0e0;
   padding: 8px 12px;
@@ -435,29 +442,70 @@
   outline: none;
   cursor: pointer;
   transition: all 0.2s ease;
-  user-select: none;
-  -webkit-user-drag: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
 }
 
-.sort-select:hover {
+.custom-dropdown-trigger:hover {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
-.sort-select:focus {
-  border-color: rgba(255, 255, 255, 0.38);
+.custom-dropdown-trigger:focus {
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
-.sort-select option {
-  background: #1a1a1a;
-  color: #e0e0e0;
+.custom-dropdown-trigger .chevron-icon {
+  color: #808080;
+  transition: transform 0.2s ease;
+}
+
+.custom-dropdown-trigger .chevron-icon.open {
+  transform: rotate(180deg);
+}
+
+.custom-dropdown-options {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #09090b;
+  border: 1px solid #222225;
+  border-radius: 6px;
+  padding: 4px;
+  list-style: none;
+  margin: 0;
+  z-index: 10;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.custom-dropdown-option {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: #a0a0a0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.custom-dropdown-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.custom-dropdown-option.active {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-weight: 500;
 }
 
 .sort-order {
   width: 32px;
   height: 32px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   color: #a0a0a0;
   cursor: pointer;
@@ -514,7 +562,7 @@
 
 .delete-confirm-popup {
   background: #09090b;
-  border: 1px solid #27272a;
+  border: 1px solid #3f3f46;
   border-radius: 12px;
   padding: 24px;
   max-width: 400px;

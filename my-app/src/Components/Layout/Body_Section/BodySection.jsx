@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { useReducedMotion } from "../../../hooks/useReducedMotion";
 import "./BodySection.css";
 import HowItWorksSection from "./HowItWorksSection";
+import MobileBodySection from "./MobileBodySection";
 
 /* ============================================================================
  * PROCESS CARDS DATA
@@ -102,6 +103,7 @@ function BodySection() {
 
   return (
     <>
+      {/* ── Desktop ── */}
       <section className="body-section" aria-labelledby="process-heading">
         <h2 id="process-heading" className="sr-only">How SmartDocQ Works</h2>
         <div 
@@ -151,6 +153,9 @@ function BodySection() {
       </section>
 
       <HowItWorksSection />
+
+      {/* ── Mobile ── */}
+      <MobileBodySection />
     </>
   );
 }
