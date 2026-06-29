@@ -270,10 +270,6 @@ const History = ({
     setItemToDelete(null);
   }, [actionLock]);
 
-  const handleSortChange = useCallback((e) => {
-    setSortBy(e.target.value);
-  }, []);
-
   const toggleSortOrder = useCallback(() => {
     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
   }, [sortOrder]);
