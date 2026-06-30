@@ -7,21 +7,17 @@ from config import (
     SERVICE_TOKEN,
     CHUNK_UPSERT_URL,
     NODE_FETCH_TIMEOUT,
-    INDEX_PIPELINE_VERSION,
-    INDEX_BATCH_SIZE,
-    CHUNKING_VERSION,
 )
-from state.memory_store import consent_state
 from utils.extraction import (
     extract_text_for_mimetype,
     extract_text_from_pdf_bytes as original_extract_pdf,
     extract_text_from_docx_bytes as original_extract_docx,
     extract_text_from_txt_bytes as original_extract_txt,
 )
-from utils.security import detect_sensitive
 from services.bm25_service import build_bm25_index, invalidate_bm25_index
 from indexing.chunking import chunk_text as original_chunk_text, split_sheet_sections, pack_blocks_into_chunks
 from utils.table_extraction import extract_tables_for_file, render_markdown_table, flatten_table_for_embedding
+from indexing.background import _background_index as _background_index_impl
 
 # Re-export core processing elements for dynamic test resolution and monkeypatching
 from services.embedding_service import generate_embeddings
@@ -84,6 +80,149 @@ def _push_chunks_to_node(doc_id: str, filename: str, chunk_records: list):
         logger.exception("Node chunk upsert failed: %s", e)
 
 
+def _sync_bm25(doc_id: str, chunk_records: list, file_hash: str | None = None):
+    bm25_chunks = [
+        {
+            "chunk_id": f"{doc_id}_{r['chunk']}",
+            "text": r["text"],
+            "is_table": bool(r.get("is_table", False)),
+        }
+        for r in chunk_records
+    ]
+    build_bm25_index(doc_id, bm25_chunks, file_hash=file_hash)
+
+
+def _finalize_index(doc_id: str, filename: str, chunk_records: list, file_hash: str | None = None):
+    _push_chunks_to_node(doc_id, filename, chunk_records)
+    _sync_bm25(doc_id, chunk_records, file_hash=file_hash)
+
+
+def _extract_tables_for_document(doc_id: str, filename: str, mimetype: str, data: bytes):
+    try:
+        return extract_tables_for_file(filename, mimetype, data, source_key=doc_id)
+    except Exception:
+        return []
+
+
+def _maybe_get_mocked_text(mimetype: str, ext: str, data: bytes):
+    if mimetype == "application/pdf" or ext == "pdf":
+        if extract_text_from_pdf_bytes is not original_extract_pdf:
+            return extract_text_from_pdf_bytes(data)
+    elif mimetype in (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+    ) or ext in ("docx", "doc"):
+        if extract_text_from_docx_bytes is not original_extract_docx:
+            return extract_text_from_docx_bytes(data)
+    elif mimetype == "text/plain" or ext == "txt":
+        if extract_text_from_txt_bytes is not original_extract_txt:
+            return extract_text_from_txt_bytes(data)
+    return None
+
+
+def _index_text_document(
+    doc_id: str,
+    filename: str,
+    source_type: str,
+    pages: list,
+    tables: list,
+    chunk_records: list,
+    file_hash: str | None = None,
+):
+    if not pages and not tables:
+        return False, 0
+
+    _delete_existing(doc_id)
+
+    added = 0
+    next_chunk_index = 0
+
+    if pages:
+        added_text, next_chunk_index = _index_blocks_pipeline(
+            doc_id,
+            filename,
+            source_type,
+            pages,
+            chunk_records,
+            file_hash=file_hash,
+            is_chunk_text_mocked=(chunk_text is not original_chunk_text),
+            mock_chunk_text_fn=chunk_text if chunk_text is not original_chunk_text else None,
+        )
+        added += added_text
+
+    if tables:
+        added += _index_tables(
+            doc_id,
+            filename,
+            tables,
+            start_chunk_index=next_chunk_index,
+            chunk_records_out=chunk_records,
+            file_hash=file_hash,
+        )
+
+    return True, added
+
+
+def _index_pdf_document(doc_id: str, filename: str, ext: str, data: bytes, tables: list, chunk_records: list, file_hash: str | None = None):
+    mocked_text = _maybe_get_mocked_text("application/pdf", ext, data)
+    if mocked_text is not None:
+        pages = [{"page": 1, "text": mocked_text}]
+        source_type = ext if ext in ("pdf", "docx", "txt") else "txt"
+        return _index_text_document(doc_id, filename, source_type, pages, tables, chunk_records, file_hash=file_hash)
+
+    pages = _extract_pdf_pages(data)
+    return _index_text_document(doc_id, filename, "pdf", pages, tables, chunk_records, file_hash=file_hash)
+
+
+def _index_docx_document(doc_id: str, filename: str, ext: str, data: bytes, tables: list, chunk_records: list, file_hash: str | None = None):
+    mocked_text = _maybe_get_mocked_text(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ext,
+        data,
+    )
+    text = mocked_text if mocked_text is not None else extract_text_from_docx_bytes(data)
+    pages = [{"page": 1, "text": text}] if text.strip() else []
+    return _index_text_document(doc_id, filename, "docx", pages, tables, chunk_records, file_hash=file_hash)
+
+
+def _index_txt_document(doc_id: str, filename: str, ext: str, data: bytes, tables: list, chunk_records: list, file_hash: str | None = None):
+    mocked_text = _maybe_get_mocked_text("text/plain", ext, data)
+    text = mocked_text if mocked_text is not None else extract_text_from_txt_bytes(data)
+    pages = [{"page": 1, "text": text}] if text.strip() else []
+    return _index_text_document(doc_id, filename, "txt", pages, tables, chunk_records, file_hash=file_hash)
+
+
+def _index_sheet_document(doc_id: str, filename: str, ext: str, mimetype: str, data: bytes, tables: list, chunk_records: list, file_hash: str | None = None):
+    text = extract_text_for_mimetype(filename, mimetype, data)
+    if not text and not tables:
+        return False, 0
+
+    _delete_existing(doc_id)
+
+    sections = split_sheet_sections(text) if text else [(None, "")]
+    added_text = 0
+    next_chunk_index = 0
+
+    if text:
+        added_text, next_chunk_index = _index_sections(
+            doc_id,
+            filename,
+            sections,
+            chunk_records,
+            file_hash=file_hash,
+        )
+
+    added_tables = _index_tables(
+        doc_id,
+        filename,
+        tables,
+        start_chunk_index=next_chunk_index,
+        chunk_records_out=chunk_records,
+        file_hash=file_hash,
+    )
+    return True, added_text + added_tables
+
+
 def index_bytes(
     doc_id: str,
     filename: str,
@@ -100,167 +239,29 @@ def index_bytes(
             file_hash = None
 
     chunk_records = []
-    added = 0
+    tables = _extract_tables_for_document(doc_id, filename, mimetype, data)
 
-    # Extract tables (CSV/XLSX/DOCX only)
-    tables_extractor = globals()["extract_tables_for_file"]
-    try:
-        tables = tables_extractor(filename, mimetype, data, source_key=doc_id)
-    except Exception:
-        tables = []
-
-    # Detect if chunk_text is monkeypatched (i.e. overridden by tests)
-    is_chunk_mocked = (chunk_text is not original_chunk_text)
-    mock_fn = chunk_text if is_chunk_mocked else None
-
-    # Test mock detection
-    mocked_text = None
     if mimetype == "application/pdf" or ext == "pdf":
-        if extract_text_from_pdf_bytes is not original_extract_pdf:
-            mocked_text = extract_text_from_pdf_bytes(data)
+        ok, added = _index_pdf_document(doc_id, filename, ext, data, tables, chunk_records, file_hash=file_hash)
     elif mimetype in (
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/msword",
     ) or ext in ("docx", "doc"):
-        if extract_text_from_docx_bytes is not original_extract_docx:
-            mocked_text = extract_text_from_docx_bytes(data)
+        ok, added = _index_docx_document(doc_id, filename, ext, data, tables, chunk_records, file_hash=file_hash)
     elif mimetype == "text/plain" or ext == "txt":
-        if extract_text_from_txt_bytes is not original_extract_txt:
-            mocked_text = extract_text_from_txt_bytes(data)
-
-    if mocked_text is not None:
-        _delete_existing(doc_id)
-        pages = [{"page": 1, "text": mocked_text}]
-        source_type = ext if ext in ("pdf", "docx", "txt") else "txt"
-        added_text, next_chunk_index = _index_blocks_pipeline(
-            doc_id, filename, source_type, pages, chunk_records, file_hash=file_hash,
-            is_chunk_text_mocked=is_chunk_mocked, mock_chunk_text_fn=mock_fn
-        )
-        added += added_text
-        
-        if tables:
-            added_tables = _index_tables(
-                doc_id, filename, tables, start_chunk_index=next_chunk_index,
-                chunk_records_out=chunk_records, file_hash=file_hash
-            )
-            added += added_tables
-        
-    elif mimetype == "application/pdf" or ext == "pdf":
-        pages = _extract_pdf_pages(data)
-        if not pages and not tables:
-            return False, 0
-        _delete_existing(doc_id)
-        next_chunk_index = 0
-        if pages:
-            added_text, next_chunk_index = _index_blocks_pipeline(
-                doc_id, filename, "pdf", pages, chunk_records, file_hash=file_hash,
-                is_chunk_text_mocked=is_chunk_mocked, mock_chunk_text_fn=mock_fn
-            )
-            added += added_text
-            
-        if tables:
-            added_tables = _index_tables(
-                doc_id, filename, tables, start_chunk_index=next_chunk_index,
-                chunk_records_out=chunk_records, file_hash=file_hash
-            )
-            added += added_tables
-
-    elif mimetype in (
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/msword",
-    ) or ext in ("docx", "doc"):
-        text = extract_text_from_docx_bytes(data)
-        if not text.strip() and not tables:
-            return False, 0
-        _delete_existing(doc_id)
-        next_chunk_index = 0
-        if text.strip():
-            pages = [{"page": 1, "text": text}]
-            added_text, next_chunk_index = _index_blocks_pipeline(
-                doc_id, filename, "docx", pages, chunk_records, file_hash=file_hash,
-                is_chunk_text_mocked=is_chunk_mocked, mock_chunk_text_fn=mock_fn
-            )
-            added += added_text
-            
-        if tables:
-            added_tables = _index_tables(
-                doc_id, filename, tables, start_chunk_index=next_chunk_index,
-                chunk_records_out=chunk_records, file_hash=file_hash
-            )
-            added += added_tables
-
-    elif mimetype == "text/plain" or ext == "txt":
-        text = extract_text_from_txt_bytes(data)
-        if not text.strip() and not tables:
-            return False, 0
-        _delete_existing(doc_id)
-        next_chunk_index = 0
-        if text.strip():
-            pages = [{"page": 1, "text": text}]
-            added_text, next_chunk_index = _index_blocks_pipeline(
-                doc_id, filename, "txt", pages, chunk_records, file_hash=file_hash,
-                is_chunk_text_mocked=is_chunk_mocked, mock_chunk_text_fn=mock_fn
-            )
-            added += added_text
-            
-        if tables:
-            added_tables = _index_tables(
-                doc_id, filename, tables, start_chunk_index=next_chunk_index,
-                chunk_records_out=chunk_records, file_hash=file_hash
-            )
-            added += added_tables
-
+        ok, added = _index_txt_document(doc_id, filename, ext, data, tables, chunk_records, file_hash=file_hash)
     elif mimetype in (
         "text/csv",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     ) or ext in ("csv", "xlsx"):
-        text = extract_text_for_mimetype(filename, mimetype, data)
-        if not text and not tables:
-            return False, 0
-
-        _delete_existing(doc_id)
-
-        splitter_fn = globals()["split_sheet_sections"]
-        sections = splitter_fn(text) if text else [(None, "")]
-        added_text = 0
-        next_chunk_index = 0
-        
-        source_type = "xlsx" if (mimetype == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" or ext == "xlsx") else "csv"
-
-        if text:
-            added_text, next_chunk_index = _index_sections(
-                doc_id,
-                filename,
-                sections,
-                chunk_records,
-                file_hash=file_hash,
-            )
-
-        added_tables = _index_tables(
-            doc_id,
-            filename,
-            tables,
-            start_chunk_index=next_chunk_index,
-            chunk_records_out=chunk_records,
-            file_hash=file_hash,
-        )
-        added = added_text + added_tables
+        ok, added = _index_sheet_document(doc_id, filename, ext, mimetype, data, tables, chunk_records, file_hash=file_hash)
     else:
         return False, 0
 
-    _push_chunks_to_node(doc_id, filename, chunk_records)
+    if not ok:
+        return False, 0
 
-    # BM25 sync
-    bm25_chunks = [
-        {
-            "chunk_id": f"{doc_id}_{r['chunk']}",
-            "text": r["text"],
-            "is_table": bool(r.get("is_table", False)),
-        }
-        for r in chunk_records
-    ]
-    build_bm25_index(doc_id, bm25_chunks, file_hash=file_hash)
-
+    _finalize_index(doc_id, filename, chunk_records, file_hash=file_hash)
     return True, added
 
 
@@ -288,17 +289,7 @@ def index_text(doc_id: str, filename: str, text: str, file_hash: str | None = No
         is_chunk_text_mocked=is_chunk_mocked, mock_chunk_text_fn=mock_fn
     )
 
-    _push_chunks_to_node(doc_id, filename, chunk_records)
-
-    bm25_chunks = [
-        {
-            "chunk_id": f"{doc_id}_{r['chunk']}",
-            "text": r["text"],
-            "is_table": bool(r.get("is_table", False)),
-        }
-        for r in chunk_records
-    ]
-    build_bm25_index(doc_id, bm25_chunks, file_hash=file_hash)
+    _finalize_index(doc_id, filename, chunk_records, file_hash=file_hash)
 
     return True, added
 
@@ -348,41 +339,11 @@ def _index_sections(
 # ===== BACKGROUND INDEXING =====
 
 def _background_index(doc_id: str):
-    from services.retrieval_service import fetch_doc_from_node, fetch_doc_meta_from_node
-
-    try:
-        ok, filename, mimetype, data_bytes = fetch_doc_from_node(doc_id)
-        if not ok:
-            return
-
-        text_for_scan = extract_text_for_mimetype(filename, mimetype, data_bytes)
-        if not text_for_scan:
-            return
-
-        scan = detect_sensitive(text_for_scan)
-        prev = consent_state.get(doc_id) or {}
-
-        consent_state[doc_id] = {
-            "sensitive": bool(scan.get("found")),
-            "confirmed": bool(prev.get("confirmed", False)),
-            "awaiting": False,
-            "last_scan": "ok",
-            "summary": scan,
-        }
-
-        if scan.get("found") and not prev.get("confirmed", False):
-            return
-
-        meta = fetch_doc_meta_from_node(doc_id) or {}
-        file_hash = meta.get("contentHash")
-        index_bytes(doc_id, filename, mimetype, data_bytes, file_hash=file_hash)
-
-    except Exception as e:
-        logger.exception("Background indexing failed for %s: %s", doc_id, e)
-
-    finally:
-        with _indexing_lock:
-            _indexing_in_progress.discard(doc_id)
+    return _background_index_impl(
+        doc_id,
+        indexing_lock=_indexing_lock,
+        indexing_in_progress=_indexing_in_progress,
+    )
 
 
 _indexing_in_progress = set()

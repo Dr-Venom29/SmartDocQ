@@ -9,17 +9,10 @@ from config import (
     INDEX_BATCH_SIZE,
     CHUNKING_VERSION,
 )
-from utils.extraction import (
-    extract_text_for_mimetype,
-    extract_text_from_pdf_bytes,
-    extract_text_from_docx_bytes,
-    extract_text_from_txt_bytes,
-)
-from utils.table_extraction import extract_tables_for_file, render_markdown_table, flatten_table_for_embedding
+from utils.table_extraction import render_markdown_table, flatten_table_for_embedding
 from services.embedding_service import generate_embeddings
 from indexing.chunking import (
     chunk_text,
-    split_sheet_sections,
     remove_page_artifacts_and_repeated_headers,
     normalize_markdown_page,
     parse_markdown_blocks,
