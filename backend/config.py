@@ -48,7 +48,15 @@ EMBED_MODEL = os.environ.get("EMBED_MODEL", "models/gemini-embedding-2")
 # Bump this when you make changes that should force reindexing even if the
 # embedding model stays the same (e.g., new chunking strategy, new cleaners).
 INDEX_PIPELINE_VERSION = os.environ.get("INDEX_PIPELINE_VERSION", "5")
-CHUNKING_VERSION = os.environ.get("CHUNKING_VERSION", "2")
+CHUNKING_VERSION = os.environ.get("CHUNKING_VERSION", "3")
+NOISE_HEADERS = {
+    entry.strip().lower()
+    for entry in os.environ.get(
+        "NOISE_HEADERS",
+        "references,bibliography,acknowledgements,acknowledgments,appendix,author contributions,funding,conflict of interest,ethics statement,supplementary material",
+    ).split(",")
+    if entry.strip()
+}
 
 # ====== CHUNKING PIPELINE PARAMETERS ======
 CHUNK_TARGET_TOKENS = int(os.environ.get("CHUNK_TARGET_TOKENS", "512"))

@@ -147,7 +147,7 @@ def clean_indexing_state():
 
 @pytest.fixture
 def clean_consent_state():
-    """Ensure consent_state mutations from _background_index don't leak across tests."""
+    """Ensure consent_state mutations from run_background_index don't leak across tests."""
 
     original = dict(indexer.consent_state)
     indexer.consent_state.clear()
@@ -628,14 +628,14 @@ def test_delete_existing_errors_do_not_propagate(fake_collection, mock_embedding
 
 
 # ============================================================================
-# High-priority: _background_index() workflow tests
+# High-priority: run_background_index() workflow tests
 # ============================================================================
 
 
 def test_background_index_happy_path(monkeypatch, clean_indexing_state, clean_consent_state):
     doc_id = "bg1"
 
-    # Stub retrieval_service module used by _background_index()
+    # Stub retrieval_service module used by run_background_index()
     fake_retrieval = types.ModuleType("services.retrieval_service")
     fake_retrieval.fetch_doc_from_node = lambda _doc_id: (
         True,
@@ -659,7 +659,7 @@ def test_background_index_happy_path(monkeypatch, clean_indexing_state, clean_co
 
     # Seed in-progress and run
     indexer._indexing_in_progress.add(doc_id)
-    indexer._background_index(doc_id)
+    indexer.run_background_index(doc_id, indexing_lock=indexer._indexing_lock, indexing_in_progress=indexer._indexing_in_progress)
 
     assert "args" in called
     assert called["args"][0] == doc_id
@@ -699,7 +699,7 @@ def test_background_index_blocked_by_sensitive_without_consent(
     monkeypatch.setattr(indexer, "index_bytes", fail_if_called)
 
     indexer._indexing_in_progress.add(doc_id)
-    indexer._background_index(doc_id)
+    indexer.run_background_index(doc_id, indexing_lock=indexer._indexing_lock, indexing_in_progress=indexer._indexing_in_progress)
 
     assert indexer.consent_state[doc_id]["sensitive"] is True
     assert indexer.consent_state[doc_id]["awaiting"] is False
@@ -721,7 +721,7 @@ def test_background_index_always_cleans_up_on_exception(
     monkeypatch.setitem(sys.modules, "services.retrieval_service", fake_retrieval)
 
     indexer._indexing_in_progress.add(doc_id)
-    indexer._background_index(doc_id)
+    indexer.run_background_index(doc_id, indexing_lock=indexer._indexing_lock, indexing_in_progress=indexer._indexing_in_progress)
 
     assert doc_id not in indexer._indexing_in_progress
 

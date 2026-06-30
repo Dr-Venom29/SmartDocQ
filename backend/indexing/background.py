@@ -1,13 +1,11 @@
 import logging
-
 from utils.extraction import extract_text_for_mimetype
 from utils.security import detect_sensitive
 from state.memory_store import consent_state
 
 logger = logging.getLogger(__name__)
 
-
-def _background_index(doc_id: str, *, indexing_lock, indexing_in_progress):
+def run_background_index(doc_id: str, *, indexing_lock, indexing_in_progress):
     from services.retrieval_service import fetch_doc_from_node, fetch_doc_meta_from_node
 
     try:

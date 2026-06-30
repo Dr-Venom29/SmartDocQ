@@ -15,9 +15,9 @@ from utils.extraction import (
     extract_text_from_txt_bytes as original_extract_txt,
 )
 from services.bm25_service import build_bm25_index, invalidate_bm25_index
-from indexing.chunking import chunk_text as original_chunk_text, split_sheet_sections, pack_blocks_into_chunks
-from utils.table_extraction import extract_tables_for_file, render_markdown_table, flatten_table_for_embedding
-from indexing.background import _background_index as _background_index_impl
+from indexing.chunking import chunk_text as original_chunk_text, split_sheet_sections
+from utils.table_extraction import extract_tables_for_file
+from indexing.background import run_background_index
 
 # Re-export core processing elements for dynamic test resolution and monkeypatching
 from services.embedding_service import generate_embeddings
@@ -336,16 +336,6 @@ def _index_sections(
     )
 
 
-# ===== BACKGROUND INDEXING =====
-
-def _background_index(doc_id: str):
-    return _background_index_impl(
-        doc_id,
-        indexing_lock=_indexing_lock,
-        indexing_in_progress=_indexing_in_progress,
-    )
-
-
 _indexing_in_progress = set()
 _indexing_lock = threading.Lock()
 
@@ -355,5 +345,13 @@ def start_background_indexing(doc_id: str):
             return
         _indexing_in_progress.add(doc_id)
 
-    th = threading.Thread(target=_background_index, args=(doc_id,), daemon=True)
+    th = threading.Thread(
+        target=run_background_index,
+        kwargs={
+            "doc_id": doc_id,
+            "indexing_lock": _indexing_lock,
+            "indexing_in_progress": _indexing_in_progress,
+        },
+        daemon=True,
+    )
     th.start()

@@ -1,6 +1,7 @@
-import re
 import logging
+import re
 from config import CHUNK_TARGET_TOKENS, CHUNK_SOFT_LIMIT, CHUNK_HARD_LIMIT, CHUNK_OVERLAP_TOKENS, IGNORE_REFERENCE_SECTIONS
+from config import NOISE_HEADERS
 
 logger = logging.getLogger(__name__)
 
@@ -8,6 +9,19 @@ logger = logging.getLogger(__name__)
 _SHEET_PATTERN = re.compile(r"^\s*#\s*Sheet:\s*(.*)", re.IGNORECASE)
 _PARAGRAPH_SPLITTER = re.compile(r"\n\s*\n")
 _MIN_OVERLAP_RATIO = 0.5
+_BULLET_PREFIX_RE = re.compile(r"^(\s*)([\*\+])(\s+)")
+_HEADING_FIX_RE = re.compile(r"^(\s*)(#+)\s*([^\s#].*)$")
+_HEADING_MATCH_RE = re.compile(r"^(\s*)(#+)\s+(.+)$")
+_LIST_ITEM_RE = re.compile(r"^([\*\-\+]|\d+\.)\s")
+_HTML_BLOCK_START_RE = re.compile(r"^<\s*(?:[A-Za-z][\w:-]*|!--|/|\?)")
+_DISPLAY_MATH_START_RE = re.compile(r"^(?:\$\$|\\\[)\s*$")
+_DISPLAY_MATH_END_RE = re.compile(r"^(?:\$\$|\\\])\s*$")
+ISOLATED_BLOCK_TYPES = {
+    "table",
+    "code",
+    "html",
+    "equation",
+}
 
 # ===== TOKENIZER & ESTIMATION =====
 
@@ -74,9 +88,9 @@ def normalize_markdown_page(text: str) -> str:
     
     for line in lines:
         # 1. Normalize list bullets (* and + to -) at start of lines (possibly indented)
-        line = re.sub(r"^(\s*)([\*\+])(\s+)", r"\1-\3", line)
+        line = _BULLET_PREFIX_RE.sub(r"\1-\3", line)
         # 2. Fix broken headings: e.g. ##Heading -> ## Heading or ##   Heading -> ## Heading
-        line = re.sub(r"^(\s*)(#+)\s*([^\s#].*)$", r"\2 \3", line)
+        line = _HEADING_FIX_RE.sub(r"\2 \3", line)
         # 3. Normalize code fences: ~~~ to ```
         if line.strip().startswith("~~~"):
             line = line.replace("~~~", "```")
@@ -106,7 +120,7 @@ def normalize_markdown_page(text: str) -> str:
                 stripped.startswith(">") or
                 stripped.startswith("|") or
                 stripped.startswith("```") or
-                re.match(r"^([\*\-\+]|\d+\.)\s", stripped)
+                _LIST_ITEM_RE.match(stripped)
             )
             # Check if previous line starts with markdown block structures that block merging
             prev_md_start = (
@@ -151,8 +165,8 @@ def remove_page_artifacts_and_repeated_headers(pages: list[dict]) -> list[dict]:
             if len(non_empty) > 1:
                 last_lines.append(non_empty[-1])
                 
-    # Headers/footers are lines present in >= max(2, len(pages) // 3) pages
-    min_occurrence = max(2, len(pages) // 3)
+    # Headers/footers are lines present in >= max(2, 50% of pages) pages
+    min_occurrence = max(2, (len(pages) + 1) // 2)
     repeated_headers = {line for line, count in Counter(first_lines).items() if count >= min_occurrence}
     repeated_footers = {line for line, count in Counter(last_lines).items() if count >= min_occurrence}
     
@@ -193,7 +207,7 @@ def remove_page_artifacts_and_repeated_headers(pages: list[dict]) -> list[dict]:
 def parse_markdown_blocks(text: str, page_num: int) -> list[dict]:
     """Parse markdown string into a list of generic structured blocks.
 
-    Supported block types: 'paragraph', 'table', 'code', 'list', 'blockquote', 'heading'.
+    Supported block types: 'paragraph', 'table', 'code', 'list', 'blockquote', 'heading', 'html', 'equation'.
     """
     lines = text.splitlines()
     blocks = []
@@ -202,6 +216,8 @@ def parse_markdown_blocks(text: str, page_num: int) -> list[dict]:
     
     in_code_block = False
     code_fence = None
+    in_html_block = False
+    in_equation_block = False
     
     for line in lines:
         stripped = line.strip()
@@ -219,6 +235,44 @@ def parse_markdown_blocks(text: str, page_num: int) -> list[dict]:
                 in_code_block = False
                 current_type = None
             continue
+
+        if in_html_block:
+            if not stripped:
+                blocks.append({
+                    "type": "html",
+                    "content": "\n".join(current_block_lines).strip(),
+                    "page": page_num
+                })
+                current_block_lines = []
+                in_html_block = False
+                current_type = None
+                continue
+
+            if stripped.startswith("<") or stripped.startswith("</") or stripped.startswith("<!--"):
+                current_block_lines.append(line)
+                continue
+
+            blocks.append({
+                "type": "html",
+                "content": "\n".join(current_block_lines).strip(),
+                "page": page_num
+            })
+            current_block_lines = []
+            in_html_block = False
+            current_type = None
+
+        if in_equation_block:
+            current_block_lines.append(line)
+            if _DISPLAY_MATH_END_RE.match(stripped):
+                blocks.append({
+                    "type": "equation",
+                    "content": "\n".join(current_block_lines),
+                    "page": page_num
+                })
+                current_block_lines = []
+                in_equation_block = False
+                current_type = None
+            continue
             
         # Check for code fence start
         if stripped.startswith("```") or stripped.startswith("~~~"):
@@ -234,10 +288,69 @@ def parse_markdown_blocks(text: str, page_num: int) -> list[dict]:
             current_block_lines.append(line)
             current_type = "code"
             continue
+
+        # Check for display math fences / single-line display equations
+        if _DISPLAY_MATH_START_RE.match(stripped):
+            if current_block_lines:
+                blocks.append({
+                    "type": current_type or "paragraph",
+                    "content": "\n".join(current_block_lines).strip(),
+                    "page": page_num
+                })
+                current_block_lines = []
+            in_equation_block = True
+            current_block_lines.append(line)
+            current_type = "equation"
+            continue
+
+        if stripped.startswith("$$") and stripped.endswith("$$") and len(stripped) > 4:
+            if current_block_lines:
+                blocks.append({
+                    "type": current_type or "paragraph",
+                    "content": "\n".join(current_block_lines).strip(),
+                    "page": page_num
+                })
+                current_block_lines = []
+                current_type = None
+            blocks.append({
+                "type": "equation",
+                "content": line.strip(),
+                "page": page_num
+            })
+            continue
+
+        if stripped.startswith("\\[") and stripped.endswith("\\]") and len(stripped) > 4:
+            if current_block_lines:
+                blocks.append({
+                    "type": current_type or "paragraph",
+                    "content": "\n".join(current_block_lines).strip(),
+                    "page": page_num
+                })
+                current_block_lines = []
+                current_type = None
+            blocks.append({
+                "type": "equation",
+                "content": line.strip(),
+                "page": page_num
+            })
+            continue
+
+        if _HTML_BLOCK_START_RE.match(stripped):
+            if current_block_lines:
+                blocks.append({
+                    "type": current_type or "paragraph",
+                    "content": "\n".join(current_block_lines).strip(),
+                    "page": page_num
+                })
+                current_block_lines = []
+            in_html_block = True
+            current_block_lines.append(line)
+            current_type = "html"
+            continue
             
         # Check for heading
         is_heading = False
-        heading_match = re.match(r"^(\s*)(#+)\s+(.+)$", line)
+        heading_match = _HEADING_MATCH_RE.match(line)
         if heading_match:
             is_heading = True
             
@@ -257,7 +370,7 @@ def parse_markdown_blocks(text: str, page_num: int) -> list[dict]:
         line_type = "paragraph"
         if is_heading:
             line_type = "heading"
-        elif stripped.startswith("- ") or stripped.startswith("* ") or re.match(r"^\d+\.\s", stripped):
+        elif stripped.startswith("- ") or stripped.startswith("* ") or _LIST_ITEM_RE.match(stripped):
             line_type = "list"
         elif stripped.startswith(">"):
             line_type = "blockquote"
@@ -312,15 +425,10 @@ def extract_sections_and_headings(blocks: list[dict]) -> list[dict]:
     sections = []
     current_section_blocks = []
     current_section_title = None
-    
-    NOISE_HEADERS = {
-        "references", "bibliography", "acknowledgements", "acknowledgments",
-        "appendix", "author contributions", "funding", "conflict of interest",
-        "ethics statement", "supplementary material"
-    }
+    current_section_level = None
     
     def finalize_section():
-        nonlocal current_section_blocks, current_section_title
+        nonlocal current_section_blocks, current_section_title, current_section_level
         if current_section_blocks:
             is_noise = False
             if IGNORE_REFERENCE_SECTIONS and current_section_title:
@@ -334,6 +442,8 @@ def extract_sections_and_headings(blocks: list[dict]) -> list[dict]:
                     "blocks": list(current_section_blocks)
                 })
             current_section_blocks = []
+            current_section_title = None
+            current_section_level = None
             
     for b in blocks:
         if b["type"] == "heading":
@@ -346,10 +456,11 @@ def extract_sections_and_headings(blocks: list[dict]) -> list[dict]:
                 heading_stack = [h for h in heading_stack if h[0] < level]
                 heading_stack.append((level, title))
                 
-                # H1 starts a new section
-                if level == 1:
+                # Start a new section whenever we hit the top-most heading for the current section.
+                if current_section_level is None or level <= current_section_level:
                     finalize_section()
                     current_section_title = title
+                    current_section_level = level
                     
         # Map dynamic heading context to current block
         if heading_stack:
@@ -603,8 +714,8 @@ def pack_blocks_into_chunks(sections: list[dict]) -> list[dict]:
         while i < len(processed_blocks):
             b = processed_blocks[i]
             
-            # Isolated blocks rule (table/code)
-            if b["type"] in ("table", "code"):
+            # Isolated blocks rule (table/code/html/equation)
+            if b["type"] in ISOLATED_BLOCK_TYPES:
                 if current_chunk_blocks:
                     chunks.append(create_chunk_dict(current_chunk_blocks, sec_idx, chunk_idx_in_sec))
                     chunk_idx_in_sec += 1
