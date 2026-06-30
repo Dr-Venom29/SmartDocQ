@@ -8,10 +8,12 @@ import { useNavigate } from "react-router-dom";
 import FeatureCard from "./FeatureCard";
 import { FEATURES } from "./featuresData";
 import MobileHero from "./MobileHero";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const HeroSection = () => {
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const sectionRef = useRef(null);
   const containerRef = useRef(null);
   const navigate = useNavigate();
@@ -101,70 +103,68 @@ const HeroSection = () => {
     }
   };
 
-  return (
-    <>
-      {/* ── Desktop ── */}
-      <div className="desktop-only-hero">
-        <section className="hero-section" aria-labelledby="hero-heading">
-          <div className="hero-container">
-            <div className="hero-left">
-              <div className="badge">
-                <span>Powered by Gemini</span>
-              </div>
-              <h1 id="hero-heading" className="hero-heading">
-                Your Documents.<br />
-                <span className="gradient-text">Supercharged.</span>
-              </h1>
-              <p className="hero-description">
-                Turn information overload into instant understanding.
-                <br />Upload documents, chat with your content, generate quizzes and flashcards,
-                and discover insights faster than ever. SmartDocQ combines Gemini AI with hybrid
-                search to make every document searchable, interactive, and actionable.
-              </p>
-              <button type="button" className="get-started-btn" onClick={handleGetStarted}>
-                Get Started <span className="btn-arrow">→</span>
-              </button>
-            </div>
-            <div className="hero-right" aria-hidden="true">
-              <Lottie
-                animationData={aiAnimation}
-                loop={!reduceMotion}
-                autoplay={!reduceMotion}
-                className="hero-lottie"
-              />
-            </div>
-          </div>
-        </section>
+  // On mobile — only MobileHero mounts; GSAP/Lottie never initialise
+  if (isMobile) return <MobileHero />;
 
-        <h2 id="feat" className="feature-title">
+  return (
+    /* ── Desktop only — GSAP + Lottie live here ── */
+    <div className="desktop-only-hero">
+      <section className="hero-section" aria-labelledby="hero-heading">
+        <div className="hero-container">
+          <div className="hero-left">
+            <div className="badge">
+              <span>Powered by Gemini</span>
+            </div>
+            <h1 id="hero-heading" className="hero-heading">
+              Your Documents.<br />
+              <span className="gradient-text">Supercharged.</span>
+            </h1>
+            <p className="hero-description">
+              Turn information overload into instant understanding.
+              <br />Upload documents, chat with your content, generate quizzes and flashcards,
+              and discover insights faster than ever. SmartDocQ combines Gemini AI with hybrid
+              search to make every document searchable, interactive, and actionable.
+            </p>
+            <button type="button" className="get-started-btn" onClick={handleGetStarted}>
+              Get Started <span className="btn-arrow">→</span>
+            </button>
+          </div>
+          <div className="hero-right" aria-hidden="true">
+            <Lottie
+              animationData={aiAnimation}
+              loop={!reduceMotion}
+              autoplay={!reduceMotion}
+              className="hero-lottie"
+            />
+          </div>
+        </div>
+      </section>
+
+      <h2 id="feat" className="feature-title">
+        <span className="title-diamond">◆</span>
+        Why SmartDocQ Stands Out
+        <span className="title-diamond">◆</span>
+      </h2>
+
+      <section className="features-section" ref={sectionRef} aria-label="Product features">
+        <div className="features-container" ref={containerRef} role="list">
+          {FEATURES.map((f) => (
+            <FeatureCard
+              key={f.title}
+              title={f.title}
+              desc={f.desc}
+              anim={f.anim}
+              reduceMotion={reduceMotion}
+            />
+          ))}
+        </div>
+        <h2 className="use-title">
           <span className="title-diamond">◆</span>
-          Why SmartDocQ Stands Out
+          From Chaos to Clarity
           <span className="title-diamond">◆</span>
         </h2>
-
-        <section className="features-section" ref={sectionRef} aria-label="Product features">
-          <div className="features-container" ref={containerRef} role="list">
-            {FEATURES.map((f) => (
-              <FeatureCard
-                key={f.title}
-                title={f.title}
-                desc={f.desc}
-                anim={f.anim}
-                reduceMotion={reduceMotion}
-              />
-            ))}
-          </div>
-          <h2 className="use-title">
-            <span className="title-diamond">◆</span>
-            From Chaos to Clarity
-            <span className="title-diamond">◆</span>
-          </h2>
-        </section>
-      </div>
-
-      {/* ── Mobile ── */}
-      <MobileHero />
-    </>
+      </section>
+    </div>
   );
 };
 

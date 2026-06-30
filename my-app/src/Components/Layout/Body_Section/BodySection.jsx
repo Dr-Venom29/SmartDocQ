@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { useReducedMotion } from "../../../hooks/useReducedMotion";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import "./BodySection.css";
 import HowItWorksSection from "./HowItWorksSection";
 import MobileBodySection from "./MobileBodySection";
@@ -71,11 +72,15 @@ const PROCESS_CARDS = [
  * the video demo + steps guide to <HowItWorksSection />.
  * ============================================================================ */
 function BodySection() {
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const gridRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
+    // Skip desktop observer when on mobile
+    if (isMobile) return;
+
     const element = gridRef.current;
     if (!element) return;
 
@@ -91,15 +96,18 @@ function BodySection() {
           observer.unobserve(element);
         }
       },
-      { 
+      {
         threshold: 0.05,
-        rootMargin: "0px 0px -50px 0px" 
+        rootMargin: "0px 0px -50px 0px"
       }
     );
 
     observer.observe(element);
     return () => observer.disconnect();
-  }, [reduceMotion]);
+  }, [reduceMotion, isMobile]);
+
+  // On mobile — only the lightweight timeline mounts
+  if (isMobile) return <MobileBodySection />;
 
   return (
     <>
@@ -153,9 +161,6 @@ function BodySection() {
       </section>
 
       <HowItWorksSection />
-
-      {/* ── Mobile ── */}
-      <MobileBodySection />
     </>
   );
 }
