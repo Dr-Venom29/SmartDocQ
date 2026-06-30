@@ -54,26 +54,18 @@ SmartDocQ uses a Hybrid Retrieval-Augmented Generation (Hybrid RAG) architecture
 
 To handle complex manuals and academic textbooks, SmartDocQ uses a specialized, stage-based indexing pipeline:
 
-```text
-PDF Upload
-    ↓
-Three-tier Extraction Chain (PyMuPDF4LLM → PyMuPDF → PyPDF2 fallback)
-    ↓
-Markdown Normalization (Bulleted fixes, noise removals, line merging)
-    ↓
-Extensible Block Parsing (Paragraph, List, Table, Code, Blockquote blocks)
-    ↓
-Heading Extraction (H1-H5 nested path extraction)
-    ↓
-Section-aware Chunking (Isolated table/code chunks, snapped text bounds)
-    ↓
-Token-aware Packing (tiktoken bounds packing with overlap bounds mapping)
-    ↓
-Contextual Headers (Prepending Document, Section, Subsection, Page Range)
-    ↓
-Gemini Embeddings (gemini-embedding-2 vector calculation)
-    ↓
-ChromaDB Storage (Clean text documents + detailed metadata)
+```mermaid
+flowchart TD
+    A([PDF Upload])
+    --> B["Three-tier Extraction Chain\n(PyMuPDF4LLM → PyMuPDF → PyPDF2 fallback)"]
+    --> C["Markdown Normalization\n(Bulleted fixes, noise removals, line merging)"]
+    --> D["Extensible Block Parsing\n(Paragraph, List, Table, Code, Blockquote blocks)"]
+    --> E["Heading Extraction\n(H1–H5 nested path extraction)"]
+    --> F["Section-aware Chunking\n(Isolated table/code chunks, snapped text bounds)"]
+    --> G["Token-aware Packing\n(tiktoken bounds packing with overlap bounds mapping)"]
+    --> H["Contextual Headers\n(Prepending Document, Section, Subsection, Page Range)"]
+    --> I["Gemini Embeddings\n(gemini-embedding-exp-03-07 vector calculation)"]
+    --> J[("ChromaDB Storage\nClean text documents + detailed metadata")]
 ```
 
 ---

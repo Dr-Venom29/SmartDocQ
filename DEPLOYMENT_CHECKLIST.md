@@ -11,6 +11,18 @@ This checklist lets you deploy without running anything locally.
   - Root Directory: my-app
 - Redeploy.
 
+### Production Security Headers
+Configure the frontend to send the following HTTP security headers:
+
+- **Content-Security-Policy (CSP)**
+- **Cross-Origin-Opener-Policy** (`same-origin-allow-popups` for Google OAuth)
+- **X-Frame-Options** (`DENY`)
+- **Referrer-Policy** (`strict-origin-when-cross-origin`)
+- **X-Content-Type-Options** (`nosniff`)
+- **Permissions-Policy** (disable unused browser features)
+
+These can be configured through `vercel.json`.
+
 ## 2) Node API (servers/) on your host (Render, Railway, Azure App Service)
 - Start command: `npm start`
 - Install command: `npm install`
