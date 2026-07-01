@@ -19,16 +19,19 @@ def run_background_index(doc_id: str, *, indexing_lock, indexing_in_progress):
 
         scan = detect_sensitive(text_for_scan)
         prev = consent_state.get(doc_id) or {}
+        sensitive = bool(scan.get("found"))
+        confirmed = bool(prev.get("confirmed", False))
+        awaiting = sensitive and not confirmed
 
         consent_state[doc_id] = {
-            "sensitive": bool(scan.get("found")),
-            "confirmed": bool(prev.get("confirmed", False)),
-            "awaiting": False,
+            "sensitive": sensitive,
+            "confirmed": confirmed,
+            "awaiting": awaiting,
             "last_scan": "ok",
             "summary": scan,
         }
 
-        if scan.get("found") and not prev.get("confirmed", False):
+        if awaiting:
             return
 
         meta = fetch_doc_meta_from_node(doc_id) or {}

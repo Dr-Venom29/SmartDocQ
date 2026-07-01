@@ -28,6 +28,12 @@ ISOLATED_BLOCK_TYPES = {
 _tokenizer = None
 _tokenizer_checked = False
 
+def _fallback_words(text: str) -> list[str]:
+    return re.findall(r"\w+|[^\w\s]+", text)
+
+def _estimate_tokens_fallback(text: str) -> int:
+    return int(len(_fallback_words(text)) * 1.3)
+
 def get_tokenizer():
     global _tokenizer, _tokenizer_checked
     if _tokenizer_checked:
@@ -63,10 +69,8 @@ def estimate_token_count(text: str) -> int:
             return len(tokenizer.encode(text))
         except Exception as e:
             logger.debug(f"tiktoken encoding error: {e}. Falling back.")
-            
-    # Fallback word-based count * 1.3
-    words = re.findall(r"\w+|[^\w\s]+", text)
-    return int(len(words) * 1.3)
+
+    return _estimate_tokens_fallback(text)
 
 
 # ===== MARKDOWN NORMALIZATION =====
@@ -494,12 +498,26 @@ def split_large_table_block(table_content: str, max_tokens: int) -> list[str]:
     Prepend headers to every sub-table chunk to preserve column semantics.
     """
     lines = table_content.splitlines()
-    if len(lines) < 3:
+    if len(lines) < 2:
         return [table_content]
-        
-    # Extract headers (first row and the alignment/separator row)
-    headers = lines[:2]
-    data_rows = lines[2:]
+
+    separator_index = None
+    for i, line in enumerate(lines):
+        if re.match(r"^\s*\|?[\s:\-|+]+\|?\s*$", line):
+            separator_index = i
+            break
+
+    allow_overlap = separator_index is not None
+
+    if separator_index is not None:
+        headers = lines[: separator_index + 1]
+        data_rows = lines[separator_index + 1 :]
+    else:
+        headers = [lines[0]]
+        data_rows = lines[1:]
+
+    if not data_rows:
+        return [table_content]
     
     sub_tables = []
     current_rows = []
@@ -511,8 +529,8 @@ def split_large_table_block(table_content: str, max_tokens: int) -> list[str]:
         # If adding row exceeds limit, flush
         if current_rows and current_tokens + row_tokens > max_tokens:
             sub_tables.append("\n".join(headers + current_rows))
-            # Start next sub-table with 1 row overlap for continuity
-            current_rows = [current_rows[-1]]
+            # Only keep a 1-row overlap for well-formed markdown tables.
+            current_rows = [current_rows[-1]] if allow_overlap else []
             current_tokens = estimate_token_count("\n".join(headers + current_rows))
             
         current_rows.append(row)
@@ -543,7 +561,7 @@ def split_large_block_content(text: str, max_tokens: int, overlap_tokens: int) -
             pass
             
     # Fallback tokenizer slicing
-    words = re.findall(r"\w+|[^\w\s]+", text)
+    words = _fallback_words(text)
     chunks = []
     start = 0
     max_words = int(max_tokens / 1.3)
@@ -571,7 +589,7 @@ def get_overlap_tokens_text(text: str, target_overlap: int) -> str:
             pass
             
     # Fallback word-based slice
-    words = re.findall(r"\w+|[^\w\s]+", text)
+    words = _fallback_words(text)
     overlap_words = int(target_overlap / 1.3)
     if len(words) <= overlap_words:
         return text
@@ -628,6 +646,7 @@ def create_chunk_dict(chunk_blocks: list[dict], section_index: int, chunk_index:
     new_blocks = [cb for cb in chunk_blocks if not cb.get("is_overlap")]
     if not new_blocks:
         new_blocks = chunk_blocks
+    first_new = new_blocks[0]
         
     pages = [cb["page"] for cb in new_blocks if cb.get("page") is not None]
     start_page = min(pages) if pages else 1
@@ -650,9 +669,9 @@ def create_chunk_dict(chunk_blocks: list[dict], section_index: int, chunk_index:
         "text": content,
         "start_page": start_page,
         "end_page": end_page,
-        "section": chunk_blocks[0]["section"],
-        "subsection": chunk_blocks[0]["subsection"],
-        "heading_level": chunk_blocks[0]["heading_level"],
+        "section": first_new["section"],
+        "subsection": first_new["subsection"],
+        "heading_level": first_new["heading_level"],
         "section_index": section_index,
         "chunk_index": chunk_index,
         "chunk_type": chunk_type,

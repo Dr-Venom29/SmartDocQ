@@ -49,10 +49,12 @@ except Exception:
 
 
 from indexing import indexer
+import indexing.pipeline as pipeline
 from services import retrieval_service
 from services import bm25_service
+import indexing.chunking as chunking_mod
 
-from utils.extraction import extract_text_from_docx_bytes
+from utils.extraction import extract_docx
 from utils.table_extraction import (
     extract_tables_from_csv_bytes,
     extract_tables_from_docx_bytes,
@@ -222,7 +224,7 @@ def test_docx_paragraph_extraction_normalizes_whitespace():
     bio = io.BytesIO()
     doc.save(bio)
 
-    text = extract_text_from_docx_bytes(bio.getvalue())
+    text = extract_docx(bio.getvalue())
     assert "Hello world" in text
     assert "internal whitespace" in text
     assert "\n\n\n" not in text
@@ -293,6 +295,7 @@ class FakeIndexerCollection:
 def fake_indexer_collection(monkeypatch):
     coll = FakeIndexerCollection()
     monkeypatch.setattr(indexer, "collection", coll)
+    monkeypatch.setattr(pipeline, "collection", coll)
     return coll
 
 
@@ -303,7 +306,7 @@ def _no_node_push(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _mock_indexer_embeddings(monkeypatch):
-    monkeypatch.setattr(indexer, "generate_embeddings", lambda _t: [0.0, 0.1, 0.2])
+    monkeypatch.setattr(pipeline, "generate_embeddings", lambda _t: [0.0, 0.1, 0.2])
 
 
 def test_csv_indexes_table_chunks_with_metadata(fake_indexer_collection):
@@ -374,7 +377,7 @@ def test_table_deduplication_skips_duplicate_docx_tables(fake_indexer_collection
 
 def test_chunk_id_uniqueness_uses_next_chunk_index(fake_indexer_collection, monkeypatch):
     monkeypatch.setattr(indexer, "split_sheet_sections", lambda _t: [(None, "body")])
-    monkeypatch.setattr(indexer, "chunk_text", lambda _b: ["A" * 400, "B" * 400])
+    monkeypatch.setattr(chunking_mod, "chunk_text", lambda _b: ["A" * 400, "B" * 400])
 
     real_upsert = fake_indexer_collection.upsert
 
@@ -382,7 +385,8 @@ def test_chunk_id_uniqueness_uses_next_chunk_index(fake_indexer_collection, monk
         real_upsert(batch_embeddings, batch_documents, batch_metadatas, batch_ids)
         return 0
 
-    monkeypatch.setattr(indexer, "_flush_batch", fake_flush_batch)
+    monkeypatch.setattr(pipeline, "_flush_batch", fake_flush_batch)
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: ["A" * 400, "B" * 400])
 
     monkeypatch.setattr(
         indexer,
@@ -411,7 +415,7 @@ def test_chunk_id_uniqueness_uses_next_chunk_index(fake_indexer_collection, monk
 
 def test_deterministic_chunk_numbering_consumes_indices_on_embedding_fail(fake_indexer_collection, monkeypatch):
     monkeypatch.setattr(indexer, "split_sheet_sections", lambda _t: [(None, "body")])
-    monkeypatch.setattr(indexer, "chunk_text", lambda _b: ["A" * 400, "B" * 400])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: ["A" * 400, "B" * 400])
 
     calls = {"n": 0}
 
@@ -419,7 +423,7 @@ def test_deterministic_chunk_numbering_consumes_indices_on_embedding_fail(fake_i
         calls["n"] += 1
         return None if calls["n"] == 1 else [0.0, 0.1, 0.2]
 
-    monkeypatch.setattr(indexer, "generate_embeddings", flaky_embeddings)
+    monkeypatch.setattr(pipeline, "generate_embeddings", flaky_embeddings)
 
     ok, added = indexer.index_text("doc_det", "sample.txt", "ignored")
     assert ok is True
@@ -432,14 +436,16 @@ def test_deterministic_chunk_numbering_consumes_indices_on_embedding_fail(fake_i
 
 def test_markdown_truncation_in_metadata(fake_indexer_collection, monkeypatch):
     monkeypatch.setattr(
-        indexer,
+        pipeline,
         "render_markdown_table",
         lambda *_a, **_k: ("| H |\n| --- |\n| V |\n" + ("x" * (indexer.MAX_MD_META_LEN + 200))),
+        raising=False,
     )
     monkeypatch.setattr(
-        indexer,
+        pipeline,
         "flatten_table_for_embedding",
         lambda *_a, **_k: "Sheet: S1\n\nRow:\nH = V",
+        raising=False,
     )
 
     headers = ["H"]
@@ -447,9 +453,10 @@ def test_markdown_truncation_in_metadata(fake_indexer_collection, monkeypatch):
     tables = [{"table_id": "t_big", "sheet": "S1", "headers": headers, "rows": rows}]
 
     chunk_records = []
-    added = indexer._index_tables(
+    added = indexer._index_tables_spreadsheet(
         "doc_md",
         "big.xlsx",
+        "xlsx",
         tables,
         start_chunk_index=0,
         chunk_records_out=chunk_records,
@@ -801,14 +808,17 @@ def test_end_to_end_pdf_indexing_and_retrieval(monkeypatch):
     fake_db.query = fake_query
     
     monkeypatch.setattr(indexer, "collection", fake_db)
+    monkeypatch.setattr(pipeline, "collection", fake_db)
     monkeypatch.setattr(retrieval_service, "collection", fake_db)
     
     # Mock PyMuPDF4LLM extraction response
+    import utils.extraction as extraction_mod
+
     mock_pages = [
         {"page": 1, "text": "# Section A\nThis is page 1 content."},
         {"page": 2, "text": "# Section B\nThis is page 2 content explaining optimizer."}
     ]
-    monkeypatch.setattr(indexer, "_extract_pdf_pages", lambda _d: mock_pages)
+    monkeypatch.setattr(extraction_mod, "extract_pdf", lambda _d: mock_pages)
     
     # Index the simulated PDF bytes
     ok, added = indexer.index_bytes(

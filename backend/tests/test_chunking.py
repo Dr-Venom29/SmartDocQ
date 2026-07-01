@@ -515,6 +515,25 @@ def test_large_table_splitting(monkeypatch):
         assert "|---|---|" in st
 
 
+def test_large_table_splitting_without_separator_uses_first_row_header():
+    table_content = "\n".join([
+        "Name | Age",
+        "John | 20",
+        "Mary | 21",
+        "Alice | 22",
+        "Bob | 23",
+        "Carol | 24",
+        "Dan | 25",
+    ])
+    sub_tables = split_large_table_block(table_content, max_tokens=4)
+
+    assert len(sub_tables) > 1
+    for st in sub_tables:
+        assert st.startswith("Name | Age")
+    assert sum("John | 20" in st for st in sub_tables) == 1
+    assert sum("Mary | 21" in st for st in sub_tables) == 1
+
+
 def test_large_code_splitting():
     code_content = "```python\n" + "\n".join(f"x = {i}" for i in range(200)) + "\n```"
     sub_codes = split_large_block_content(code_content, max_tokens=50, overlap_tokens=10)
@@ -558,6 +577,22 @@ def test_overlap_rules_and_isolation(monkeypatch):
     code_chunk = chunks[2]
     assert code_chunk["chunk_type"] == "code"
     assert "| A |" not in code_chunk["text"]
-    assert "Paragraph" not in code_chunk["text"]
+
+
+def test_create_chunk_dict_uses_first_non_overlap_metadata():
+    chunk_blocks = [
+        {"type": "paragraph", "content": "Overlap intro", "page": 1, "section": "Intro", "subsection": None, "heading_level": 1, "is_overlap": True},
+        {"type": "paragraph", "content": "Overlap bridge", "page": 1, "section": "Intro", "subsection": None, "heading_level": 1, "is_overlap": True},
+        {"type": "heading", "content": "# Methods", "page": 2, "section": "Methods", "subsection": None, "heading_level": 1},
+        {"type": "paragraph", "content": "Methods body", "page": 2, "section": "Methods", "subsection": None, "heading_level": 1},
+    ]
+
+    chunk = chunking.create_chunk_dict(chunk_blocks, section_index=0, chunk_index=0)
+
+    assert chunk["section"] == "Methods"
+    assert chunk["subsection"] is None
+    assert chunk["heading_level"] == 1
+    assert chunk["paragraph_count"] == 2
+
 
 

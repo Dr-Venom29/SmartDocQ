@@ -10,21 +10,16 @@ from config import (
     INDEX_PIPELINE_VERSION,
     INDEX_BATCH_SIZE,
 )
-from utils.extraction import (
-    extract_text_for_mimetype,
-    extract_pdf as original_extract_pdf,
-    extract_docx as original_extract_docx,
-    extract_txt as original_extract_txt,
-)
+import utils.extraction as extraction
+from utils.extraction import extract_text_for_mimetype
 from services.bm25_service import build_bm25_index, invalidate_bm25_index
-from indexing.chunking import chunk_text as original_chunk_text, split_sheet_sections, pack_blocks_into_chunks
+from indexing.chunking import split_sheet_sections
 from utils.table_extraction import extract_tables_for_file
 from indexing.background import run_background_index
 from state.memory_store import consent_state
 from utils.security import detect_sensitive
 
 # Re-export core processing elements for dynamic test resolution and monkeypatching
-from services.embedding_service import generate_embeddings
 from indexing.pipeline import (
     _index_blocks_pipeline,
     _index_sections_spreadsheet,
@@ -36,19 +31,6 @@ from indexing.pipeline import (
 )
 
 logger = logging.getLogger(__name__)
-
-# Re-expose extraction and chunking for unit test overrides
-extract_text_from_pdf_bytes = original_extract_pdf
-extract_text_from_docx_bytes = original_extract_docx
-extract_text_from_txt_bytes = original_extract_txt
-chunk_text = original_chunk_text
-
-# ---------------------------------------------------------------------------
-# Phase-1 alias: tests monkeypatch indexer._extract_pdf_pages to inject mock
-# pages into _index_pdf_document without triggering the text-mock path.
-# Remove in Phase 2 — update tests to patch utils.extraction.extract_pdf.
-# ---------------------------------------------------------------------------
-_extract_pdf_pages = original_extract_pdf
 
 # ===== PUBLIC APIS & ORCHESTRATION =====
 
@@ -104,30 +86,33 @@ def _finalize_index(doc_id: str, filename: str, chunk_records: list, file_hash: 
     _push_chunks_to_node(doc_id, filename, chunk_records)
     _sync_bm25(doc_id, chunk_records, file_hash=file_hash)
 
-
 def _extract_tables_for_document(doc_id: str, filename: str, mimetype: str, data: bytes):
     try:
         return extract_tables_for_file(filename, mimetype, data, source_key=doc_id)
     except Exception:
         return []
 
-
-def _maybe_get_mocked_text(mimetype: str, ext: str, data: bytes):
-    """Return mocked text if a test has overridden an extraction function, else None."""
-    if mimetype == "application/pdf" or ext == "pdf":
-        if extract_text_from_pdf_bytes is not original_extract_pdf:
-            return extract_text_from_pdf_bytes(data)
-    elif mimetype in (
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/msword",
-    ) or ext in ("docx", "doc"):
-        if extract_text_from_docx_bytes is not original_extract_docx:
-            return extract_text_from_docx_bytes(data)
-    elif mimetype == "text/plain" or ext == "txt":
-        if extract_text_from_txt_bytes is not original_extract_txt:
-            return extract_text_from_txt_bytes(data)
-    return None
-
+def _index_document_by_type(
+    doc_type: str,
+    doc_id: str,
+    filename: str,
+    mimetype: str,
+    data: bytes,
+    tables: list,
+    chunk_records: list,
+    file_hash: str | None = None,
+):
+    match doc_type:
+        case "pdf":
+            return _index_pdf_document(doc_id, filename, data, tables, chunk_records, file_hash=file_hash)
+        case "docx" | "doc":
+            return _index_docx_document(doc_id, filename, data, tables, chunk_records, file_hash=file_hash)
+        case "txt":
+            return _index_txt_document(doc_id, filename, data, tables, chunk_records, file_hash=file_hash)
+        case "csv" | "xlsx":
+            return _index_sheet_document(doc_id, filename, doc_type, mimetype, data, tables, chunk_records, file_hash=file_hash)
+        case _:
+            return False, 0
 
 def _index_text_document(
     doc_id: str,
@@ -154,15 +139,14 @@ def _index_text_document(
             pages,
             chunk_records,
             file_hash=file_hash,
-            is_chunk_text_mocked=(chunk_text is not original_chunk_text),
-            mock_chunk_text_fn=chunk_text if chunk_text is not original_chunk_text else None,
         )
         added += added_text
 
     if tables:
-        added += _index_tables(
+        added += _index_tables_spreadsheet(
             doc_id,
             filename,
+            source_type,
             tables,
             start_chunk_index=next_chunk_index,
             chunk_records_out=chunk_records,
@@ -171,38 +155,21 @@ def _index_text_document(
 
     return True, added
 
-
-def _index_pdf_document(doc_id: str, filename: str, ext: str, data: bytes, tables: list, chunk_records: list, file_hash: str | None = None):
-    mocked_text = _maybe_get_mocked_text("application/pdf", ext, data)
-    if mocked_text is not None:
-        pages = [{"page": 1, "text": mocked_text}]
-        source_type = ext if ext in ("pdf", "docx", "txt") else "txt"
-        return _index_text_document(doc_id, filename, source_type, pages, tables, chunk_records, file_hash=file_hash)
-
-    # Module-level lookup: tests can monkeypatch indexer._extract_pdf_pages
-    pages = _extract_pdf_pages(data)
+def _index_pdf_document(doc_id: str, filename: str, data: bytes, tables: list, chunk_records: list, file_hash: str | None = None):
+    pages = extraction.extract_pdf(data)
     return _index_text_document(doc_id, filename, "pdf", pages, tables, chunk_records, file_hash=file_hash)
 
-
-def _index_docx_document(doc_id: str, filename: str, ext: str, data: bytes, tables: list, chunk_records: list, file_hash: str | None = None):
-    mocked_text = _maybe_get_mocked_text(
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ext,
-        data,
-    )
-    text = mocked_text if mocked_text is not None else extract_text_from_docx_bytes(data)
+def _index_docx_document(doc_id: str, filename: str, data: bytes, tables: list, chunk_records: list, file_hash: str | None = None):
+    text = extraction.extract_docx(data)
     pages = [{"page": 1, "text": text}] if text.strip() else []
     return _index_text_document(doc_id, filename, "docx", pages, tables, chunk_records, file_hash=file_hash)
 
-
-def _index_txt_document(doc_id: str, filename: str, ext: str, data: bytes, tables: list, chunk_records: list, file_hash: str | None = None):
-    mocked_text = _maybe_get_mocked_text("text/plain", ext, data)
-    text = mocked_text if mocked_text is not None else extract_text_from_txt_bytes(data)
+def _index_txt_document(doc_id: str, filename: str, data: bytes, tables: list, chunk_records: list, file_hash: str | None = None):
+    text = extraction.extract_txt(data)
     pages = [{"page": 1, "text": text}] if text.strip() else []
     return _index_text_document(doc_id, filename, "txt", pages, tables, chunk_records, file_hash=file_hash)
 
-
-def _index_sheet_document(doc_id: str, filename: str, ext: str, mimetype: str, data: bytes, tables: list, chunk_records: list, file_hash: str | None = None):
+def _index_sheet_document(doc_id: str, filename: str, doc_type: str, mimetype: str, data: bytes, tables: list, chunk_records: list, file_hash: str | None = None):
     text = extract_text_for_mimetype(filename, mimetype, data)
     if not text and not tables:
         return False, 0
@@ -214,24 +181,25 @@ def _index_sheet_document(doc_id: str, filename: str, ext: str, mimetype: str, d
     next_chunk_index = 0
 
     if text:
-        added_text, next_chunk_index = _index_sections(
+        added_text, next_chunk_index = _index_sections_spreadsheet(
             doc_id,
             filename,
+            doc_type,
             sections,
             chunk_records,
             file_hash=file_hash,
         )
 
-    added_tables = _index_tables(
+    added_tables = _index_tables_spreadsheet(
         doc_id,
         filename,
+        doc_type,
         tables,
         start_chunk_index=next_chunk_index,
         chunk_records_out=chunk_records,
         file_hash=file_hash,
     )
     return True, added_text + added_tables
-
 
 def index_bytes(
     doc_id: str,
@@ -240,7 +208,7 @@ def index_bytes(
     data: bytes,
     file_hash: str | None = None,
 ):
-    ext = (filename.rsplit(".", 1)[-1].lower() if "." in filename else "")
+    doc_type = extraction.get_document_type(filename, mimetype)
 
     if file_hash is None and data:
         try:
@@ -250,30 +218,22 @@ def index_bytes(
 
     chunk_records = []
     tables = _extract_tables_for_document(doc_id, filename, mimetype, data)
-
-    if mimetype == "application/pdf" or ext == "pdf":
-        ok, added = _index_pdf_document(doc_id, filename, ext, data, tables, chunk_records, file_hash=file_hash)
-    elif mimetype in (
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/msword",
-    ) or ext in ("docx", "doc"):
-        ok, added = _index_docx_document(doc_id, filename, ext, data, tables, chunk_records, file_hash=file_hash)
-    elif mimetype == "text/plain" or ext == "txt":
-        ok, added = _index_txt_document(doc_id, filename, ext, data, tables, chunk_records, file_hash=file_hash)
-    elif mimetype in (
-        "text/csv",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    ) or ext in ("csv", "xlsx"):
-        ok, added = _index_sheet_document(doc_id, filename, ext, mimetype, data, tables, chunk_records, file_hash=file_hash)
-    else:
-        return False, 0
+    ok, added = _index_document_by_type(
+        doc_type,
+        doc_id,
+        filename,
+        mimetype,
+        data,
+        tables,
+        chunk_records,
+        file_hash=file_hash,
+    )
 
     if not ok:
         return False, 0
 
     _finalize_index(doc_id, filename, chunk_records, file_hash=file_hash)
     return True, added
-
 
 def index_text(doc_id: str, filename: str, text: str, file_hash: str | None = None):
     """Low-level indexing helper."""
@@ -282,69 +242,25 @@ def index_text(doc_id: str, filename: str, text: str, file_hash: str | None = No
         return False, 0
 
     filename = filename or "document.txt"
-    ext = (filename.rsplit(".", 1)[-1].lower() if "." in filename else "txt")
-    source_type = ext if ext in ("pdf", "docx", "csv", "xlsx", "txt") else "txt"
+    source_type = "txt"
 
     _delete_existing(doc_id)
 
     pages = [{"page": 1, "text": text}]
     chunk_records = []
 
-    # Detect mock checks
-    is_chunk_mocked = (chunk_text is not original_chunk_text)
-    mock_fn = chunk_text if is_chunk_mocked else None
-
     added, _ = _index_blocks_pipeline(
-        doc_id, filename, source_type, pages, chunk_records, file_hash=file_hash,
-        is_chunk_text_mocked=is_chunk_mocked, mock_chunk_text_fn=mock_fn
+        doc_id,
+        filename,
+        source_type,
+        pages,
+        chunk_records,
+        file_hash=file_hash,
     )
 
     _finalize_index(doc_id, filename, chunk_records, file_hash=file_hash)
 
     return True, added
-
-
-# ===== BACKWARD COMPATIBILITY TEST WRAPPERS =====
-
-def _build_chunk_header(filename: str, sheet_name: str | None = None) -> str:
-    return _build_contextual_header(filename, sheet_name=sheet_name)
-
-def _index_tables(
-    doc_id: str,
-    filename: str,
-    tables: list[dict],
-    *,
-    start_chunk_index: int,
-    chunk_records_out: list,
-    file_hash: str | None = None,
-) -> int:
-    ext = (filename.rsplit(".", 1)[-1].lower() if "." in filename else "")
-    source_type = ext if ext in ("csv", "xlsx") else "xlsx"
-    return _index_tables_spreadsheet(
-        doc_id, filename, source_type, tables,
-        start_chunk_index=start_chunk_index,
-        chunk_records_out=chunk_records_out,
-        file_hash=file_hash
-    )
-
-def _index_sections(
-    doc_id: str,
-    filename: str,
-    sections: list,
-    chunk_records_out: list,
-    file_hash: str | None = None,
-) -> tuple[int, int]:
-    ext = (filename.rsplit(".", 1)[-1].lower() if "." in filename else "")
-    source_type = ext if ext in ("csv", "xlsx") else "csv"
-    is_mocked = (chunk_text is not original_chunk_text)
-    mock_fn = chunk_text if is_mocked else None
-    return _index_sections_spreadsheet(
-        doc_id, filename, source_type, sections,
-        chunk_records_out=chunk_records_out,
-        file_hash=file_hash,
-        mock_chunk_text_fn=mock_fn
-    )
-
 
 _indexing_in_progress = set()
 _indexing_lock = threading.Lock()

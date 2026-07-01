@@ -25,12 +25,12 @@ import sys
 import types
 
 import pytest
-
+import indexing.chunking as chunking_mod
+import indexing.pipeline as pipeline
 
 # ---------------------------------------------------------------------------
 # Stub db.chroma BEFORE importing indexer to prevent real Chroma initialization
 # ---------------------------------------------------------------------------
-
 
 class _ImportCollectionStub:
     def upsert(self, *args, **kwargs):
@@ -42,22 +42,18 @@ class _ImportCollectionStub:
     def delete(self, *args, **kwargs):
         pass
 
-
 fake_db_chroma = types.ModuleType("db.chroma")
 fake_db_chroma.collection = _ImportCollectionStub()
 
 # Inject the fake module into Python's import system
 sys.modules["db.chroma"] = fake_db_chroma
 
-
 # Now this import is safe
 from indexing import indexer  # noqa: E402
-
 
 # ============================================================================
 # Fake Chroma Collection
 # ============================================================================
-
 
 class FakeCollection:
     """Minimal in-memory replacement for the Chroma collection used by indexer."""
@@ -105,11 +101,9 @@ class FakeCollection:
         for _id in (ids or []):
             self.store.pop(_id, None)
 
-
 # ============================================================================
 # Shared Fixtures
 # ============================================================================
-
 
 @pytest.fixture
 def fake_collection(monkeypatch) -> FakeCollection:
@@ -117,22 +111,20 @@ def fake_collection(monkeypatch) -> FakeCollection:
 
     coll = FakeCollection()
     monkeypatch.setattr(indexer, "collection", coll)
+    monkeypatch.setattr(pipeline, "collection", coll)
     return coll
-
 
 @pytest.fixture
 def mock_embedding(monkeypatch):
     """Replace Gemini embeddings with deterministic vectors."""
 
-    monkeypatch.setattr(indexer, "generate_embeddings", lambda _text: [0.1, 0.2, 0.3])
-
+    monkeypatch.setattr(pipeline, "generate_embeddings", lambda _text: [0.1, 0.2, 0.3])
 
 @pytest.fixture
 def disable_node_push(monkeypatch):
     """Prevent outbound HTTP calls to the Node service."""
 
     monkeypatch.setattr(indexer, "_push_chunks_to_node", lambda *_args, **_kwargs: None)
-
 
 @pytest.fixture
 def clean_indexing_state():
@@ -144,7 +136,6 @@ def clean_indexing_state():
     indexer._indexing_in_progress.clear()
     indexer._indexing_in_progress.update(original)
 
-
 @pytest.fixture
 def clean_consent_state():
     """Ensure consent_state mutations from run_background_index don't leak across tests."""
@@ -155,11 +146,9 @@ def clean_consent_state():
     indexer.consent_state.clear()
     indexer.consent_state.update(original)
 
-
 # ============================================================================
 # 1. _is_noise() Tests
 # ============================================================================
-
 
 @pytest.mark.parametrize(
     "text, expected",
@@ -176,7 +165,6 @@ def clean_consent_state():
 def test_is_noise(text, expected):
     assert indexer._is_noise(text) is expected
 
-
 def test_is_noise_junk_pattern_three_words():
     assert indexer._is_noise("See Table 3") is True
 
@@ -188,17 +176,15 @@ def test_is_noise_four_word_phrase_not_flagged_when_thresholds_are_met():
     )
     assert indexer._is_noise(text) is False
 
-
 # ============================================================================
 # 2. Deduplication Tests
 # ============================================================================
-
 
 def test_deduplication(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     chunk = "Python is great and useful for scripting. " * 10
     # Isolate dedup from sheet-parsing and chunking heuristics.
     monkeypatch.setattr(indexer, "split_sheet_sections", lambda _text: [(None, "dummy")])
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [chunk, chunk])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [chunk, chunk])
 
     ok, added = indexer.index_text("doc1", "test.txt", "ignored")
 
@@ -206,15 +192,13 @@ def test_deduplication(fake_collection, mock_embedding, disable_node_push, monke
     assert added == 1
     assert len(fake_collection.store) == 1
 
-
 # ============================================================================
 # 3. Metadata Validation Tests
 # ============================================================================
 
-
 def test_metadata_validation(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     body = "This is a sufficiently long paragraph for metadata testing. " * 10
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [body])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
     ok, added = indexer.index_text("doc2", "sample.txt", body)
 
@@ -236,10 +220,9 @@ def test_metadata_validation(fake_collection, mock_embedding, disable_node_push,
     assert required_keys.issubset(meta.keys())
     assert meta["pipeline_version"] == indexer.INDEX_PIPELINE_VERSION
 
-
 def test_file_hash_stored_in_metadata_when_provided(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     body = "This is a sufficiently long paragraph for file hash testing. " * 10
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [body])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
     ok, added = indexer.index_text("doc_hash", "sample.txt", body, file_hash="deadbeef")
 
@@ -249,24 +232,22 @@ def test_file_hash_stored_in_metadata_when_provided(fake_collection, mock_embedd
     meta = next(iter(fake_collection.store.values()))["metadata"]
     assert meta.get("file_hash") == "deadbeef"
 
-
 # ============================================================================
 # Contextual Chunk Headers (CCH) Tests
 # ============================================================================
 
-
-def test_build_chunk_header_filename_only():
-    header = indexer._build_chunk_header("notes.pdf")
+def test_build_contextual_header_filename_only():
+    header = indexer._build_contextual_header("notes.pdf")
     assert header == "Document: notes.pdf"
 
 
-def test_build_chunk_header_with_sheet():
-    header = indexer._build_chunk_header("report.xlsx", "Revenue")
+def test_build_contextual_header_with_sheet():
+    header = indexer._build_contextual_header("report.xlsx", sheet_name="Revenue")
     assert header == "Document: report.xlsx\nSheet: Revenue"
 
 
-def test_build_chunk_header_empty_filename():
-    header = indexer._build_chunk_header("")
+def test_build_contextual_header_empty_filename():
+    header = indexer._build_contextual_header("")
     assert header == "Document: document"
 
 
@@ -279,13 +260,13 @@ def test_index_sections_passes_contextual_header_to_embeddings(
         captured["text"] = text
         return [0.1, 0.2, 0.3]
 
-    monkeypatch.setattr(indexer, "generate_embeddings", capture_embedding_input)
+    monkeypatch.setattr(pipeline, "generate_embeddings", capture_embedding_input)
 
     chunk = "This is a sufficiently long paragraph to be indexed. " * 20
 
     # Isolate behavior from sheet-parsing and chunking heuristics.
     monkeypatch.setattr(indexer, "split_sheet_sections", lambda _text: [(None, "dummy")])
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [chunk])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [chunk])
 
     ok, added = indexer.index_text("doc_cch", "sample.txt", "ignored")
     assert ok is True
@@ -298,13 +279,12 @@ def test_index_sections_passes_contextual_header_to_embeddings(
     assert stored == chunk.strip()
     assert "Document:" not in stored
 
-
 def test_chunk_header_saved_in_metadata(fake_collection, disable_node_push, monkeypatch):
-    monkeypatch.setattr(indexer, "generate_embeddings", lambda _text: [0.1, 0.2, 0.3])
+    monkeypatch.setattr(pipeline, "generate_embeddings", lambda _text: [0.1, 0.2, 0.3])
 
     chunk = "This is a sufficiently long paragraph for metadata testing. " * 20
     monkeypatch.setattr(indexer, "split_sheet_sections", lambda _text: [(None, "dummy")])
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [chunk])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [chunk])
 
     ok, added = indexer.index_text("doc_cch_meta", "sample.txt", "ignored")
     assert ok is True
@@ -314,17 +294,17 @@ def test_chunk_header_saved_in_metadata(fake_collection, disable_node_push, monk
     assert "chunk_header" in meta
     assert meta["chunk_header"] == "Document: sample.txt"
 
-
 def test_chunk_header_with_sheet_saved_in_metadata(fake_collection, disable_node_push, monkeypatch):
-    monkeypatch.setattr(indexer, "generate_embeddings", lambda _text: [0.1, 0.2, 0.3])
+    monkeypatch.setattr(pipeline, "generate_embeddings", lambda _text: [0.1, 0.2, 0.3])
 
     chunk = "This is a sufficiently long paragraph for sheet header testing. " * 20
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [chunk])
+    monkeypatch.setattr(chunking_mod, "chunk_text", lambda _body: [chunk])
 
     chunk_records = []
-    added, next_chunk_index = indexer._index_sections(
+    added, next_chunk_index = indexer._index_sections_spreadsheet(
         "doc_cch_sheet",
         "report.xlsx",
+        "xlsx",
         [("Revenue", "dummy")],
         chunk_records,
     )
@@ -335,15 +315,13 @@ def test_chunk_header_with_sheet_saved_in_metadata(fake_collection, disable_node
     assert "chunk_header" in meta
     assert meta["chunk_header"] == "Document: report.xlsx\nSheet: Revenue"
 
-
 # ============================================================================
 # 10. Timestamp Format Test
 # ============================================================================
 
-
 def test_timestamp_format(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     body = "Timestamp validation paragraph. " * 20
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [body])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
     indexer.index_text("doc3", "time.txt", body)
 
@@ -356,17 +334,19 @@ def test_timestamp_format(fake_collection, mock_embedding, disable_node_push, mo
     # indexer uses timezone-aware UTC timestamps
     assert parsed.tzinfo is not None
 
-
 # ============================================================================
 # 4. Reindex Replacement Test
 # ============================================================================
-
 
 def test_reindex_replaces_existing(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     text1 = "First version of the document. " * 20
     text2 = "Second version with different content. " * 20
 
-    monkeypatch.setattr(indexer, "chunk_text", lambda body: [body])
+    def pack_current_text(sections):
+        current_text = sections[0]["blocks"][0]["content"] if sections and sections[0].get("blocks") else text1
+        return [current_text]
+
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", pack_current_text)
 
     ok1, added1 = indexer.index_text("doc4", "file.txt", text1)
     assert ok1 is True
@@ -385,11 +365,9 @@ def test_reindex_replaces_existing(fake_collection, mock_embedding, disable_node
         assert "First version" not in item["document"]
     assert any("Second version" in item["document"] for item in fake_collection.store.values())
 
-
 # ============================================================================
 # 5. Unsupported File Test
 # ============================================================================
-
 
 def test_unsupported_file_type():
     ok, added = indexer.index_bytes(
@@ -402,28 +380,23 @@ def test_unsupported_file_type():
     assert ok is False
     assert added == 0
 
-
 # ============================================================================
 # 6. Empty Document Tests
 # ============================================================================
-
 
 def test_empty_text_document():
     ok, added = indexer.index_text("doc6", "empty.txt", "")
     assert ok is False
     assert added == 0
 
-
 def test_whitespace_only_document():
     ok, added = indexer.index_text("doc7", "blank.txt", "     \n\n   ")
     assert ok is False
     assert added == 0
 
-
 # ============================================================================
 # 9. Node Chunk Sync Test
 # ============================================================================
-
 
 def test_push_chunks_called(fake_collection, mock_embedding, monkeypatch):
     captured = {}
@@ -436,7 +409,7 @@ def test_push_chunks_called(fake_collection, mock_embedding, monkeypatch):
     monkeypatch.setattr(indexer, "_push_chunks_to_node", fake_push)
 
     body = "Node sync validation content. " * 20
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [body])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
     ok, added = indexer.index_text("doc8", "sync.txt", body)
 
@@ -449,11 +422,9 @@ def test_push_chunks_called(fake_collection, mock_embedding, monkeypatch):
     assert len(captured["chunks"]) == 1
     assert "text" in captured["chunks"][0]
 
-
 # ============================================================================
 # 8. Batch Flush Test (>64 chunks)
 # ============================================================================
-
 
 def test_batch_flush_multiple_upserts(
     fake_collection, mock_embedding, disable_node_push, monkeypatch
@@ -467,7 +438,7 @@ def test_batch_flush_multiple_upserts(
 
     # Isolate batching from sheet-parsing and chunking heuristics.
     monkeypatch.setattr(indexer, "split_sheet_sections", lambda _text: [(None, "dummy")])
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: chunks)
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: chunks)
 
     batch_sizes = []
     original_flush = indexer._flush_batch
@@ -476,7 +447,7 @@ def test_batch_flush_multiple_upserts(
         batch_sizes.append(len(batch_ids))
         return original_flush(collection_ref, batch_embeddings, batch_documents, batch_metadatas, batch_ids)
 
-    monkeypatch.setattr(indexer, "_flush_batch", capture_flush)
+    monkeypatch.setattr(pipeline, "_flush_batch", capture_flush)
 
     ok, added = indexer.index_text("doc9", "batch.txt", "ignored")
 
@@ -488,23 +459,22 @@ def test_batch_flush_multiple_upserts(
     assert batch_sizes == [indexer.INDEX_BATCH_SIZE, 6]
     assert len(fake_collection.store) == total_chunks
 
-
 # ============================================================================
 # 7. Background Indexing Concurrency Test
 # ============================================================================
-
 
 def test_start_background_indexing_starts_only_one_thread(monkeypatch, clean_indexing_state):
     started = []
 
     class FakeThread:
-        def __init__(self, target=None, args=(), daemon=None):
+        def __init__(self, target=None, args=(), kwargs=None, daemon=None):
             self.target = target
             self.args = args
+            self.kwargs = kwargs or {}
             self.daemon = daemon
 
         def start(self):
-            started.append(self.args[0])
+            started.append(self.kwargs.get("doc_id"))
             # Simulate work still in progress by NOT calling target().
 
     monkeypatch.setattr(indexer.threading, "Thread", FakeThread)
@@ -514,12 +484,10 @@ def test_start_background_indexing_starts_only_one_thread(monkeypatch, clean_ind
 
     assert started == ["doc10"]
 
-
 # ============================================================================
 # Additional coverage: has_index(), index_bytes() supported types,
 # sheet metadata, embedding failures.
 # ============================================================================
-
 
 def test_has_index(fake_collection):
     fake_collection.store["doc_0"] = {
@@ -531,10 +499,9 @@ def test_has_index(fake_collection):
     assert indexer.has_index("doc") is True
     assert indexer.has_index("missing") is False
 
-
 def test_index_bytes_txt_supported(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     body = "This is a sufficiently long valid text paragraph. " * 20
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [body])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
     ok, added = indexer.index_bytes(
         "doc_txt",
@@ -547,11 +514,12 @@ def test_index_bytes_txt_supported(fake_collection, mock_embedding, disable_node
     assert added == 1
     assert len(fake_collection.store) == 1
 
-
 def test_index_bytes_pdf_supported(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     body = "This is PDF extracted text. " * 20
-    monkeypatch.setattr(indexer, "extract_text_from_pdf_bytes", lambda _data: body)
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [body])
+    import utils.extraction as extraction_mod
+
+    monkeypatch.setattr(extraction_mod, "extract_pdf", lambda _data: [{"page": 1, "text": body}])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
     ok, added = indexer.index_bytes(
         "doc_pdf",
@@ -564,11 +532,12 @@ def test_index_bytes_pdf_supported(fake_collection, mock_embedding, disable_node
     assert added == 1
     assert len(fake_collection.store) == 1
 
-
 def test_index_bytes_docx_supported(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     body = "This is DOCX extracted text. " * 20
-    monkeypatch.setattr(indexer, "extract_text_from_docx_bytes", lambda _data: body)
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [body])
+    import utils.extraction as extraction_mod
+
+    monkeypatch.setattr(extraction_mod, "extract_docx", lambda _data: body)
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
     ok, added = indexer.index_bytes(
         "doc_docx",
@@ -581,13 +550,12 @@ def test_index_bytes_docx_supported(fake_collection, mock_embedding, disable_nod
     assert added == 1
     assert len(fake_collection.store) == 1
 
-
 def test_sheet_metadata(fake_collection, mock_embedding, monkeypatch):
     body = "This is valid content. " * 20
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [body])
+    monkeypatch.setattr(chunking_mod, "chunk_text", lambda _body: [body])
 
     chunk_records = []
-    added, next_chunk_index = indexer._index_sections("doc_sheet", "file.xlsx", [("Sheet1", body)], chunk_records)
+    added, next_chunk_index = indexer._index_sections_spreadsheet("doc_sheet", "file.xlsx", "xlsx", [("Sheet1", body)], chunk_records)
 
     assert added == 1
     assert next_chunk_index == 1
@@ -596,11 +564,10 @@ def test_sheet_metadata(fake_collection, mock_embedding, monkeypatch):
     assert meta["sheet"] == "Sheet1"
     assert chunk_records[0]["sheet"] == "Sheet1"
 
-
 def test_embedding_failure_skips_chunk(fake_collection, disable_node_push, monkeypatch):
-    monkeypatch.setattr(indexer, "generate_embeddings", lambda _text: None)
+    monkeypatch.setattr(pipeline, "generate_embeddings", lambda _text: None)
     body = "Valid content for embedding failure test. " * 20
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [body])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
     ok, added = indexer.index_text("doc_fail", "file.txt", body)
 
@@ -608,12 +575,11 @@ def test_embedding_failure_skips_chunk(fake_collection, disable_node_push, monke
     assert added == 0
     assert len(fake_collection.store) == 0
 
-
 def test_delete_existing_errors_do_not_propagate(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     """_delete_existing() should swallow collection errors and continue indexing."""
 
     body = "This is a sufficiently long paragraph. " * 20
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [body])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
     def raising_get(*_args, **_kwargs):
         raise RuntimeError("chroma failure")
@@ -626,11 +592,9 @@ def test_delete_existing_errors_do_not_propagate(fake_collection, mock_embedding
     assert added == 1
     assert len(fake_collection.store) == 1
 
-
 # ============================================================================
 # High-priority: run_background_index() workflow tests
 # ============================================================================
-
 
 def test_background_index_happy_path(monkeypatch, clean_indexing_state, clean_consent_state):
     doc_id = "bg1"
@@ -646,8 +610,10 @@ def test_background_index_happy_path(monkeypatch, clean_indexing_state, clean_co
     fake_retrieval.fetch_doc_meta_from_node = lambda _doc_id: {"contentHash": "bg1hash"}
     monkeypatch.setitem(sys.modules, "services.retrieval_service", fake_retrieval)
 
-    monkeypatch.setattr(indexer, "extract_text_for_mimetype", lambda *_args, **_kwargs: "Meaningful text" * 20)
-    monkeypatch.setattr(indexer, "detect_sensitive", lambda _text: {"found": False})
+    import indexing.background as background_mod
+
+    monkeypatch.setattr(background_mod, "extract_text_for_mimetype", lambda *_args, **_kwargs: "Meaningful text" * 20)
+    monkeypatch.setattr(background_mod, "detect_sensitive", lambda _text: {"found": False})
 
     called = {}
 
@@ -671,7 +637,6 @@ def test_background_index_happy_path(monkeypatch, clean_indexing_state, clean_co
     assert indexer.consent_state[doc_id]["sensitive"] is False
     assert doc_id not in indexer._indexing_in_progress
 
-
 def test_background_index_blocked_by_sensitive_without_consent(
     monkeypatch, clean_indexing_state, clean_consent_state
 ):
@@ -687,8 +652,10 @@ def test_background_index_blocked_by_sensitive_without_consent(
     fake_retrieval.fetch_doc_meta_from_node = lambda _doc_id: {"contentHash": "bg2hash"}
     monkeypatch.setitem(sys.modules, "services.retrieval_service", fake_retrieval)
 
-    monkeypatch.setattr(indexer, "extract_text_for_mimetype", lambda *_args, **_kwargs: "SSN: 123-45-6789")
-    monkeypatch.setattr(indexer, "detect_sensitive", lambda _text: {"found": True, "types": ["PII"]})
+    import indexing.background as background_mod
+
+    monkeypatch.setattr(background_mod, "extract_text_for_mimetype", lambda *_args, **_kwargs: "SSN: 123-45-6789")
+    monkeypatch.setattr(background_mod, "detect_sensitive", lambda _text: {"found": True, "types": ["PII"]})
 
     # No consent
     indexer.consent_state[doc_id] = {"confirmed": False}
@@ -702,9 +669,47 @@ def test_background_index_blocked_by_sensitive_without_consent(
     indexer.run_background_index(doc_id, indexing_lock=indexer._indexing_lock, indexing_in_progress=indexer._indexing_in_progress)
 
     assert indexer.consent_state[doc_id]["sensitive"] is True
-    assert indexer.consent_state[doc_id]["awaiting"] is False
+    assert indexer.consent_state[doc_id]["awaiting"] is True
     assert doc_id not in indexer._indexing_in_progress
 
+@pytest.mark.parametrize(
+    "found, confirmed, expected_awaiting",
+    [
+        (False, False, False),
+        (False, True, False),
+        (True, False, True),
+        (True, True, False),
+    ],
+)
+def test_background_consent_state_matrix(monkeypatch, clean_indexing_state, clean_consent_state, found, confirmed, expected_awaiting):
+    import indexing.background as background_mod
+
+    doc_id = f"consent_{found}_{confirmed}"
+
+    fake_retrieval = types.ModuleType("services.retrieval_service")
+    fake_retrieval.fetch_doc_from_node = lambda _doc_id: (
+        True,
+        "sample.txt",
+        "text/plain",
+        b"Sensitive content bytes" if found else b"Plain content bytes",
+    )
+    fake_retrieval.fetch_doc_meta_from_node = lambda _doc_id: {"contentHash": "matrixhash"}
+    monkeypatch.setitem(sys.modules, "services.retrieval_service", fake_retrieval)
+
+    monkeypatch.setattr(background_mod, "extract_text_for_mimetype", lambda *_args, **_kwargs: "scan text")
+    monkeypatch.setattr(background_mod, "detect_sensitive", lambda _text: {"found": found})
+    monkeypatch.setattr(indexer, "index_bytes", lambda *_args, **_kwargs: (True, 1))
+
+    if confirmed:
+        indexer.consent_state[doc_id] = {"confirmed": True}
+
+    indexer._indexing_in_progress.add(doc_id)
+    indexer.run_background_index(doc_id, indexing_lock=indexer._indexing_lock, indexing_in_progress=indexer._indexing_in_progress)
+
+    assert indexer.consent_state[doc_id]["sensitive"] is found
+    assert indexer.consent_state[doc_id]["confirmed"] is confirmed
+    assert indexer.consent_state[doc_id]["awaiting"] is expected_awaiting
+    assert doc_id not in indexer._indexing_in_progress
 
 def test_background_index_always_cleans_up_on_exception(
     monkeypatch, clean_indexing_state, clean_consent_state
@@ -725,16 +730,14 @@ def test_background_index_always_cleans_up_on_exception(
 
     assert doc_id not in indexer._indexing_in_progress
 
-
 # ============================================================================
 # Medium-priority: index_text() filename fallback + _push_chunks_to_node tests
 # ============================================================================
 
-
 def test_index_text_filename_fallback(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     body = "This is a sufficiently long paragraph for filename fallback. " * 20
     monkeypatch.setattr(indexer, "split_sheet_sections", lambda _text: [(None, body)])
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [body])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
     ok, added = indexer.index_text("doc_fn", None, body)
     assert ok is True
@@ -743,7 +746,6 @@ def test_index_text_filename_fallback(fake_collection, mock_embedding, disable_n
     res = fake_collection.get(where={"doc_id": "doc_fn"})
     assert len(res["ids"]) == 1
     assert res["metadatas"][0]["filename"] == "document.txt"
-
 
 def test_push_chunks_to_node_payload_and_headers(monkeypatch):
     captured = {}
@@ -773,7 +775,6 @@ def test_push_chunks_to_node_payload_and_headers(monkeypatch):
     assert captured["headers"]["x-service-token"] == indexer.SERVICE_TOKEN
     assert captured["timeout"] == indexer.NODE_FETCH_TIMEOUT
 
-
 def test_push_chunks_to_node_swallows_exceptions(monkeypatch):
     import requests
 
@@ -790,13 +791,14 @@ def test_push_chunks_to_node_swallows_exceptions(monkeypatch):
         [{"chunk": 0, "sheet": None, "text": "hello"}],
     )
 
-
 def test_index_bytes_doc_legacy_supported(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     """Smoke test: legacy .doc files should go through the DOC/DOCX extraction path."""
 
     body = "This is legacy DOC extracted text. " * 20
-    monkeypatch.setattr(indexer, "extract_text_from_docx_bytes", lambda _data: body)
-    monkeypatch.setattr(indexer, "chunk_text", lambda _body: [body])
+    import utils.extraction as extraction_mod
+
+    monkeypatch.setattr(extraction_mod, "extract_docx", lambda _data: body)
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
     ok, added = indexer.index_bytes(
         "doc_legacy",
@@ -808,7 +810,6 @@ def test_index_bytes_doc_legacy_supported(fake_collection, mock_embedding, disab
     assert ok is True
     assert added == 1
     assert len(fake_collection.store) == 1
-
 
 def test_extract_pdf_pages_fallback(monkeypatch):
     import utils.extraction as extraction_mod
@@ -825,8 +826,8 @@ def test_extract_pdf_pages_fallback(monkeypatch):
         def __enter__(self):
             return self
 
-        def __exit__(self, *args):
-            pass
+        def __exit__(self, exc_type, exc, tb):
+            return False
 
         def __iter__(self):
             return iter([MockPage()])
@@ -840,7 +841,6 @@ def test_extract_pdf_pages_fallback(monkeypatch):
     assert pages[0]["text"] == "Tier 2 text content"
     assert pages[0]["page"] == 1
 
-
 # ============================================================================
 # Upgraded PDF Indexing Pipeline Integration Tests
 # ============================================================================
@@ -853,8 +853,8 @@ def test_extract_pdf_pages_tier1_success(monkeypatch):
         def __enter__(self):
             return self
 
-        def __exit__(self, *args):
-            pass
+        def __exit__(self, exc_type, exc, tb):
+            return False
 
     mock_fitz = types.ModuleType("fitz")
     mock_fitz.open = lambda stream, filetype: MockDoc()
@@ -870,7 +870,6 @@ def test_extract_pdf_pages_tier1_success(monkeypatch):
     assert len(pages) == 1
     assert pages[0]["text"] == "Tier 1 Markdown Content"
     assert pages[0]["page"] == 1
-
 
 def test_extract_pdf_pages_tier3_fallback(monkeypatch):
     import utils.extraction as extraction_mod
@@ -897,7 +896,6 @@ def test_extract_pdf_pages_tier3_fallback(monkeypatch):
     assert pages[0]["text"] == "Tier 3 text content"
     assert pages[0]["page"] == 1
 
-
 def test_extract_pdf_pages_all_fail(monkeypatch):
     import utils.extraction as extraction_mod
 
@@ -908,7 +906,6 @@ def test_extract_pdf_pages_all_fail(monkeypatch):
 
     pages = extraction_mod.extract_pdf(b"pdfdata")
     assert pages == []
-
 
 def test_rich_metadata_validation(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     # Verify all detailed block metadata keys are correctly stored
@@ -931,12 +928,13 @@ def test_rich_metadata_validation(fake_collection, mock_embedding, disable_node_
     assert "paragraph_count" in meta
     assert "token_count" in meta
     assert "chunking_version" in meta
-    
-    assert meta["chunking_version"] == "2"
+
+    from config import CHUNKING_VERSION
+
+    assert meta["chunking_version"] == CHUNKING_VERSION
     assert meta["chunk_type"] == "paragraph"
     assert meta["start_page"] == 1
     assert meta["end_page"] == 1
-
 
 def test_contextual_embedding_header(fake_collection, disable_node_push, monkeypatch):
     captured_inputs = []
@@ -945,7 +943,8 @@ def test_contextual_embedding_header(fake_collection, disable_node_push, monkeyp
         captured_inputs.append(text)
         return [0.1, 0.2, 0.3]
         
-    monkeypatch.setattr(indexer, "generate_embeddings", capture_embeddings)
+    monkeypatch.setattr(pipeline, "generate_embeddings", capture_embeddings)
+    import utils.extraction as extraction_mod
     
     # We will mock the parser output to simulate a nested block structure
     blocks = [
@@ -954,7 +953,7 @@ def test_contextual_embedding_header(fake_collection, disable_node_push, monkeyp
         {"type": "paragraph", "content": "A paragraph inside subsection.", "page": 3, "section": "Section Title", "subsection": "Subsection Title", "heading_level": 2}
     ]
     
-    monkeypatch.setattr(indexer, "_extract_pdf_pages", lambda _d: [{"page": 1, "text": "body"}])
+    monkeypatch.setattr(extraction_mod, "extract_pdf", lambda _d: [{"page": 1, "text": "body"}])
     
     # Monkeypatch extraction & chunking to return our custom structured chunk
     from indexing.chunking import create_chunk_dict
@@ -963,7 +962,7 @@ def test_contextual_embedding_header(fake_collection, disable_node_push, monkeyp
     custom_chunk["start_page"] = 2
     custom_chunk["end_page"] = 3
     
-    monkeypatch.setattr(indexer, "pack_blocks_into_chunks", lambda _s: [custom_chunk])
+    monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _s: [custom_chunk], raising=False)
     
     ok, added = indexer.index_bytes("doc_context", "ML_paper.pdf", "application/pdf", b"data")
     assert ok is True
@@ -976,5 +975,3 @@ def test_contextual_embedding_header(fake_collection, disable_node_push, monkeyp
     assert "Section: Section Title" in header_input
     assert "Subsection: Subsection Title" in header_input
     assert "Pages: 2-3" in header_input
-
-

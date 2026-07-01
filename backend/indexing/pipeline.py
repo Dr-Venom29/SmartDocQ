@@ -10,8 +10,8 @@ from config import (
 )
 from utils.table_extraction import render_markdown_table, flatten_table_for_embedding
 from services.embedding_service import generate_embeddings
+import indexing.chunking as chunking
 from indexing.chunking import (
-    chunk_text,
     remove_page_artifacts_and_repeated_headers,
     normalize_markdown_page,
     parse_markdown_blocks,
@@ -22,14 +22,43 @@ from indexing.chunking import (
 
 logger = logging.getLogger(__name__)
 
-def _get_indexer_attr(name, default):
-    """Dynamic lookup helper to resolve unit test monkeypatches on indexing.indexer module."""
-    try:
-        from indexing import indexer
-        return getattr(indexer, name, default)
-    except ImportError:
-        return default
+class BatchWriter:
+    def __init__(self, collection_ref, batch_size: int, flush_fn):
+        self.collection_ref = collection_ref
+        self.batch_size = batch_size
+        self.flush_fn = flush_fn
+        self.batch_embeddings = []
+        self.batch_documents = []
+        self.batch_metadatas = []
+        self.batch_ids = []
+        self.added = 0
 
+    def add(self, embedding, document, metadata, chunk_id):
+        self.batch_embeddings.append(embedding)
+        self.batch_documents.append(document)
+        self.batch_metadatas.append(metadata)
+        self.batch_ids.append(chunk_id)
+        if len(self.batch_ids) >= self.batch_size:
+            self.flush()
+
+    def flush(self):
+        if not self.batch_ids:
+            return 0
+        self.added += self.flush_fn(
+            self.collection_ref,
+            self.batch_embeddings,
+            self.batch_documents,
+            self.batch_metadatas,
+            self.batch_ids,
+        )
+        self.batch_embeddings = []
+        self.batch_documents = []
+        self.batch_metadatas = []
+        self.batch_ids = []
+        return self.added
+
+def _make_batch_writer():
+    return BatchWriter(collection, INDEX_BATCH_SIZE, _flush_batch)
 
 # ===== CORE PIPELINE LOGIC & BATCHING =====
 
@@ -45,7 +74,7 @@ IDENTIFIER_RE = re.compile(
 )
 
 def _truncate_markdown(md: str, *, max_len: int = MAX_MD_META_LEN) -> str:
-    limit = _get_indexer_attr("MAX_MD_META_LEN", max_len)
+    limit = max_len
     try:
         md = "" if md is None else str(md)
     except Exception:
@@ -121,8 +150,8 @@ def build_chunk_metadata(
     markdown: str | None = None,
 ) -> dict:
     """Consolidated helper to build consistent vector metadata dicts."""
-    cv = _get_indexer_attr("CHUNKING_VERSION", CHUNKING_VERSION)
-    ipv = _get_indexer_attr("INDEX_PIPELINE_VERSION", INDEX_PIPELINE_VERSION)
+    cv = CHUNKING_VERSION
+    ipv = INDEX_PIPELINE_VERSION
 
     meta = {
         "doc_id": doc_id,
@@ -198,7 +227,6 @@ def _is_noise(c: str) -> bool:
 
     return False
 
-
 def _index_blocks_pipeline(
     doc_id: str,
     filename: str,
@@ -206,21 +234,31 @@ def _index_blocks_pipeline(
     pages: list[dict],
     chunk_records_out: list,
     file_hash: str | None = None,
-    is_chunk_text_mocked: bool = False,
-    mock_chunk_text_fn=None,
 ) -> tuple[int, int]:
-    BATCH_SIZE = INDEX_BATCH_SIZE
-    batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
-    added = 0
-    
-    if is_chunk_text_mocked and mock_chunk_text_fn is not None:
-        combined_text = "\n\n".join(p["text"] for p in pages)
-        raw_chunks = mock_chunk_text_fn(combined_text)
-        
-        packed_chunks = []
-        for idx, c_txt in enumerate(raw_chunks):
-            packed_chunks.append({
-                "text": c_txt,
+    writer = _make_batch_writer()
+
+    # 1. Clean page artifacts & repeated headers/footers
+    pages = remove_page_artifacts_and_repeated_headers(pages)
+
+    # 2. Normalize markdown syntax page-by-page
+    for p in pages:
+        p["text"] = normalize_markdown_page(p["text"])
+
+    # 3. Extensible block parsing
+    blocks = []
+    for p in pages:
+        blocks.extend(parse_markdown_blocks(p["text"], p["page"]))
+
+    # 4. Heading stack extraction & section split
+    sections = extract_sections_and_headings(blocks)
+
+    # 5. Pack blocks into chunks
+    packed_chunks = pack_blocks_into_chunks(sections)
+    normalized_chunks = []
+    for idx, chunk in enumerate(packed_chunks):
+        if isinstance(chunk, str):
+            normalized_chunks.append({
+                "text": chunk,
                 "start_page": 1,
                 "end_page": 1,
                 "section": None,
@@ -230,39 +268,16 @@ def _index_blocks_pipeline(
                 "chunk_index": idx,
                 "chunk_type": "paragraph",
                 "paragraph_count": 1,
-                "token_count": estimate_token_count(c_txt)
+                "token_count": estimate_token_count(chunk),
             })
-    else:
-        # 1. Clean page artifacts & repeated headers/footers
-        pages = remove_page_artifacts_and_repeated_headers(pages)
-        
-        # 2. Normalize markdown syntax page-by-page
-        for p in pages:
-            p["text"] = normalize_markdown_page(p["text"])
-            
-        # 3. Extensible block parsing
-        blocks = []
-        for p in pages:
-            blocks.extend(parse_markdown_blocks(p["text"], p["page"]))
-            
-        # 4. Heading stack extraction & section split
-        sections = extract_sections_and_headings(blocks)
-        
-        # 5. Pack blocks into chunks
-        pack_fn = _get_indexer_attr("pack_blocks_into_chunks", pack_blocks_into_chunks)
-        packed_chunks = pack_fn(sections)
+        else:
+            normalized_chunks.append(chunk)
+    packed_chunks = normalized_chunks
     
     seen = set()
     chunk_index = 0
-    
-    flush_fn = _get_indexer_attr("_flush_batch", _flush_batch)
-    embed_fn = _get_indexer_attr("generate_embeddings", generate_embeddings)
-    coll_ref = _get_indexer_attr("collection", collection)
 
-    def flush():
-        nonlocal added, batch_embeddings, batch_documents, batch_metadatas, batch_ids
-        added += flush_fn(coll_ref, batch_embeddings, batch_documents, batch_metadatas, batch_ids)
-        batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
+    embed_fn = generate_embeddings
 
     for chunk in packed_chunks:
         c = (chunk["text"] or "").strip()
@@ -311,11 +326,8 @@ def _index_blocks_pipeline(
             chunk_header=header,
             file_hash=file_hash
         )
-        
-        batch_embeddings.append(emb)
-        batch_documents.append(c)
-        batch_metadatas.append(meta)
-        batch_ids.append(f"{doc_id}_{reserved_chunk_index}")
+
+        writer.add(emb, c, meta, f"{doc_id}_{reserved_chunk_index}")
         
         chunk_records_out.append({
             "chunk": reserved_chunk_index,
@@ -326,12 +338,8 @@ def _index_blocks_pipeline(
             "subsection": chunk["subsection"] or None
         })
         
-        if len(batch_ids) >= BATCH_SIZE:
-            flush()
-            
-    flush()
-    return added, chunk_index
-
+    writer.flush()
+    return writer.added, chunk_index
 
 def _index_sections_spreadsheet(
     doc_id: str,
@@ -340,28 +348,16 @@ def _index_sections_spreadsheet(
     sections: list,
     chunk_records_out: list,
     file_hash: str | None = None,
-    mock_chunk_text_fn=None,
 ) -> tuple[int, int]:
-    BATCH_SIZE = INDEX_BATCH_SIZE
-    batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
-    added = 0
+    writer = _make_batch_writer()
     chunk_index = 0
     seen = set()
 
-    flush_fn = _get_indexer_attr("_flush_batch", _flush_batch)
-    embed_fn = _get_indexer_attr("generate_embeddings", generate_embeddings)
-    noise_fn = _get_indexer_attr("_is_noise", _is_noise)
-    coll_ref = _get_indexer_attr("collection", collection)
-
-    def flush():
-        nonlocal added, batch_embeddings, batch_documents, batch_metadatas, batch_ids
-        added += flush_fn(coll_ref, batch_embeddings, batch_documents, batch_metadatas, batch_ids)
-        batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
-
-    chunker_fn = mock_chunk_text_fn if mock_chunk_text_fn is not None else chunk_text
+    embed_fn = generate_embeddings
+    noise_fn = _is_noise
 
     for sheet_name, body in sections:
-        for chunk in chunker_fn(body):
+        for chunk in chunking.chunk_text(body):
             c = (chunk or "").strip()
             if not c:
                 continue
@@ -399,10 +395,7 @@ def _index_sections_spreadsheet(
                 sheet=sheet_name
             )
 
-            batch_embeddings.append(emb)
-            batch_documents.append(c)
-            batch_metadatas.append(meta)
-            batch_ids.append(f"{doc_id}_{reserved_chunk_index}")
+            writer.add(emb, c, meta, f"{doc_id}_{reserved_chunk_index}")
 
             chunk_records_out.append({
                 "chunk": reserved_chunk_index,
@@ -412,12 +405,8 @@ def _index_sections_spreadsheet(
                 "end_page": 1
             })
 
-            if len(batch_ids) >= BATCH_SIZE:
-                flush()
-
-    flush()
-    return added, chunk_index
-
+    writer.flush()
+    return writer.added, chunk_index
 
 def _index_tables_spreadsheet(
     doc_id: str,
@@ -432,22 +421,12 @@ def _index_tables_spreadsheet(
     if not tables:
         return 0
 
-    BATCH_SIZE = INDEX_BATCH_SIZE
-    batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
-    added = 0
+    writer = _make_batch_writer()
     chunk_index = int(start_chunk_index or 0)
     seen_tables = set()
 
-    flush_fn = _get_indexer_attr("_flush_batch", _flush_batch)
-    embed_fn = _get_indexer_attr("generate_embeddings", generate_embeddings)
-    render_fn = _get_indexer_attr("render_markdown_table", render_markdown_table)
-    flat_fn = _get_indexer_attr("flatten_table_for_embedding", flatten_table_for_embedding)
-    coll_ref = _get_indexer_attr("collection", collection)
-
-    def flush():
-        nonlocal added, batch_embeddings, batch_documents, batch_metadatas, batch_ids
-        added += flush_fn(coll_ref, batch_embeddings, batch_documents, batch_metadatas, batch_ids)
-        batch_embeddings, batch_documents, batch_metadatas, batch_ids = [], [], [], []
+    embed_fn = generate_embeddings
+    render_fn = render_markdown_table
 
     for table_index, t in enumerate(tables):
         headers = list(t.get("headers") or [])
@@ -459,9 +438,8 @@ def _index_tables_spreadsheet(
         table_id = t.get("table_id")
 
         groups = _iter_table_row_groups(headers, rows, sheet=sheet_name)
-        for row_start, row_end, subset in groups:
+        for row_start, row_end, subset, flat in groups:
             md = render_fn(headers, subset)
-            flat = flat_fn(sheet=sheet_name, headers=headers, rows=subset)
             if not flat.strip() or not md.strip():
                 continue
 
@@ -504,10 +482,7 @@ def _index_tables_spreadsheet(
                 markdown=md_meta
             )
 
-            batch_embeddings.append(emb)
-            batch_documents.append(flat)
-            batch_metadatas.append(meta)
-            batch_ids.append(f"{doc_id}_{reserved_chunk_index}")
+            writer.add(emb, flat, meta, f"{doc_id}_{reserved_chunk_index}")
 
             chunk_records_out.append({
                 "chunk": reserved_chunk_index,
@@ -520,12 +495,9 @@ def _index_tables_spreadsheet(
                 "start_page": 1,
                 "end_page": 1
             })
-            if len(batch_ids) >= BATCH_SIZE:
-                flush()
 
-    flush()
-    return added
-
+    writer.flush()
+    return writer.added
 
 def _iter_table_row_groups(
     headers: list[str],
@@ -534,25 +506,31 @@ def _iter_table_row_groups(
     max_rows_per_group: int = 50,
     max_flat_chars: int = 4500,
     sheet: str | None = None,
-) -> list[tuple[int, int, list[list[str]]]]:
+) -> list[tuple[int, int, list[list[str]], str]]:
     if not rows:
         return []
 
-    flat = flatten_table_for_embedding(sheet=sheet, headers=headers, rows=rows)
-    if len(rows) <= max_rows_per_group and len(flat) <= max_flat_chars:
-        return [(0, len(rows), rows)]
+    if len(rows) <= max_rows_per_group:
+        flat = flatten_table_for_embedding(sheet=sheet, headers=headers, rows=rows)
+        if len(flat) <= max_flat_chars:
+            return [(0, len(rows), rows, flat)]
 
-    groups = []
+    groups: list[tuple[int, int, list[list[str]], str]] = []
     start = 0
     while start < len(rows):
         end = min(len(rows), start + max_rows_per_group)
         while end > start + 1:
-            flat_group = flatten_table_for_embedding(sheet=sheet, headers=headers, rows=rows[start:end])
+            subset = rows[start:end]
+            flat_group = flatten_table_for_embedding(sheet=sheet, headers=headers, rows=subset)
             if len(flat_group) <= max_flat_chars:
                 break
             end -= 1
+        if end <= start:
+            end = min(len(rows), start + 1)
 
-        groups.append((start, end, rows[start:end]))
+        subset = rows[start:end]
+        flat_group = flatten_table_for_embedding(sheet=sheet, headers=headers, rows=subset)
+        groups.append((start, end, subset, flat_group))
         start = end
 
     return groups
