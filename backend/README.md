@@ -64,21 +64,26 @@ SmartDocQ processes incoming uploads page-by-page through a structured Markdown 
 graph TD
     Upload["Document Upload"] --> Ext["Three-Tier Extraction Chain"]
     Ext --> Normal["Markdown Normalization"]
-    Normal --> Parse["Extensible Block Parsing"]
+    Normal --> Cleanup["Page Artifact Removal"]
+    Cleanup --> Parse["Extensible Block Parsing"]
     Parse --> Section["Heading-aware Section Extraction"]
-    Section --> Chunker["Block-aware Token Chunking"]
+    Section --> Chunker["Token-aware Block Packing"]
     Chunker --> Headers["Contextual Embedding Headers"]
-    Headers --> Embed["Gemini Embeddings<br/>(gemini-embedding-2)"]
-    Embed --> Chroma["ChromaDB Storage"]
+    Headers --> Embed["Gemini Embeddings\n(gemini-embedding-2)"]
+    Embed --> Index["ChromaDB + BM25 Index"]
 ```
 
 ### Key Indexing Features
-- **Markdown Normalization**: standardizes bullets, cleans fences, reduces extra lines, merges wrapped lines, and strips running headers/footers/page numbers.
-- **Heading-aware Section Extraction**: dynamically traces H1-H5 sections and subsections.
-- **Block-aware Chunking**: splits documents on natural Markdown syntax boundaries rather than arbitrary characters.
+- **Markdown Normalization**: standardizes bullets, cleans fences, reduces extra lines, and merges wrapped lines.
+- **Page Artifact Removal**: strips running headers/footers and automatic page numbers before parsing.
+- **Heading-aware Section Extraction**: dynamically traces heading hierarchies and subsection paths.
+- **Extensible Block Parsing**: supports paragraphs, headings, tables, lists, blockquotes, code blocks, HTML blocks, and display equations.
+- **Token-aware Block Packing**: splits documents on natural Markdown syntax boundaries rather than arbitrary characters.
 - **Token-aware Chunk Sizing**: Packs content up to standard token boundaries dynamically estimated using `tiktoken`.
 - **Dedicated Table Chunks**: keeps tables isolated, splitting large tables by row groups and repeating column headers on every sub-chunk.
 - **Dedicated Code Chunks**: keeps code blocks isolated to prevent Markdown code fence corruption.
+- **Dedicated HTML Blocks**: preserves HTML blocks as isolated units.
+- **Dedicated Equation Blocks**: preserves display equations as isolated units.
 - **Contextual Embedding Headers**: prepends document title, section, subsection, and page ranges to query vector generation.
 - **Rich Metadata Store**: records all structural page coordinates, counts, hashes, and pipeline versions.
 - **Automatic Duplicate Removal**: filters out repeated noise blocks.
@@ -164,8 +169,10 @@ This contextual prepending guarantees that relevant facts are retrieved correctl
 - **Table-Aware Retrieval**
 - **Contextual Chunk Headers** (Section, Subsection, Page Range)
 - **Block-aware Chunking**
+- **Context-preserving Block Parsing**
 - **Section-aware Indexing**
 - **Page-aware Metadata**
+- **Automatic Header/Footer Removal**
 - **Automatic PDF Fallback Chain**
 - **Token-aware Chunk Sizing**
 - **Automatic Index Version Validation**
@@ -188,8 +195,8 @@ This contextual prepending guarantees that relevant facts are retrieved correctl
 SmartDocQ tracks detailed version and configuration metadata for every chunk stored in ChromaDB:
 
 - `embedding_model` — embedding model used to generate the vector (e.g., `models/gemini-embedding-2`)
-- `pipeline_version` — indexing pipeline version (chunking, cleaning, preprocessing)
-- `chunking_version` — data schema version for chunk layout properties
+- `pipeline_version` — overall indexing pipeline generation (extraction, parsing, embedding, storage flow)
+- `chunking_version` — chunking algorithm generation and chunk layout schema version
 - `indexed_at` — UTC timestamp when the chunk was indexed
 - `file_hash` — source document content hash used to detect document changes
 
@@ -232,3 +239,10 @@ python -m pytest tests/test_security.py -v
 # Run vector store versioning and lifecycle tests
 python -m pytest tests/test_vector_versioning.py -v
 ```
+
+## INDEXING ARCHITECTURE
+
+- `indexer.py` — orchestration, dispatch, storage finalization, and public indexing entrypoints
+- `pipeline.py` — extraction, metadata construction, embedding preparation, and storage pipeline primitives
+- `chunking.py` — normalization, page cleanup, block parsing, section extraction, and chunk packing
+- `background.py` — asynchronous indexing workflow and consent-aware background execution

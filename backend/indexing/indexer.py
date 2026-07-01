@@ -7,30 +7,31 @@ from config import (
     SERVICE_TOKEN,
     CHUNK_UPSERT_URL,
     NODE_FETCH_TIMEOUT,
+    INDEX_PIPELINE_VERSION,
+    INDEX_BATCH_SIZE,
 )
 from utils.extraction import (
     extract_text_for_mimetype,
-    extract_text_from_pdf_bytes as original_extract_pdf,
-    extract_text_from_docx_bytes as original_extract_docx,
-    extract_text_from_txt_bytes as original_extract_txt,
+    extract_pdf as original_extract_pdf,
+    extract_docx as original_extract_docx,
+    extract_txt as original_extract_txt,
 )
 from services.bm25_service import build_bm25_index, invalidate_bm25_index
-from indexing.chunking import chunk_text as original_chunk_text, split_sheet_sections
+from indexing.chunking import chunk_text as original_chunk_text, split_sheet_sections, pack_blocks_into_chunks
 from utils.table_extraction import extract_tables_for_file
 from indexing.background import run_background_index
+from state.memory_store import consent_state
+from utils.security import detect_sensitive
 
 # Re-export core processing elements for dynamic test resolution and monkeypatching
 from services.embedding_service import generate_embeddings
 from indexing.pipeline import (
-    _extract_pdf_pages,
     _index_blocks_pipeline,
     _index_sections_spreadsheet,
     _index_tables_spreadsheet,
     _build_contextual_header,
     _flush_batch,
     _is_noise,
-    fitz,
-    pymupdf4llm,
     MAX_MD_META_LEN,
 )
 
@@ -41,6 +42,13 @@ extract_text_from_pdf_bytes = original_extract_pdf
 extract_text_from_docx_bytes = original_extract_docx
 extract_text_from_txt_bytes = original_extract_txt
 chunk_text = original_chunk_text
+
+# ---------------------------------------------------------------------------
+# Phase-1 alias: tests monkeypatch indexer._extract_pdf_pages to inject mock
+# pages into _index_pdf_document without triggering the text-mock path.
+# Remove in Phase 2 — update tests to patch utils.extraction.extract_pdf.
+# ---------------------------------------------------------------------------
+_extract_pdf_pages = original_extract_pdf
 
 # ===== PUBLIC APIS & ORCHESTRATION =====
 
@@ -105,6 +113,7 @@ def _extract_tables_for_document(doc_id: str, filename: str, mimetype: str, data
 
 
 def _maybe_get_mocked_text(mimetype: str, ext: str, data: bytes):
+    """Return mocked text if a test has overridden an extraction function, else None."""
     if mimetype == "application/pdf" or ext == "pdf":
         if extract_text_from_pdf_bytes is not original_extract_pdf:
             return extract_text_from_pdf_bytes(data)
@@ -170,6 +179,7 @@ def _index_pdf_document(doc_id: str, filename: str, ext: str, data: bytes, table
         source_type = ext if ext in ("pdf", "docx", "txt") else "txt"
         return _index_text_document(doc_id, filename, source_type, pages, tables, chunk_records, file_hash=file_hash)
 
+    # Module-level lookup: tests can monkeypatch indexer._extract_pdf_pages
     pages = _extract_pdf_pages(data)
     return _index_text_document(doc_id, filename, "pdf", pages, tables, chunk_records, file_hash=file_hash)
 

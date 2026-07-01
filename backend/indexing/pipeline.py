@@ -1,6 +1,5 @@
 import logging
 import re
-import io
 from datetime import datetime, timezone
 from db.chroma import collection
 from config import (
@@ -23,18 +22,6 @@ from indexing.chunking import (
 
 logger = logging.getLogger(__name__)
 
-# ===== THREE-TIER PDF EXTRACTION CHAIN =====
-
-try:
-    import fitz  # PyMuPDF
-except ImportError:
-    fitz = None
-
-try:
-    import pymupdf4llm
-except ImportError:
-    pymupdf4llm = None
-
 def _get_indexer_attr(name, default):
     """Dynamic lookup helper to resolve unit test monkeypatches on indexing.indexer module."""
     try:
@@ -42,55 +29,6 @@ def _get_indexer_attr(name, default):
         return getattr(indexer, name, default)
     except ImportError:
         return default
-
-def _extract_pdf_pages(data: bytes) -> list[dict]:
-    """Three-tier extraction fallback chain for PDF documents:
-
-    1. PyMuPDF4LLM -> Converts PDF to structured Markdown page-by-page.
-    2. PyMuPDF classic -> Fallback page-by-page text extraction.
-    3. PyPDF2 -> Final backup text extraction.
-    """
-    fitz_lib = _get_indexer_attr("fitz", fitz)
-    pymupdf4llm_lib = _get_indexer_attr("pymupdf4llm", pymupdf4llm)
-
-    # Tier 1: PyMuPDF4LLM
-    if fitz_lib is not None and pymupdf4llm_lib is not None:
-        try:
-            doc = fitz_lib.open(stream=data, filetype="pdf")
-            pages = pymupdf4llm_lib.to_markdown(doc, page_chunks=True)
-            if pages:
-                return [{"page": chunk["metadata"].get("page_number", chunk["metadata"].get("page", 1)), "text": chunk["text"]} for chunk in pages]
-        except Exception as e:
-            logger.warning("Tier 1 PyMuPDF4LLM extraction failed: %s. Falling back to Tier 2.", e)
-
-    # Tier 2: PyMuPDF Classic
-    if fitz_lib is not None:
-        try:
-            doc = fitz_lib.open(stream=data, filetype="pdf")
-            pages = []
-            for idx, page in enumerate(doc):
-                pages.append({
-                    "page": idx + 1,
-                    "text": page.get_text()
-                })
-            return pages
-        except Exception as e:
-            logger.warning("Tier 2 PyMuPDF classic extraction failed: %s. Falling back to Tier 3.", e)
-
-    # Tier 3: PyPDF2 fallback
-    try:
-        import PyPDF2
-        reader = PyPDF2.PdfReader(io.BytesIO(data))
-        pages = []
-        for idx, page in enumerate(reader.pages):
-            pages.append({
-                "page": idx + 1,
-                "text": page.extract_text() or ""
-            })
-        return pages
-    except Exception as e:
-        logger.error("Tier 3 PyPDF2 extraction failed: %s.", e)
-        return []
 
 
 # ===== CORE PIPELINE LOGIC & BATCHING =====
