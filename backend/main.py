@@ -8,7 +8,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
-from config import ALLOWED_ORIGINS, MAX_CONTENT_LENGTH, FLASK_DEBUG
+from config import ALLOWED_ORIGINS, MAX_CONTENT_LENGTH, FLASK_DEBUG, MAX_UPLOAD_SIZE_MB
 from routes.document_routes import document_bp
 from routes.ask_routes import ask_bp
 
@@ -71,7 +71,7 @@ def handle_404(e):
 
 @app.errorhandler(413)
 def handle_request_entity_too_large(e):
-    return jsonify({"error": "File too large. Max 25 MB."}), 413
+    return jsonify({"error": f"File too large. Max {MAX_UPLOAD_SIZE_MB} MB."}), 413
 
 
 @app.errorhandler(Exception)

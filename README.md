@@ -251,6 +251,7 @@ npm install
 # FLASK_ASK_URL=http://localhost:5001/api/document/ask
 # FLASK_INDEX_URL=http://localhost:5001/api/index-from-atlas
 # FLASK_CONVERT_URL=http://localhost:5001/api/convert/word-to-pdf
+# MAX_UPLOAD_SIZE_MB=15
 
 npm start
 ```
@@ -272,6 +273,7 @@ pip install -r requirements.txt
 # SERVICE_TOKEN=shared_strong_secret (must be identical to the SERVICE_TOKEN in servers/.env)
 # GEMINI_API_KEY=your_google_ai_api_key
 # INDEX_BATCH_SIZE=64
+# MAX_UPLOAD_SIZE_MB=15
 
 # Optional chunking configurations:
 # CHUNK_TARGET_TOKENS=512

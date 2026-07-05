@@ -1,4 +1,4 @@
-import { apiUrl } from "../config";
+import { apiFetch } from "../config";
 
 function requireId(docId, action = "chat action") {
   if (!docId) {
@@ -7,14 +7,7 @@ function requireId(docId, action = "chat action") {
 }
 
 async function authFetch(url, options = {}) {
-  try {
-    return await fetch(url, {
-      credentials: "include",
-      ...options,
-    });
-  } catch (err) {
-    throw new Error("Network error. Please try again.");
-  }
+  return apiFetch(url, options);
 }
 
 async function handleJsonResponse(res, fallbackMessage = "Chat request failed") {
@@ -30,7 +23,7 @@ async function handleJsonResponse(res, fallbackMessage = "Chat request failed") 
 export async function fetchChatHistory(docId) {
   requireId(docId, "fetch chat history");
 
-  const res = await authFetch(apiUrl(`/api/chat/${docId}`));
+  const res = await authFetch(`/api/chat/${docId}`);
   return handleJsonResponse(res, "Failed to fetch chat history");
 }
 
@@ -41,7 +34,7 @@ export async function sendChatMessage(docId, text) {
     throw new Error("Chat message cannot be empty");
   }
 
-  const res = await authFetch(apiUrl(`/api/chat/${docId}/message`), {
+  const res = await authFetch(`/api/chat/${docId}/message`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -55,7 +48,7 @@ export async function sendChatMessage(docId, text) {
 export async function deleteChatHistory(docId) {
   requireId(docId, "delete chat history");
 
-  const res = await authFetch(apiUrl(`/api/chat/${docId}`), {
+  const res = await authFetch(`/api/chat/${docId}`, {
     method: "DELETE",
   });
 
@@ -69,7 +62,7 @@ export async function appendChatMessages(docId, messages) {
     throw new Error("Messages array is required");
   }
 
-  const res = await authFetch(apiUrl(`/api/chat/${docId}/append`), {
+  const res = await authFetch(`/api/chat/${docId}/append`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -13,8 +13,13 @@ function validate(schema) {
         headers: req.headers,
       });
 
-      // Attach validated, sanitized data without mutating the original request
-      req.validated = parsed;
+      // Overwrite raw request properties with parsed/sanitized Zod data
+      if (parsed.body !== undefined) req.body = parsed.body;
+      if (parsed.params !== undefined) req.params = parsed.params;
+      if (parsed.query !== undefined) req.query = parsed.query;
+
+      // Freeze parsed container for req.validated to discourage reference replacing
+      req.validated = Object.freeze(parsed);
 
       return next();
     } catch (err) {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { MAX_UPLOAD_SIZE_MB } from "../../../config";
 import {
   buildFileKey,
   SUPPORTED_FILE_TYPES,
@@ -45,7 +46,7 @@ export default function useUploadSelection(showToast) {
   };
 
   const validateAndSetFiles = (incoming) => {
-    const { accepted, rejected } = validateFiles(incoming, SUPPORTED_FILE_TYPES, 25);
+    const { accepted, rejected } = validateFiles(incoming, SUPPORTED_FILE_TYPES, MAX_UPLOAD_SIZE_MB);
 
     if (rejected.length) {
       showToast?.(

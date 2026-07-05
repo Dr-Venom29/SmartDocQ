@@ -1,4 +1,4 @@
-import { apiUrl } from "../config";
+import { apiFetch } from "../config";
 
 export async function submitContactForm(payload, signal) {
   // Basic payload validation to guard against accidental bad calls
@@ -18,12 +18,11 @@ export async function submitContactForm(payload, signal) {
 
   let res;
   try {
-    res = await fetch(apiUrl("/api/contact/submit"), {
+    res = await apiFetch("/api/contact/submit", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      credentials: "include",
       body: JSON.stringify({ subject, message }),
       signal,
     });

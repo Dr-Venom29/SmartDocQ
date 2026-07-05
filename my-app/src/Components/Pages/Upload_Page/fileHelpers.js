@@ -1,3 +1,5 @@
+import { MAX_UPLOAD_SIZE_MB } from "../../../config";
+
 export const SUPPORTED_FILE_TYPES = [
   "application/pdf",
   "text/plain",
@@ -65,7 +67,7 @@ export function buildFileKey(file) {
 export function validateFiles(
   incoming,
   supportedTypes = SUPPORTED_FILE_TYPES,
-  maxSizeMb = 25,
+  maxSizeMb = MAX_UPLOAD_SIZE_MB,
   supportedExtensions = SUPPORTED_FILE_EXTENSIONS
 ) {
   const files = Array.isArray(incoming) ? incoming : [];

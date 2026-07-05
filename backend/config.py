@@ -4,9 +4,16 @@ load_dotenv()
 import os
 import re
 
-# ====== FLASK APP CONFIG ======
 FRONTEND_ORIGINS = os.environ.get("FRONTEND_ORIGINS", "http://localhost:3000")
-MAX_CONTENT_LENGTH = 25 * 1024 * 1024
+try:
+    MAX_UPLOAD_SIZE_MB = int(os.environ.get("MAX_UPLOAD_SIZE_MB", "15"))
+    if MAX_UPLOAD_SIZE_MB <= 0:
+        MAX_UPLOAD_SIZE_MB = 15
+except ValueError:
+    MAX_UPLOAD_SIZE_MB = 15
+
+MAX_UPLOAD_SIZE = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+MAX_CONTENT_LENGTH = MAX_UPLOAD_SIZE
 
 # ====== CORS ORIGINS PROCESSING ======
 def build_allowed_origins(origins_str: str) -> list:

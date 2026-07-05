@@ -120,6 +120,13 @@ async function verifyToken(req, res, next) {
       return sendError(res, 401, "Session expired or logged out");
     }
 
+    // Auto-upgrade check: Invalidate old sessions created before CSRF hardening
+    if (!session.csrfHash) {
+      await UserSession.updateOne({ _id: session._id }, { $set: { isActive: false } });
+      clearAuthCookie(res);
+      return sendError(res, 401, "Session upgraded for security. Please log in again.");
+    }
+
     req.userSession = session;
 
     const user = await User.findById(decoded.id);

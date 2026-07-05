@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "./UploadPage.css";
 import { useToast } from "../../ToastContext";
+import { MAX_UPLOAD_SIZE_MB } from "../../../config";
 
 import History from "../../History";
 import Preview from "../../Preview";
@@ -327,7 +328,7 @@ const UploadPage = () => {
                     </label>
                   </div>
                   
-                  <p className="max-size-hint">MAXIMUM FILE SIZE: 25MB</p>
+                  <p className="max-size-hint">MAXIMUM FILE SIZE: {MAX_UPLOAD_SIZE_MB}MB</p>
                 </>
               ) : (
                 <>

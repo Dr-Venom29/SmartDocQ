@@ -84,7 +84,7 @@ const corsOptions = {
     return ok ? callback(null, true) : callback(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "x-service-token"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-service-token", "x-csrf-token"],
   credentials: true,
 };
 app.use(cors(corsOptions));
@@ -92,6 +92,9 @@ app.options(/.*/, cors(corsOptions));
 
 app.use(cookieParser());
 app.use(bodyParser.json({ limit: "5mb" }));
+
+const rawMb = Number(process.env.MAX_UPLOAD_SIZE_MB);
+const MAX_UPLOAD_SIZE_MB = Number.isFinite(rawMb) && rawMb > 0 ? rawMb : 15;
 
 logger.info({ env: process.env.NODE_ENV || "", port: process.env.PORT || 5000 }, "Server environment");
 
@@ -106,6 +109,15 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/share", shareRoutes);
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  if (err && err.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ message: `Maximum document size is ${MAX_UPLOAD_SIZE_MB} MB.` });
+  }
+  logger.error({ err }, "Unhandled request error");
+  res.status(err?.status || 500).json({ message: err?.message || "Internal server error" });
+});
 
 // Health and metrics
 app.get("/healthz", (req, res) => res.json({ status: "ok" }));

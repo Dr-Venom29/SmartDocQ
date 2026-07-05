@@ -93,10 +93,14 @@ const FLASK_INDEX_URL = process.env.FLASK_INDEX_URL || `${FLASK_BASE}/api/index-
 const FLASK_REPLACE_TEXT_URL = process.env.FLASK_REPLACE_TEXT_URL || `${FLASK_BASE}/api/index/replace-text`;
 const FLASK_CONVERT_URL = process.env.FLASK_CONVERT_URL || `${FLASK_BASE}/api/convert/word-to-pdf`;
 
+const rawMb = Number(process.env.MAX_UPLOAD_SIZE_MB);
+const MAX_UPLOAD_SIZE_MB = Number.isFinite(rawMb) && rawMb > 0 ? rawMb : 15;
+const MAX_UPLOAD_SIZE = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
+
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_SIZE },
   fileFilter: (req, file, cb) => {
     const allowedMimes = [
       "application/pdf",

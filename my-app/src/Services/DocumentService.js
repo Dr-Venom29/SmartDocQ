@@ -1,4 +1,4 @@
-import { apiUrl } from "../config";
+import { apiFetch } from "../config";
 
 async function handleJsonResponse(res, fallbackMessage = "Request failed") {
   const data = await res.json().catch(() => ({}));
@@ -17,18 +17,11 @@ function requireId(documentId, action = "document action") {
 }
 
 async function authFetch(url, options = {}) {
-  try {
-    return await fetch(url, {
-      credentials: "include",
-      ...options,
-    });
-  } catch (err) {
-    throw new Error("Network error. Please try again.");
-  }
+  return apiFetch(url, options);
 }
 
 export async function fetchDocuments() {
-  const res = await authFetch(apiUrl("/api/document/my"));
+  const res = await authFetch("/api/document/my");
 
   return handleJsonResponse(res, "Failed to fetch upload history");
 }
@@ -39,7 +32,7 @@ export async function uploadSingleDocument(file) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await authFetch(apiUrl("/api/document/upload"), {
+  const res = await authFetch("/api/document/upload", {
     method: "POST",
     body: formData,
   });
@@ -60,7 +53,7 @@ export async function uploadBatchDocuments(files) {
   const formData = new FormData();
   files.slice(0, 10).forEach((file) => formData.append("files", file));
 
-  const res = await authFetch(apiUrl("/api/document/upload/batch"), {
+  const res = await authFetch("/api/document/upload/batch", {
     method: "POST",
     body: formData,
   });
@@ -72,7 +65,7 @@ export async function uploadBatchDocuments(files) {
 export async function deleteDocument(documentId) {
   requireId(documentId, "delete");
 
-  const res = await authFetch(apiUrl(`/api/document/${documentId}`), {
+  const res = await authFetch(`/api/document/${documentId}`, {
     method: "DELETE",
   });
 
@@ -88,7 +81,7 @@ export async function renameDocument(documentId, newName) {
 
   const trimmedName = String(newName).trim();
 
-  const res = await authFetch(apiUrl(`/api/document/${documentId}`), {
+  const res = await authFetch(`/api/document/${documentId}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -102,7 +95,7 @@ export async function renameDocument(documentId, newName) {
 export async function pinDocument(documentId) {
   requireId(documentId, "pin");
 
-  const res = await authFetch(apiUrl(`/api/document/${documentId}/pin`), {
+  const res = await authFetch(`/api/document/${documentId}/pin`, {
     method: "POST",
   });
 
@@ -112,7 +105,7 @@ export async function pinDocument(documentId) {
 export async function unpinDocument(documentId) {
   requireId(documentId, "unpin");
 
-  const res = await authFetch(apiUrl(`/api/document/${documentId}/unpin`), {
+  const res = await authFetch(`/api/document/${documentId}/unpin`, {
     method: "POST",
   });
 
@@ -122,7 +115,7 @@ export async function unpinDocument(documentId) {
 export async function downloadDocument(documentId) {
   requireId(documentId, "download");
 
-  const res = await authFetch(apiUrl(`/api/document/${documentId}/download`));
+  const res = await authFetch(`/api/document/${documentId}/download`);
 
   if (!res.ok) {
     let errorMessage = "Failed to download document";

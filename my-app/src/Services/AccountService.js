@@ -1,4 +1,4 @@
-import { apiUrl } from "../config";
+import { apiFetch } from "../config";
 
 async function parseResponse(res, fallbackMessage) {
   const data = await res.json().catch(() => ({}));
@@ -9,9 +9,8 @@ async function parseResponse(res, fallbackMessage) {
 }
 
 export async function updateProfile(payload) {
-  const res = await fetch(apiUrl("/api/auth/me"), {
+  const res = await apiFetch("/api/auth/me", {
     method: "PUT",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
@@ -26,9 +25,8 @@ export async function uploadAvatar(file) {
   const form = new FormData();
   form.append("avatar", file, file.name || "avatar.jpg");
 
-  const res = await fetch(apiUrl("/api/auth/me/avatar"), {
+  const res = await apiFetch("/api/auth/me/avatar", {
     method: "POST",
-    credentials: "include",
     body: form,
   });
 
@@ -37,27 +35,24 @@ export async function uploadAvatar(file) {
 }
 
 export async function clearChatHistory() {
-  const res = await fetch(apiUrl("/api/chat"), {
+  const res = await apiFetch("/api/chat", {
     method: "DELETE",
-    credentials: "include",
   });
 
   return parseResponse(res, "Failed to clear chat history");
 }
 
 export async function deleteAccount() {
-  const res = await fetch(apiUrl("/api/auth/me"), {
+  const res = await apiFetch("/api/auth/me", {
     method: "DELETE",
-    credentials: "include",
   });
 
   return parseResponse(res, "Failed to delete account");
 }
 
 export async function logoutAllDevices() {
-  const res = await fetch(apiUrl("/api/auth/logout-all"), {
+  const res = await apiFetch("/api/auth/logout-all", {
     method: "POST",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
   });
 
