@@ -29,6 +29,7 @@ SmartDocQ uses a Hybrid Retrieval-Augmented Generation (Hybrid RAG) architecture
 - **Automatic Reindexing**: Detects embedding model, content, or indexing pipeline changes and transparently reindexes documents in the background.
 
 ### Security & Privacy
+- **Internal AI Service Authentication**: All browser requests are routed through the Node.js backend. The Flask AI service accepts only authenticated server-to-server requests protected with a shared `SERVICE_TOKEN`, preventing direct client access to AI endpoints.
 - **Sensitive Data Detection**: Automatic identification of personal information (emails, phone numbers, Aadhaar, PAN, credit cards, SSN).
 - **User Consent Workflow**: Privacy-first approach requiring explicit consent before processing sensitive documents.
 - **Content Moderation**: Profanity filtering and URL validation to maintain platform integrity.
@@ -130,7 +131,7 @@ graph TD
 
     %% Business Logic Layer
     subgraph Middleware_Layer ["Business Logic Layer (Express Server)"]
-        ExpressRouter["Express API Router<br/>(/api/auth, /api/document, /api/chat)"]:::business
+        ExpressRouter["Express API Router<br/>(JWT Authentication)<br/>(Document Ownership)<br/>(Rate Limiting)<br/>(Service Token Proxy)"]:::business
         AuthGuard["Auth & Session Middleware<br/>(JWT httpOnly Cookie Validation)"]:::business
         ZodValidator["Input Validation<br/>(Zod Schemas)"]:::business
         MongooseDB["Mongoose ODM<br/>(User, Document, Chat, DocChunk models)"]:::business
@@ -253,6 +254,9 @@ npm start
 ```
 
 ### 3. AI Service Setup (Flask)
+
+React communicates only with Node.js. The Flask service is intended for internal server-to-server communication and should not be called directly by browser clients.
+
 ```bash
 cd ../backend
 python -m venv venv
@@ -263,7 +267,7 @@ pip install -r requirements.txt
 # PORT=5001
 # FRONTEND_ORIGINS=http://localhost:3000
 # NODE_BASE_URL=http://localhost:5000
-# SERVICE_TOKEN=shared_strong_secret
+# SERVICE_TOKEN=shared_strong_secret (must be identical to the SERVICE_TOKEN in servers/.env)
 # GEMINI_API_KEY=your_google_ai_api_key
 # INDEX_BATCH_SIZE=64
 
@@ -284,7 +288,6 @@ npm install
 
 # Create .env file with:
 # REACT_APP_API_URL=http://localhost:5000
-# REACT_APP_PY_API_URL=http://localhost:5001
 # REACT_APP_GOOGLE_CLIENT_ID=your_google_oauth_client_id
 
 npm start

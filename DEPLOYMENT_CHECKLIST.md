@@ -5,7 +5,6 @@ This checklist lets you deploy without running anything locally.
 ## 1) Frontend (my-app on Vercel)
 - Project settings → Environment Variables:
   - REACT_APP_API_URL = https://<your-node-api-domain>
-  - REACT_APP_PY_API_URL = https://<your-flask-domain>
 - Build & Output Settings:
   - Framework Preset: Create React App
   - Root Directory: my-app

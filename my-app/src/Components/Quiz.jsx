@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "./Quiz.css";
-import { pyApiUrl } from "../config";
+import { apiFetch } from "../config";
 
 const Quiz = ({ docId, onClose }) => {
   const [quizData, setQuizData] = useState(null);
@@ -21,12 +21,8 @@ const Quiz = ({ docId, onClose }) => {
     setIsLoading(true);
     setShowSettings(false);
     try {
-  const response = await fetch(pyApiUrl("/api/document/generate-quiz"), {
+      const response = await apiFetch("/api/document/generate-quiz", {
         method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           doc_id: docId,
           num_questions: numQuestions,

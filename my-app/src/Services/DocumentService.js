@@ -1,4 +1,4 @@
-import { apiUrl, pyApiUrl } from "../config";
+import { apiUrl } from "../config";
 
 async function handleJsonResponse(res, fallbackMessage = "Request failed") {
   const data = await res.json().catch(() => ({}));
@@ -140,5 +140,5 @@ export async function downloadDocument(documentId) {
 
 export function getPythonPreviewUrl(id) {
   if (!id) throw new Error("Missing document preview ID");
-  return pyApiUrl(`/api/document/preview/${id}.pdf`);
+  return `/api/document/preview/${id}.pdf`;
 }

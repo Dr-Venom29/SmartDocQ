@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useToast } from "./ToastContext";
-import { pyApiUrl } from "../config";
+import { apiFetch } from "../config";
 import "./Flashcard.css";
 
 const Flashcard = ({ docId, onClose }) => {
@@ -33,12 +33,8 @@ const Flashcard = ({ docId, onClose }) => {
     setIsLoading(true);
     setShowSettings(false);
     try {
-      const response = await fetch(pyApiUrl("/api/document/generate-flashcards"), {
+      const response = await apiFetch("/api/document/generate-flashcards", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
         body: JSON.stringify({
           doc_id: docId,
           num_cards: numCards,

@@ -7,6 +7,35 @@ const Document = require("../models/Document");
 const { verifyToken, ensureActive } = require("./auth");
 const fetch = require("node-fetch");
 const logger = require("../lib/logger");
+const rateLimit = require("express-rate-limit");
+
+const quizLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: { message: "Too many quiz generation requests. Please try again after a minute." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId
+});
+
+const flashcardLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: { message: "Too many flashcard generation requests. Please try again after a minute." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId
+});
+
+const summarizeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { message: "Too many summarization requests. Please try again after a minute." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId
+});
+
 
 // Generate content hash for deduplication
 function hashBuffer(buffer) {
@@ -144,7 +173,11 @@ router.post("/upload", verifyToken, ensureActive, upload.single("file"), async (
         const convertResponse = await fetch(FLASK_CONVERT_URL, {
           method: 'POST',
           body: formData,
-          headers: formData.getHeaders()
+          headers: {
+            ...formData.getHeaders(),
+            'x-service-token': process.env.SERVICE_TOKEN,
+            'x-user-id': req.userId ? req.userId.toString() : ''
+          }
         });
         
         if (convertResponse.ok) {
@@ -205,7 +238,11 @@ router.post("/upload", verifyToken, ensureActive, upload.single("file"), async (
         // Ask Flask to scan-and-index; it will gate on consent and set statuses accordingly
         await fetch(FLASK_INDEX_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-service-token': process.env.SERVICE_TOKEN,
+            'x-user-id': req.userId ? req.userId.toString() : ''
+          },
           body: JSON.stringify({ documentId: doc.doc_id })
         });
         // Flask will set consent_state and skip indexing if sensitive & not confirmed
@@ -283,7 +320,11 @@ router.post("/upload/batch", verifyToken, ensureActive, upload.array("files", 10
           const convertResponse = await fetch(FLASK_CONVERT_URL, {
             method: 'POST',
             body: formData,
-            headers: formData.getHeaders()
+            headers: {
+              ...formData.getHeaders(),
+              'x-service-token': process.env.SERVICE_TOKEN,
+              'x-user-id': req.userId ? req.userId.toString() : ''
+            }
           });
           
           if (convertResponse.ok) {
@@ -337,7 +378,11 @@ router.post("/upload/batch", verifyToken, ensureActive, upload.array("files", 10
         ) {
           await fetch(FLASK_INDEX_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-service-token': process.env.SERVICE_TOKEN,
+              'x-user-id': req.userId ? req.userId.toString() : ''
+            },
             body: JSON.stringify({ documentId: doc.doc_id })
           });
         } else {
@@ -523,6 +568,219 @@ router.post("/ask", verifyToken, async (req, res) => {
   }
 });
 
+// GET /preview/:docId.pdf
+router.get("/preview/:docId.pdf", verifyToken, ensureActive, async (req, res) => {
+  try {
+    const { docId } = req.params;
+    const mongoose = require("mongoose");
+
+    const query = {
+      user: req.userId,
+      $or: [
+        { doc_id: docId }
+      ]
+    };
+    if (mongoose.Types.ObjectId.isValid(docId)) {
+      query.$or.push({ _id: docId });
+    }
+    const doc = await Document.findOne(query);
+    if (!doc) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+
+    const flaskUrl = `${FLASK_BASE}/api/document/preview/${doc.doc_id}.pdf`;
+    const flaskRes = await fetch(flaskUrl, {
+      method: "GET",
+      headers: {
+        "x-service-token": process.env.SERVICE_TOKEN,
+        "x-user-id": req.userId.toString()
+      }
+    });
+
+    if (!flaskRes.ok) {
+      const errPayload = await flaskRes.json().catch(() => ({}));
+      return res.status(flaskRes.status).json({ 
+        message: errPayload.error || "Failed to generate preview from Python service" 
+      });
+    }
+
+    res.setHeader("Content-Type", "application/pdf");
+    flaskRes.body.pipe(res);
+  } catch (err) {
+    logger.error({ err }, "Error fetching document preview");
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /generate-quiz
+router.post("/generate-quiz", verifyToken, ensureActive, quizLimiter, async (req, res) => {
+  try {
+    const { doc_id, documentId, num_questions, difficulty, question_types } = req.body;
+    const targetDocId = doc_id || documentId;
+    if (!targetDocId) {
+      return res.status(400).json({ message: "doc_id is required" });
+    }
+
+    const mongoose = require("mongoose");
+    const query = {
+      user: req.userId,
+      $or: [
+        { doc_id: targetDocId }
+      ]
+    };
+    if (mongoose.Types.ObjectId.isValid(targetDocId)) {
+      query.$or.push({ _id: targetDocId });
+    }
+    const doc = await Document.findOne(query);
+    if (!doc) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+
+    const flaskUrl = `${FLASK_BASE}/api/document/generate-quiz`;
+    const flaskRes = await fetch(flaskUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-service-token": process.env.SERVICE_TOKEN,
+        "x-user-id": req.userId.toString()
+      },
+      body: JSON.stringify({
+        doc_id: doc.doc_id,
+        num_questions,
+        difficulty,
+        question_types
+      })
+    });
+
+    const data = await flaskRes.json().catch(() => ({}));
+    if (!flaskRes.ok) {
+      return res.status(flaskRes.status).json({
+        success: false,
+        error: data.error || data.message || "Failed to generate quiz from Python service"
+      });
+    }
+
+    res.status(flaskRes.status).json(data);
+  } catch (err) {
+    logger.error({ err }, "Error generating quiz");
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /generate-flashcards
+router.post("/generate-flashcards", verifyToken, ensureActive, flashcardLimiter, async (req, res) => {
+  try {
+    const { doc_id, documentId, num_cards } = req.body;
+    const targetDocId = doc_id || documentId;
+    if (!targetDocId) {
+      return res.status(400).json({ message: "doc_id is required" });
+    }
+
+    const mongoose = require("mongoose");
+    const query = {
+      user: req.userId,
+      $or: [
+        { doc_id: targetDocId }
+      ]
+    };
+    if (mongoose.Types.ObjectId.isValid(targetDocId)) {
+      query.$or.push({ _id: targetDocId });
+    }
+    const doc = await Document.findOne(query);
+    if (!doc) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+
+    const flaskUrl = `${FLASK_BASE}/api/document/generate-flashcards`;
+    const flaskRes = await fetch(flaskUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-service-token": process.env.SERVICE_TOKEN,
+        "x-user-id": req.userId.toString()
+      },
+      body: JSON.stringify({
+        doc_id: doc.doc_id,
+        num_cards
+      })
+    });
+
+    const data = await flaskRes.json().catch(() => ({}));
+    if (!flaskRes.ok) {
+      return res.status(flaskRes.status).json({
+        success: false,
+        error: data.error || data.message || "Failed to generate flashcards from Python service"
+      });
+    }
+
+    res.status(flaskRes.status).json(data);
+  } catch (err) {
+    logger.error({ err }, "Error generating flashcards");
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /summarize
+router.post("/summarize", verifyToken, ensureActive, summarizeLimiter, async (req, res) => {
+  try {
+    const { selectionText, text, docId, doc_id, pages, style, bullets } = req.body;
+    const targetText = selectionText || text;
+    const targetDocId = docId || doc_id;
+
+    if (!targetText || !targetText.trim()) {
+      return res.status(400).json({ error: "Missing selectionText" });
+    }
+
+    let verifiedDocId = null;
+    if (targetDocId) {
+      const mongoose = require("mongoose");
+      const query = {
+        user: req.userId,
+        $or: [
+          { doc_id: targetDocId }
+        ]
+      };
+      if (mongoose.Types.ObjectId.isValid(targetDocId)) {
+        query.$or.push({ _id: targetDocId });
+      }
+      const doc = await Document.findOne(query);
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found or access denied" });
+      }
+      verifiedDocId = doc.doc_id;
+    }
+
+    const flaskUrl = `${FLASK_BASE}/api/summarize`;
+    const flaskRes = await fetch(flaskUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-service-token": process.env.SERVICE_TOKEN,
+        "x-user-id": req.userId.toString()
+      },
+      body: JSON.stringify({
+        selectionText: targetText,
+        docId: verifiedDocId,
+        pages,
+        style,
+        bullets
+      })
+    });
+
+    const data = await flaskRes.json().catch(() => ({}));
+    if (!flaskRes.ok) {
+      return res.status(flaskRes.status).json({
+        error: data.error || data.message || "Failed to summarize text from Python service"
+      });
+    }
+
+    res.status(flaskRes.status).json(data);
+  } catch (err) {
+    logger.error({ err }, "Error in summarization");
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
 module.exports.verifyToken = verifyToken;
 
@@ -540,7 +798,11 @@ async function triggerIndexing(documentId) {
     // Ask Flask to index by Atlas doc_id
     const resp = await fetch(FLASK_INDEX_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "x-service-token": process.env.SERVICE_TOKEN,
+        "x-user-id": doc.user ? doc.user.toString() : ""
+      },
       body: JSON.stringify({ documentId: doc.doc_id })
     });
     const payload = await resp.json().catch(()=>({}));
@@ -651,7 +913,11 @@ router.patch("/:id/text", verifyToken, ensureActive, async (req, res) => {
     // Ask Flask to reindex from provided text without full file round-trip
     const resp = await fetch(FLASK_REPLACE_TEXT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "x-service-token": process.env.SERVICE_TOKEN,
+        "x-user-id": req.userId ? req.userId.toString() : ""
+      },
       body: JSON.stringify({ documentId: doc.doc_id, text, filename: doc.name })
     });
 

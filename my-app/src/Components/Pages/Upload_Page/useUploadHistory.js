@@ -8,6 +8,7 @@ import {
   renameDocument,
   unpinDocument,
 } from "../../../Services/DocumentService";
+import { apiFetch } from "../../../config";
 import { fetchChatHistory } from "../../../Services/ChatService";
 import { validateFilename } from "./fileHelpers";
 import { mapDocumentFromApi } from "./documentMappers";
@@ -149,7 +150,7 @@ export default function useUploadHistory(showToast, setters) {
         if (isWord) {
           try {
             const previewUrl = getPythonPreviewUrl(resolvedId);
-            const previewRes = await fetch(previewUrl);
+            const previewRes = await apiFetch(previewUrl);
 
             if (previewRes.ok) {
               const blob = await previewRes.blob();

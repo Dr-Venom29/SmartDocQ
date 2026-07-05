@@ -1,12 +1,4 @@
-import { pyApiUrl } from "../config";
-
-async function pyFetch(url, options = {}) {
-  try {
-    return await fetch(url, options);
-  } catch (err) {
-    throw new Error("Network error: Unable to reach summarization service. Please try again.");
-  }
-}
+import { apiFetch } from "../config";
 
 async function handleJsonResponse(res, fallbackMessage = "Summarization failed") {
   const data = await res.json().catch(() => ({}));
@@ -23,11 +15,8 @@ export async function summarizeSelection(selectionText, docId = null) {
     throw new Error("Selection text is required for summarization");
   }
 
-  const res = await pyFetch(pyApiUrl("/api/summarize"), {
+  const res = await apiFetch("/api/document/summarize", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
       selectionText: String(selectionText).trim(),
       docId: docId || null,

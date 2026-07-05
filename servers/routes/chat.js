@@ -6,8 +6,19 @@ const { verifyToken, ensureActive } = require("./auth");
 const fetch = require("node-fetch");
 const PDFDocument = require("pdfkit");
 
+const rateLimit = require("express-rate-limit");
+
 // Config: Flask endpoint for ask
 const FLASK_ASK_URL = process.env.FLASK_ASK_URL || "http://localhost:5001/api/document/ask";
+
+const askLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  message: { message: "Too many chat messages. Please try again after a minute." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId
+});
 
 // Debug endpoint: List all chats for current user (for testing)
 router.get("/", verifyToken, ensureActive, async (req, res) => {
@@ -40,7 +51,7 @@ router.get("/:documentId", verifyToken, ensureActive, async (req, res) => {
 });
 
 // Append a message (user) and ask Flask for assistant reply, then save both
-router.post("/:documentId/message", verifyToken, ensureActive, async (req, res) => {
+router.post("/:documentId/message", verifyToken, ensureActive, askLimiter, async (req, res) => {
   try {
     const { documentId } = req.params;
     const { text } = req.body;
@@ -57,7 +68,11 @@ router.post("/:documentId/message", verifyToken, ensureActive, async (req, res) 
     try {
       const resp = await fetch(FLASK_ASK_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-service-token": process.env.SERVICE_TOKEN,
+          "x-user-id": req.userId
+        },
         body: JSON.stringify({ question: text, doc_id: doc.doc_id })
       });
       const json = await resp.json().catch(() => ({}));
@@ -65,7 +80,7 @@ router.post("/:documentId/message", verifyToken, ensureActive, async (req, res) 
     } catch (e) {
       assistantText = "⚠️ Error contacting assistant";
     }
-  const asstMsg = { role: "assistant", text: assistantText, at: new Date(), rating: "none" };
+    const asstMsg = { role: "assistant", text: assistantText, at: new Date(), rating: "none" };
 
     const chat = await Chat.findOneAndUpdate(
       { user: req.userId, document: documentId },

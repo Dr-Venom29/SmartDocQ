@@ -83,13 +83,21 @@ def handle_exception(e):
     return jsonify({"error": message}), 500
 
 
+from utils.security import public_route, verify_service_token_default
+
+# ====== BEFORE REQUEST HOOK ======
+app.before_request(verify_service_token_default)
+
+
 # ====== HEALTHCHECK / ROOT ======
 @app.route("/healthz", methods=["GET"])
+@public_route
 def healthz():
     return jsonify({"status": "ok"})
 
 
 @app.route("/", methods=["GET", "HEAD"])
+@public_route
 def root():
     return jsonify({"service": "SmartDocQ Flask", "status": "ok"})
 

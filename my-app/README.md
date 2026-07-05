@@ -7,13 +7,13 @@ React app created with Create React App and configured for deployment on Vercel.
 Configure these in a local `.env` (for local runs) and in Vercel Project Settings → Environment Variables:
 
 - `REACT_APP_API_URL` — Base URL for Node/Express API (e.g., https://api.yourdomain.tld)
-- `REACT_APP_PY_API_URL` — Base URL for Python/Flask API (e.g., https://pyapi.yourdomain.tld)
+- `REACT_APP_API_URL` — Base URL for Node/Express API (e.g., https://api.yourdomain.tld)
 
 See `.env.example` for a template.
 
-## CORS requirements (backends)
+## CORS requirements (Node backend)
 
-Both APIs must allow the deployed frontend origin with credentials support for httpOnly cookie authentication:
+The Node API must allow the deployed frontend origin with credentials support for httpOnly cookie authentication:
 
 - `Access-Control-Allow-Origin: https://<your-vercel-domain>.vercel.app` (must be exact, not `*`)
 - `Access-Control-Allow-Credentials: true`

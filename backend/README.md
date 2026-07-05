@@ -6,8 +6,8 @@ Copy `.env.example` to `.env` and configure:
 
 - `PORT` — Port for the AI service (default: `5001`)
 - `FRONTEND_ORIGINS` — Comma-separated CORS allowlist (e.g., `http://localhost:3000,https://your-frontend.vercel.app`)
-- `NODE_BASE_URL` — Base URL of the Node.js API used for document download and metadata access
-- `SERVICE_TOKEN` — Shared secret that must match the Node API's `SERVICE_TOKEN` for secure server-to-server communication (required)
+- `NODE_BASE_URL` — Base URL of the trusted Node.js API used for authenticated document downloads, metadata access, and indexing callbacks.
+- `SERVICE_TOKEN` — Shared secret used to authenticate all server-to-server communication between the Node.js backend and the Flask AI service. This value must be identical in both services.
 - `GEMINI_API_KEY` — Google Generative AI API key
 - `TEXT_MODEL` — Optional override for the Gemini text model (default: `models/gemini-2.5-flash`)
 - `EMBED_MODEL` — Optional override for the embedding model (default: `models/gemini-embedding-2`)
@@ -33,7 +33,7 @@ The service runs on port `5001` by default.
 
 ## Dependencies
 
-SmartDocQ leverages modern libraries to implement a resilient document understanding and search interface:
+SmartDocQ AI Service leverages modern libraries to implement a resilient document understanding and search interface:
 - **PyMuPDF4LLM / PyMuPDF (fitz)**: Multi-format PDF layout parser converting PDF text and tables to Markdown.
 - **PyPDF2**: Fallback PDF text parser.
 - **tiktoken**: Fast byte pair encoding (BPE) tokenizer used for chunk bounds estimation.
@@ -43,6 +43,22 @@ SmartDocQ leverages modern libraries to implement a resilient document understan
 ## Health Check
 
 - `GET /healthz` → `{ "status": "ok" }`
+  - **Public endpoint**. Does not require `SERVICE_TOKEN`.
+- `GET /` → `{ "service": "SmartDocQ Flask", "status": "ok" }`
+  - **Public endpoint**. Does not require `SERVICE_TOKEN`.
+
+## Service Communication Architecture
+
+SmartDocQ follows a layered backend architecture.
+
+```mermaid
+flowchart TD
+    Browser([Browser])
+    -->|HTTP Request| Node["Node.js Backend\n(JWT Authentication)\n(Document Ownership Validation)\n(Rate Limiting)"]
+    -->|"Server-to-Server Request\n(x-service-token)\n(x-user-id)"| Flask["Flask AI Service"]
+```
+
+The Flask AI service is not intended to be accessed directly by browser clients. Every protected request must include a valid `x-service-token` header. Requests without a valid service token are rejected with **401 Unauthorized**. The authenticated user's ID is forwarded through the `x-user-id` header for auditing and future authorization features.
 
 ---
 
@@ -181,6 +197,10 @@ This contextual prepending guarantees that relevant facts are retrieved correctl
 
 ## SECURITY FEATURES
 
+- **Server-to-Server Authentication**: All AI endpoints require a valid shared `SERVICE_TOKEN`. Browser clients cannot invoke protected Flask APIs directly.
+- **Constant-Time Token Verification**: Incoming service tokens are validated using `hmac.compare_digest` to mitigate timing attacks.
+- **Layered Authorization Model**: JWT authentication, document ownership checks, and rate limiting are enforced by the Node.js backend before requests reach the AI service.
+- **Audit Identity Forwarding**: Authenticated user IDs are forwarded through the `x-user-id` header for structured logging and future auditing.
 - Rejects common jailbreak and prompt-manipulation attempts in user questions before retrieval and LLM invocation.
 - Treats retrieved document context as untrusted data using guarded `<CONTEXT>` delimiters to reduce document-based prompt injection.
 - Detects sensitive data including PAN, Aadhaar, phone numbers, credit cards, emails, and SSN-like patterns.

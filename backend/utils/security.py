@@ -262,3 +262,44 @@ def jailbreak_score(text: str) -> int:
 def contains_jailbreak_attempt(text: str) -> bool:
     """Return True if the text exceeds the configured jailbreak-risk threshold."""
     return jailbreak_score(text) >= JAILBREAK_THRESHOLD
+
+
+# ====== SERVICE AUTHENTICATION (DEFAULT-DENY) ======
+import hmac
+import os
+from functools import wraps
+from flask import request, jsonify, current_app
+
+def public_route(f):
+    """Decorator to mark a route as publicly accessible without a service token."""
+    f._is_public = True
+    return f
+
+def verify_service_token_default():
+    """Default-deny check for incoming service requests. Validates x-service-token using hmac.compare_digest."""
+    # Allow OPTIONS requests for CORS preflights
+    if request.method == "OPTIONS":
+        return None
+    # Allow health checks and root
+    if request.path in ("/healthz", "/"):
+        return None
+
+    if request.endpoint:
+        view_func = current_app.view_functions.get(request.endpoint)
+        if view_func and getattr(view_func, "_is_public", False):
+            return None
+
+    token = request.headers.get("x-service-token")
+    expected = os.environ.get("SERVICE_TOKEN")
+    if not expected:
+        return jsonify({"error": "Service configuration error: SERVICE_TOKEN not set"}), 500
+
+    if not token or not hmac.compare_digest(token, expected):
+        return jsonify({"error": "Unauthorized: Invalid service token"}), 401
+
+    # Log user ID if provided
+    user_id = request.headers.get("x-user-id")
+    if user_id:
+        current_app.logger.info(f"[Service Auth] Request from user {user_id} on {request.path}")
+
+    return None
