@@ -3,10 +3,11 @@ const router = express.Router();
 const ContactReport = require("../models/ContactReport");
 const User = require("../models/User");
 const { verifyToken, ensureActive } = require("./auth");
+const { verifyCsrf } = require("../middlewares/csrf");
 const logger = require("../lib/logger");
 
 // Auth-only endpoint to submit contact report
-router.post("/submit", verifyToken, ensureActive, async (req, res) => {
+router.post("/submit", verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const { subject = "", message = "" } = req.body || {};
     if (!subject.trim() || !message.trim()) {

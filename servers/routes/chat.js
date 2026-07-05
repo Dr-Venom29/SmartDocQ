@@ -3,6 +3,7 @@ const router = express.Router();
 const Chat = require("../models/Chat");
 const Document = require("../models/Document");
 const { verifyToken, ensureActive } = require("./auth");
+const { verifyCsrf } = require("../middlewares/csrf");
 const fetch = require("node-fetch");
 const PDFDocument = require("pdfkit");
 
@@ -51,7 +52,7 @@ router.get("/:documentId", verifyToken, ensureActive, async (req, res) => {
 });
 
 // Append a message (user) and ask Flask for assistant reply, then save both
-router.post("/:documentId/message", verifyToken, ensureActive, askLimiter, async (req, res) => {
+router.post("/:documentId/message", verifyToken, ensureActive, verifyCsrf, askLimiter, async (req, res) => {
   try {
     const { documentId } = req.params;
     const { text } = req.body;
@@ -95,7 +96,7 @@ router.post("/:documentId/message", verifyToken, ensureActive, askLimiter, async
 });
 
 // Append provided messages to chat (used for summarize flow where assistant text is already computed)
-router.post("/:documentId/append", verifyToken, ensureActive, async (req, res) => {
+router.post("/:documentId/append", verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const { documentId } = req.params;
     const { messages } = req.body;
@@ -136,7 +137,7 @@ router.post("/:documentId/append", verifyToken, ensureActive, async (req, res) =
 });
 
 // Overwrite entire chat (optional)
-router.put("/:documentId", verifyToken, ensureActive, async (req, res) => {
+router.put("/:documentId", verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const { documentId } = req.params;
     const { messages } = req.body;
@@ -155,7 +156,7 @@ router.put("/:documentId", verifyToken, ensureActive, async (req, res) => {
 });
 
 // Delete chat
-router.delete("/:documentId", verifyToken, ensureActive, async (req, res) => {
+router.delete("/:documentId", verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const { documentId } = req.params;
     await Chat.findOneAndDelete({ user: req.userId, document: documentId });
@@ -166,7 +167,7 @@ router.delete("/:documentId", verifyToken, ensureActive, async (req, res) => {
 });
 
 // Delete all chats for current user (across all documents)
-router.delete("/", verifyToken, ensureActive, async (req, res) => {
+router.delete("/", verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const result = await Chat.deleteMany({ user: req.userId });
     res.json({ message: "All chats deleted", deletedCount: result.deletedCount || 0 });
@@ -176,7 +177,7 @@ router.delete("/", verifyToken, ensureActive, async (req, res) => {
 });
 
 // Set rating for a specific message (by array index) in a chat
-router.patch("/:documentId/message/:index/rating", verifyToken, ensureActive, async (req, res) => {
+router.patch("/:documentId/message/:index/rating", verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const { documentId, index } = req.params;
     const { rating } = req.body;

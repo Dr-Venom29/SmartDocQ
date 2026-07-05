@@ -25,6 +25,9 @@ const userSessionSchema = new mongoose.Schema({
   expiresAt: {
     type: Date,
     required: true
+  },
+  csrfHash: {
+    type: String
   }
 }, {
   timestamps: true

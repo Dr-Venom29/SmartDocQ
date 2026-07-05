@@ -47,20 +47,7 @@ SmartDocQ AI Service leverages modern libraries to implement a resilient documen
 - `GET /` → `{ "service": "SmartDocQ Flask", "status": "ok" }`
   - **Public endpoint**. Does not require `SERVICE_TOKEN`.
 
-## Service Communication Architecture
 
-SmartDocQ follows a layered backend architecture.
-
-```mermaid
-flowchart TD
-    Browser([Browser])
-    -->|HTTP Request| Node["Node.js Backend\n(JWT Authentication)\n(Document Ownership Validation)\n(Rate Limiting)"]
-    -->|"Server-to-Server Request\n(x-service-token)\n(x-user-id)"| Flask["Flask AI Service"]
-```
-
-The Flask AI service is not intended to be accessed directly by browser clients. Every protected request must include a valid `x-service-token` header. Requests without a valid service token are rejected with **401 Unauthorized**. The authenticated user's ID is forwarded through the `x-user-id` header for auditing and future authorization features.
-
----
 
 ## RESILIENT PDF EXTRACTION
 
@@ -201,6 +188,7 @@ This contextual prepending guarantees that relevant facts are retrieved correctl
 - **Constant-Time Token Verification**: Incoming service tokens are validated using `hmac.compare_digest` to mitigate timing attacks.
 - **Layered Authorization Model**: JWT authentication, document ownership checks, and rate limiting are enforced by the Node.js backend before requests reach the AI service.
 - **Audit Identity Forwarding**: Authenticated user IDs are forwarded through the `x-user-id` header for structured logging and future auditing.
+- **Secure Temporary File Handling**: Word document conversion and preview operations sanitize user-supplied filenames and use randomized UUID-based temporary filenames with validated extensions, preventing path traversal, arbitrary file writes, and filename collisions.
 - Rejects common jailbreak and prompt-manipulation attempts in user questions before retrieval and LLM invocation.
 - Treats retrieved document context as untrusted data using guarded `<CONTEXT>` delimiters to reduce document-based prompt injection.
 - Detects sensitive data including PAN, Aadhaar, phone numbers, credit cards, emails, and SSN-like patterns.

@@ -29,7 +29,7 @@ These can be configured through `vercel.json`.
   - PORT = 5000 (or platform default)
   - MONGO_URI = mongodb+srv://<user>:<pass>@<cluster>/<db>?retryWrites=true&w=majority
   - JWT_SECRET = <strong-secret>
-  - FRONTEND_ORIGINS = https://<your-vercel-domain>, *.vercel.app
+  - FRONTEND_ORIGINS = https://<your-vercel-domain> (Avoid wildcards like *.vercel.app in production to prevent subdomains hijacking)
   - FRONTEND_URL = https://<your-vercel-domain> (used to generate password-reset links in emails)
   - SERVICE_TOKEN = <shared-strong-secret>
   - MAIL_USER = your-gmail-address@gmail.com
@@ -49,7 +49,7 @@ These can be configured through `vercel.json`.
 - Start command (Gunicorn): `gunicorn main:app --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT`
 - Environment Variables:
   - PORT = 5001 (or platform default)
-  - FRONTEND_ORIGINS = https://<your-vercel-domain>, *.vercel.app
+  - FRONTEND_ORIGINS = https://<your-vercel-domain> (Avoid wildcards in production)
   - NODE_BASE_URL = https://<your-node-api-domain>
   - SERVICE_TOKEN = <same-as-Node>
   - GEMINI_API_KEY = <your-google-generative-ai-key>
@@ -69,7 +69,7 @@ These can be configured through `vercel.json`.
 - Open Chat on a document → ask a question → response from Flask.
 
 ## 6) Troubleshooting
-- CORS errors: ensure FRONTEND_ORIGINS includes your exact Vercel URL or wildcard .vercel.app.
+- CORS/CSRF errors: ensure FRONTEND_ORIGINS includes your exact Vercel URL (recommended) or specific domain list.
 - 401/403 from Flask doc download: SERVICE_TOKEN must match on Node and Flask.
 - Conversion failures: confirm FLASK_CONVERT_URL set and docx2pdf is available; otherwise Word files are stored as-is.
 - Password reset email not received:

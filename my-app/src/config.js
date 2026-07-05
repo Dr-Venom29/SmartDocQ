@@ -9,6 +9,13 @@ export const apiUrl = (path) =>
   `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 
 
+// Helper to get CSRF token from document cookies
+const getCsrfToken = () => {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/(?:^|; )csrf_token=([^;]*)/);
+  return match ? match[1] : "";
+};
+
 // Prevent multiple triggers on 401
 let isRedirecting = false;
 
@@ -18,6 +25,7 @@ export const apiFetch = async (
   { body, signal, headers: extraHeaders, ...rest } = {}
 ) => {
   const url = path.startsWith("http") ? path : apiUrl(path);
+  const csrfToken = getCsrfToken();
 
   try {
     const res = await fetch(url, {
@@ -29,6 +37,7 @@ export const apiFetch = async (
         ...(body instanceof FormData
           ? {}
           : { "Content-Type": "application/json" }),
+        ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
         ...(extraHeaders || {}),
       },
     });

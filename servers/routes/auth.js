@@ -15,6 +15,7 @@ const Document = require("../models/Document");
 const ContactReport = require("../models/ContactReport");
 const { OAuth2Client } = require('google-auth-library');
 const logger = require("../lib/logger");
+const { verifyCsrf } = require("../middlewares/csrf");
 const { validate } = require("../middlewares/validate");
 const { sendError, sendSuccess } = require("../middlewares/apiResponse");
 const { signupSchema, loginSchema, updateMeSchema, forgotPasswordSchema, resetPasswordSchema, googleSchema } = require("../validators/authSchemas");
@@ -39,14 +40,26 @@ const COOKIE_OPTIONS = {
   path: "/"
 };
 
+const CSRF_COOKIE_OPTIONS = {
+  httpOnly: false,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  maxAge: 60 * 60 * 1000, // 1 hour
+  path: "/"
+};
+
 // Helper to set auth cookie
-const setAuthCookie = (res, token) => {
+const setAuthCookie = (res, token, csrfToken) => {
   res.cookie("auth_token", token, COOKIE_OPTIONS);
+  if (csrfToken) {
+    res.cookie("csrf_token", csrfToken, CSRF_COOKIE_OPTIONS);
+  }
 };
 
 // Helper to clear auth cookie
 const clearAuthCookie = (res) => {
   res.clearCookie("auth_token", { ...COOKIE_OPTIONS, maxAge: 0 });
+  res.clearCookie("csrf_token", { ...CSRF_COOKIE_OPTIONS, maxAge: 0 });
 };
 
 // Helper to extract device name from user-agent
@@ -106,6 +119,8 @@ async function verifyToken(req, res, next) {
       clearAuthCookie(res);
       return sendError(res, 401, "Session expired or logged out");
     }
+
+    req.userSession = session;
 
     const user = await User.findById(decoded.id);
     if (!user) return sendError(res, 401, "User not found");
@@ -182,12 +197,16 @@ router.post("/login", authLimiter, validate(loginSchema), async (req, res) => {
     await user.save();
 
     // Create session in database
+    const csrfToken = crypto.randomBytes(32).toString("hex");
+    const csrfHash = crypto.createHash("sha256").update(csrfToken).digest("hex");
+
     const session = new UserSession({
       userId: user._id,
       deviceName: getDeviceName(req),
       ipAddress: getIpAddress(req),
       isActive: true,
       expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour session TTL (matches JWT)
+      csrfHash: csrfHash
     });
     await session.save();
 
@@ -197,7 +216,7 @@ router.post("/login", authLimiter, validate(loginSchema), async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    setAuthCookie(res, token);
+    setAuthCookie(res, token, csrfToken);
     return sendSuccess(res, 200, {
       user: {
         id: user._id,
@@ -344,22 +363,12 @@ router.post("/reset-password", authLimiter, validate(resetPasswordSchema), async
 });
 
 // Logout - clears httpOnly cookie and marks current session inactive
-router.post("/logout", async (req, res) => {
+// Logout - clears cookies and marks current session inactive
+router.post("/logout", verifyToken, verifyCsrf, async (req, res) => {
   try {
-    const token =
-      req.cookies?.auth_token ||
-      (req.headers.authorization?.startsWith("Bearer ")
-        ? req.headers.authorization.slice(7)
-        : null);
-
-    if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      if (decoded && decoded.sessionId) {
-        await UserSession.updateOne(
-          { _id: decoded.sessionId, userId: decoded.id },
-          { $set: { isActive: false } }
-        );
-      }
+    if (req.userSession) {
+      req.userSession.isActive = false;
+      await req.userSession.save();
     }
   } catch (err) {
     logger.info("Session deactivation skipped on logout: " + err.message);
@@ -370,7 +379,7 @@ router.post("/logout", async (req, res) => {
 });
 
 // Logout all - deactivates all sessions for the user
-router.post("/logout-all", verifyToken, async (req, res) => {
+router.post("/logout-all", verifyToken, verifyCsrf, async (req, res) => {
   try {
     await UserSession.updateMany(
       { userId: req.userId },
@@ -568,7 +577,7 @@ const avatarUpload = multer({
 });
 
 // Upload/update current user's avatar
-router.post("/me/avatar", verifyToken, avatarUpload.single("avatar"), async (req, res) => {
+router.post("/me/avatar", verifyToken, verifyCsrf, avatarUpload.single("avatar"), async (req, res) => {
   try {
     if (!req.file) return sendError(res, 400, "No file uploaded");
     const user = await User.findById(req.userId);
@@ -659,12 +668,16 @@ router.post('/google', authLimiter, validate(googleSchema), async (req, res) => 
     }
 
     // Create session in database
+    const csrfToken = crypto.randomBytes(32).toString("hex");
+    const csrfHash = crypto.createHash("sha256").update(csrfToken).digest("hex");
+
     const session = new UserSession({
       userId: user._id,
       deviceName: getDeviceName(req),
       ipAddress: getIpAddress(req),
       isActive: true,
       expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour session TTL (matches JWT)
+      csrfHash: csrfHash
     });
     await session.save();
 
@@ -675,7 +688,7 @@ router.post('/google', authLimiter, validate(googleSchema), async (req, res) => 
       { expiresIn: '1h' }
     );
 
-    setAuthCookie(res, token);
+    setAuthCookie(res, token, csrfToken);
     return sendSuccess(res, 200, {
       user: {
         id: user._id,

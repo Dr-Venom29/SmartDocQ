@@ -94,10 +94,18 @@ def convert_word_to_pdf():
         except Exception:
             return jsonify({"error": "docx2pdf not installed on server"}), 501
 
+        from werkzeug.utils import secure_filename
+        from pathlib import Path
+        import uuid
+
+        safe_display_name = secure_filename(os.path.basename(filename or "document.docx"))
+        if not safe_display_name or not safe_display_name.lower().endswith((".docx", ".doc")):
+            safe_display_name = "document.docx"
+
         with tempfile.TemporaryDirectory() as td:
-            in_path = os.path.join(td, filename)
-            if not in_path.lower().endswith((".docx", ".doc")):
-                in_path += ".docx"
+            ext = Path(safe_display_name).suffix.lower()
+            safe_name = f"{uuid.uuid4()}{ext}"
+            in_path = os.path.join(td, safe_name)
             with open(in_path, "wb") as f:
                 f.write(data)
             temp_pdf = os.path.join(td, "converted.pdf")
@@ -105,10 +113,11 @@ def convert_word_to_pdf():
             with open(temp_pdf, "rb") as f:
                 pdf_data = f.read()
             from flask import current_app
+            out_filename = safe_display_name.rsplit(".", 1)[0] + ".pdf"
             response = current_app.response_class(
                 pdf_data,
                 mimetype="application/pdf",
-                headers={"Content-Disposition": f'attachment; filename="{filename.rsplit(".", 1)[0]}.pdf"'},
+                headers={"Content-Disposition": f'attachment; filename="{out_filename}"'},
             )
             return response
     except Exception as e:
@@ -153,10 +162,18 @@ def preview_word_as_pdf(doc_id):
             pdf_cache[cache_key] = cached_pdf
             return send_file(cached_pdf, mimetype="application/pdf", as_attachment=False, download_name="preview.pdf")
 
+        from werkzeug.utils import secure_filename
+        from pathlib import Path
+        import uuid
+
+        safe_display_name = secure_filename(os.path.basename(filename or "document.docx"))
+        if not safe_display_name or not safe_display_name.lower().endswith((".docx", ".doc")):
+            safe_display_name = "document.docx"
+
         with tempfile.TemporaryDirectory() as td:
-            in_path = os.path.join(td, filename)
-            if not in_path.lower().endswith((".docx", ".doc")):
-                in_path += ".docx"
+            ext = Path(safe_display_name).suffix.lower()
+            safe_name = f"{uuid.uuid4()}{ext}"
+            in_path = os.path.join(td, safe_name)
             with open(in_path, "wb") as f:
                 f.write(data)
             temp_pdf = os.path.join(td, "preview.pdf")

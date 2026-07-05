@@ -3,6 +3,7 @@ const router = express.Router();
 const crypto = require("crypto");
 const rateLimit = require("express-rate-limit");
 const { verifyToken, ensureActive } = require("./auth");
+const { verifyCsrf } = require("../middlewares/csrf");
 const Chat = require("../models/Chat");
 const Document = require("../models/Document");
 const SharedChat = require("../models/SharedChat");
@@ -33,7 +34,7 @@ const publicShareLimiter = rateLimit({
 // Create a share snapshot from current user's chat for a document
 // Change detection: if the latest snapshot for this user+doc has the same content hash,
 // reuse its shareId and extend its expiresAt instead of creating a new one.
-router.post("/chat/:documentId", verifyToken, ensureActive, async (req, res) => {
+router.post("/chat/:documentId", verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const { documentId } = req.params;
     const doc = await Document.findOne({ _id: documentId, user: req.userId });

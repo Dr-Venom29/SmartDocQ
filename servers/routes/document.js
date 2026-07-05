@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const path = require("path");
 const Document = require("../models/Document");
 const { verifyToken, ensureActive } = require("./auth");
+const { verifyCsrf } = require("../middlewares/csrf");
 const fetch = require("node-fetch");
 const logger = require("../lib/logger");
 const rateLimit = require("express-rate-limit");
@@ -116,7 +117,7 @@ const upload = multer({
   }
 });
 
-router.post("/upload", verifyToken, ensureActive, upload.single("file"), async (req, res) => {
+router.post("/upload", verifyToken, ensureActive, verifyCsrf, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
@@ -268,7 +269,7 @@ router.post("/upload", verifyToken, ensureActive, upload.single("file"), async (
 });
 
 // Multi-file upload (up to 10 files)
-router.post("/upload/batch", verifyToken, ensureActive, upload.array("files", 10), async (req, res) => {
+router.post("/upload/batch", verifyToken, ensureActive, verifyCsrf, upload.array("files", 10), async (req, res) => {
   try {
     if (!req.files || !req.files.length) return res.status(400).json({ message: "No files uploaded" });
     
@@ -418,7 +419,7 @@ router.get("/my", verifyToken, ensureActive, async (req, res) => {
 });
 
 // Pin a document
-router.post("/:id/pin", verifyToken, ensureActive, async (req, res) => {
+router.post("/:id/pin", verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const doc = await Document.findOneAndUpdate(
       { _id: req.params.id, user: req.userId },
@@ -433,7 +434,7 @@ router.post("/:id/pin", verifyToken, ensureActive, async (req, res) => {
 });
 
 // Unpin a document
-router.post("/:id/unpin", verifyToken, ensureActive, async (req, res) => {
+router.post("/:id/unpin", verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const doc = await Document.findOneAndUpdate(
       { _id: req.params.id, user: req.userId },
@@ -488,7 +489,7 @@ router.get("/:id/status", verifyToken, ensureActive, async (req, res) => {
   }
 });
 
-router.delete("/:id", verifyToken, ensureActive, async (req, res) => {
+router.delete("/:id", verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const documentId = req.params.id;
     const userId = req.userId;
@@ -531,7 +532,7 @@ router.delete("/:id", verifyToken, ensureActive, async (req, res) => {
   }
 });
 
-router.put("/:id", verifyToken, ensureActive, async (req, res) => {
+router.put("/:id", verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const { name } = req.body;
     if (!name || typeof name !== "string") {
@@ -549,7 +550,7 @@ router.put("/:id", verifyToken, ensureActive, async (req, res) => {
   }
 });
 
-router.post("/ask", verifyToken, async (req, res) => {
+router.post("/ask", verifyToken, verifyCsrf, async (req, res) => {
   try {
     const { doc_id, question } = req.body;
 
@@ -613,7 +614,7 @@ router.get("/preview/:docId.pdf", verifyToken, ensureActive, async (req, res) =>
 });
 
 // POST /generate-quiz
-router.post("/generate-quiz", verifyToken, ensureActive, quizLimiter, async (req, res) => {
+router.post("/generate-quiz", verifyToken, ensureActive, verifyCsrf, quizLimiter, async (req, res) => {
   try {
     const { doc_id, documentId, num_questions, difficulty, question_types } = req.body;
     const targetDocId = doc_id || documentId;
@@ -668,7 +669,7 @@ router.post("/generate-quiz", verifyToken, ensureActive, quizLimiter, async (req
 });
 
 // POST /generate-flashcards
-router.post("/generate-flashcards", verifyToken, ensureActive, flashcardLimiter, async (req, res) => {
+router.post("/generate-flashcards", verifyToken, ensureActive, verifyCsrf, flashcardLimiter, async (req, res) => {
   try {
     const { doc_id, documentId, num_cards } = req.body;
     const targetDocId = doc_id || documentId;
@@ -721,7 +722,7 @@ router.post("/generate-flashcards", verifyToken, ensureActive, flashcardLimiter,
 });
 
 // POST /summarize
-router.post("/summarize", verifyToken, ensureActive, summarizeLimiter, async (req, res) => {
+router.post("/summarize", verifyToken, ensureActive, verifyCsrf, summarizeLimiter, async (req, res) => {
   try {
     const { selectionText, text, docId, doc_id, pages, style, bullets } = req.body;
     const targetText = selectionText || text;
@@ -745,7 +746,7 @@ router.post("/summarize", verifyToken, ensureActive, summarizeLimiter, async (re
       }
       const doc = await Document.findOne(query);
       if (!doc) {
-        return res.status(404).json({ error: "Document not found or access denied" });
+        return res.status(404).json({ message: "Document not found" });
       }
       verifiedDocId = doc.doc_id;
     }
@@ -831,7 +832,7 @@ async function triggerIndexing(documentId) {
 }
 
 // ---- Persist consent (user action) ----
-router.post('/:id/consent', verifyToken, ensureActive, async (req, res) => {
+router.post('/:id/consent', verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const { consent } = req.body || {};
     const doc = await Document.findOne({ _id: req.params.id, user: req.userId });
@@ -879,7 +880,7 @@ router.get('/:id/_meta', async (req, res) => {
 
 
 // ---- Replace text content and reindex (incremental update for text documents) ----
-router.patch("/:id/text", verifyToken, ensureActive, async (req, res) => {
+router.patch("/:id/text", verifyToken, ensureActive, verifyCsrf, async (req, res) => {
   try {
     const { text } = req.body || {};
     if (typeof text !== "string") {

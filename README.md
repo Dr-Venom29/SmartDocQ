@@ -29,6 +29,8 @@ SmartDocQ uses a Hybrid Retrieval-Augmented Generation (Hybrid RAG) architecture
 - **Automatic Reindexing**: Detects embedding model, content, or indexing pipeline changes and transparently reindexes documents in the background.
 
 ### Security & Privacy
+- **Session-Bound CSRF Protection**: Custom double-submit cookie protection with session-bound SHA-256 token validation, timing-safe comparisons, and Origin/Referer verification to prevent Cross-Site Request Forgery attacks.
+- **Defense-in-Depth Request Validation**: Authenticated state-changing requests are protected by session-bound double-submit CSRF tokens, Origin/Referer validation, timing-safe comparisons, and per-user rate limiting.
 - **Internal AI Service Authentication**: All browser requests are routed through the Node.js backend. The Flask AI service accepts only authenticated server-to-server requests protected with a shared `SERVICE_TOKEN`, preventing direct client access to AI endpoints.
 - **Sensitive Data Detection**: Automatic identification of personal information (emails, phone numbers, Aadhaar, PAN, credit cards, SSN).
 - **User Consent Workflow**: Privacy-first approach requiring explicit consent before processing sensitive documents.
@@ -159,7 +161,7 @@ graph TD
     end
 
     %% Flow/Connections
-    ReactSPA <-->|"HTTPS API Calls<br/>(JWT in httpOnly Cookie)"| AuthGuard
+    ReactSPA <-->|"HTTPS API Calls<br/>(JWT Cookie + X-CSRF-Token)"| AuthGuard
     AuthGuard --> ZodValidator
     ZodValidator --> ExpressRouter
     

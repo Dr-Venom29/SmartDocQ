@@ -38,8 +38,9 @@ The browser never communicates directly with the Flask AI service. Node authenti
 ```mermaid
 flowchart TD
     Browser([Browser])
-    --> JWT["JWT Cookie"]
+    --> Auth["JWT Cookie + CSRF Token"]
     --> Node["Node.js Gateway"]
+    --> Verify["JWT Validation + CSRF Validation"]
     --> Ownership["Ownership Check"]
     --> Limit["Rate Limiting"]
     --> Token["SERVICE_TOKEN Auth"]
@@ -53,6 +54,19 @@ flowchart TD
 - Core authentication routes (`login`, `signup`, `forgot-password`, `reset-password`, `google`) are protected by an `express-rate-limit` guard restricting IPs to 30 authentication-related requests per 15 minutes.
 - **Enumeration Protection**: Login failures return generic `"Invalid email or password"` responses to prevent scanning/enumeration of active emails.
 - **Google OAuth Compatibility**: Safe checks prevent server crashes during credential comparison or profile updates for accounts created via Google Sign-In.
+
+### CSRF Protection
+
+Authenticated state-changing requests (POST, PUT, PATCH, DELETE) are protected using a custom session-bound Double-Submit Cookie CSRF implementation.
+
+Security features include:
+
+- Session-bound CSRF tokens generated using cryptographically secure random bytes.
+- SHA-256 hash of each CSRF token stored in the active `UserSession`.
+- Timing-safe token comparison using `crypto.timingSafeEqual`.
+- Automatic `X-CSRF-Token` validation on authenticated mutating requests.
+- Origin/Referer validation for defense in depth.
+- Trusted internal Flask service requests authenticated with `x-service-token` bypass CSRF validation.
 
 ### AI Endpoint Protection
 - AI requests are authenticated using JWT httpOnly cookies.
