@@ -21,7 +21,6 @@ const userSchema = new mongoose.Schema({
 });
 
 // Helpful indexes for faster admin queries
-userSchema.index({ email: 1 });
 userSchema.index({ name: 1 });
 userSchema.index({ createdAt: -1 });
 

@@ -28,7 +28,6 @@ const sharedChatSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-sharedChatSchema.index({ shareId: 1 }, { unique: true });
 sharedChatSchema.index({ createdAt: -1 });
 sharedChatSchema.index({ createdBy: 1, document: 1, createdAt: -1 });
 // TTL index: when expiresAt passes, MongoDB will delete the doc (background process)

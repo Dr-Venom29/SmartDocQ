@@ -1,192 +1,138 @@
-import { useRef, useState, useEffect } from 'react';
-import Lottie from "lottie-react";
-import video from "./assets/Guide.mp4";
-import arrow from "./assets/Arrow.json";
-import thumb from "./assets/ThumbNail.png";
-import { useReducedMotion } from "../../../hooks/useReducedMotion";
-
-/* ============================================================================
- * CONSTANTS
- * ============================================================================ */
-const STEPS = [
-  { 
-    id: 1, 
-    title: "Upload Your Documents", 
-    description: "Drag and drop PDFs, DOCX, TXT, CSV, or XLSX files into SmartDocQ.",
-    gradient: "linear-gradient(135deg, #818cf8 0%, #3b82f6 100%)" 
-  },
-  { 
-    id: 2, 
-    title: "Ask in Natural Language", 
-    description: "Ask questions in natural, conversational language—no special syntax needed.",
-    gradient: "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)" 
-  },
-  { 
-    id: 3, 
-    title: "See Document-Grounded Answers", 
-    description: "SmartDocQ returns answers grounded in your documents, alongside the supporting text.",
-    gradient: "linear-gradient(135deg, #06b6d4 0%, #10b981 100%)" 
-  }
-];
-
-/* ============================================================================
- * VIDEO SECTION COMPONENT
- * Lazy-loaded video that only plays when in viewport.
- * ============================================================================ */
-const VideoSection = () => {
-  const videoRef = useRef(null);
-  const containerRef = useRef(null);
-  const [isInView, setIsInView] = useState(false);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    const videoEl = videoRef.current;
-    if (!container || !videoEl) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsInView(true);
-          videoEl.play().catch(() => {});
-        } else {
-          videoEl.pause();
-          setIsInView(false);
-          try {
-            // Reset so we show the thumbnail (not the last frame) offscreen.
-            videoEl.currentTime = 0;
-          } catch {
-            // Some browsers can throw if seeking isn't allowed yet.
-          }
-        }
-      },
-      // Start the swap slightly BEFORE the section is in view so the user
-      // doesn't see the thumbnail-to-video transition.
-      { threshold: 0.01, rootMargin: "0px 0px 120px 0px" }
-    );
-
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div className="video-section" ref={containerRef}>
-      <div className="video-wrapper">
-        <img
-          src={thumb}
-          className={`video-thumb ${isInView ? "hidden" : ""}`}
-          alt=""
-          aria-hidden="true"
-          draggable="false"
-          width="640"
-          height="360"
-        />
-        <video
-          ref={videoRef}
-          className={`demo-video ${isInView ? "visible" : ""}`}
-          loop
-          playsInline
-          muted
-          draggable="false"
-          disablePictureInPicture
-          poster={thumb}
-          preload="metadata"
-          aria-label="SmartDocQ demo showing document upload and AI-powered question answering"
-          width="640"
-          height="360"
-        >
-          <source src={video} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
-      </div>
-    </div>
-  );
-};
-
-/* ============================================================================
- * HOW-TO STEPS SECTION
- * How-to-use guide with viewport-triggered Lottie arrows.
- * ============================================================================ */
-const StepsSection = () => {
-  const sectionRef = useRef(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const reduceMotion = useReducedMotion();
-
-  useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(section);
-        }
-      },
-      { threshold: 0.2 }
-    );
-
-    observer.observe(section);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div className="steps-section" ref={sectionRef} role="list" aria-label="Getting started steps">
-      {STEPS.map((step, index) => (
-        <div key={step.id} className="step-group">
-          <article className="step" role="listitem">
-            <div className="step-badge" style={{ background: step.gradient }}>
-              {step.id}
-            </div>
-            <div className="step-content-text">
-              <h3>{step.title}</h3>
-              <p>{step.description}</p>
-            </div>
-          </article>
-          {index < STEPS.length - 1 && (
-            <div className="arrow-wrapper" aria-hidden="true">
-              {isVisible && (
-                reduceMotion ? (
-                  <svg
-                    className="arrow static-arrow"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <polyline points="19 12 12 19 5 12" />
-                  </svg>
-                ) : (
-                  <Lottie
-                    animationData={arrow}
-                    className="arrow"
-                  />
-                )
-              )}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-};
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import SimulationSection from "./SimulationSection";
+import "./SimulationSection.css";
 
 /* ============================================================================
  * HOW IT WORKS SECTION COMPONENT
- * Combines the demo video and 3-step usage guide.
  * ============================================================================ */
 function HowItWorksSection() {
+  const [activeStep, setActiveStep] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadComplete, setUploadComplete] = useState(false);
+  const [chatTypedText, setChatTypedText] = useState("");
+  const [cardFlipped, setCardFlipped] = useState(false);
+  const [quizSelected, setQuizSelected] = useState(null);
+
+  // Drag states
+  const [dragPhase, setDragPhase] = useState("idle");
+  const [dragPosition, setDragPosition] = useState({ x: 80, y: 80 });
+
+  // Framer Motion kinetic text variants
+  const containerVariants = {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: 0.03,
+      }
+    }
+  };
+
+  const charVariants = {
+    hidden: { y: "100%", opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 140,
+        damping: 12
+      }
+    }
+  };
+
+  const words = [
+    { text: "See", isAccent: false },
+    { text: "SmartDocQ", isAccent: true },
+    { text: "in", isAccent: false },
+    { text: "Action", isAccent: false }
+  ];
+
   return (
     <>
-      <h2 id="howto-heading" className="work-title">From Document to Answer in 3 Steps</h2>
+      <div className="work-title-wrap">
+        <motion.h2 
+          id="howto-heading" 
+          className="work-title"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+        >
+          {words.map((word, wordIdx) => (
+            <span key={wordIdx} className={`title-word ${word.isAccent ? "accent-gradient-text" : ""}`}>
+              {word.text.split("").map((char, charIdx) => (
+                <motion.span
+                  key={charIdx}
+                  className="title-char"
+                  variants={charVariants}
+                  whileHover={{ 
+                    y: -8,
+                    scale: 1.1,
+                    color: word.isAccent ? undefined : "#06b6d4",
+                    transition: { type: "spring", stiffness: 400, damping: 10 }
+                  }}
+                >
+                  {char}
+                </motion.span>
+              ))}
+              <span className="title-char-space">&nbsp;</span>
+            </span>
+          ))}
+        </motion.h2>
+      </div>
 
       <section className="how-to-use" aria-labelledby="howto-heading">
         <div className="howto-container">
-          <VideoSection />
-          <StepsSection />
+          {/* Main Visualizer Mockup on the Left */}
+          <SimulationSection 
+            activeStep={activeStep}
+            setActiveStep={setActiveStep}
+            uploadProgress={uploadProgress}
+            setUploadProgress={setUploadProgress}
+            uploadComplete={uploadComplete}
+            setUploadComplete={setUploadComplete}
+            dragPhase={dragPhase}
+            setDragPhase={setDragPhase}
+            dragPosition={dragPosition}
+            setDragPosition={setDragPosition}
+            chatTypedText={chatTypedText}
+            setChatTypedText={setChatTypedText}
+            cardFlipped={cardFlipped}
+            setCardFlipped={setCardFlipped}
+            quizSelected={quizSelected}
+            setQuizSelected={setQuizSelected}
+          />
+
+          {/* Premium Vertical Steps Process flow positioned on the Right */}
+          <div className="sim-vertical-steps" role="list" aria-label="Getting started steps">
+            <div className="sim-vertical-step-card blue-theme" role="listitem">
+              <div className="sim-step-num">01 / UPLOAD</div>
+              <h3 className="sim-step-title">Upload Your Documents</h3>
+              <p className="sim-step-desc">
+                Upload PDFs, Word documents, spreadsheets, or text files. SmartDocQ automatically processes and indexes them.
+              </p>
+              <div className="sim-card-active-glow" />
+            </div>
+
+            <div className="sim-vertical-step-card green-theme" role="listitem">
+              <div className="sim-step-num">02 / INTERACT</div>
+              <h3 className="sim-step-title">Ask AI About Your Documents</h3>
+              <p className="sim-step-desc">
+                Ask questions, generate summaries, flashcards, quizzes, and receive document-grounded answers with citations.
+              </p>
+              <div className="sim-card-active-glow" />
+            </div>
+
+            <div className="sim-vertical-step-card purple-theme" role="listitem">
+              <div className="sim-step-num">03 / MASTER</div>
+              <h3 className="sim-step-title">Study Smarter</h3>
+              <p className="sim-step-desc">
+                Every response is grounded in your documents with highlighted citations for transparent and trustworthy learning.
+              </p>
+              <div className="sim-card-active-glow" />
+            </div>
+          </div>
         </div>
       </section>
     </>
