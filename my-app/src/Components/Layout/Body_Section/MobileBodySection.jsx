@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import "./BodySection.css";
+import "./MobileBodySection.css";
 
 const TIMELINE_STEPS = [
   {

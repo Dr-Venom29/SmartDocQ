@@ -50,27 +50,27 @@ function HowItWorksSection() {
 
   return (
     <>
-      <div className="work-title-wrap">
+      <div className="simple-header-wrap" style={{ marginTop: "40px", marginBottom: "20px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
         <motion.h2 
           id="howto-heading" 
-          className="work-title"
+          className="premium-section-header"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-80px" }}
         >
           {words.map((word, wordIdx) => (
-            <span key={wordIdx} className={`title-word ${word.isAccent ? "accent-gradient-text" : ""}`}>
+            <span key={wordIdx} className={`title-word ${word.isAccent ? "premium-accent-word" : ""}`}>
               {word.text.split("").map((char, charIdx) => (
                 <motion.span
                   key={charIdx}
                   className="title-char"
                   variants={charVariants}
                   whileHover={{ 
-                    y: -8,
-                    scale: 1.1,
+                    y: -6,
+                    scale: 1.08,
                     color: word.isAccent ? undefined : "#06b6d4",
-                    transition: { type: "spring", stiffness: 400, damping: 10 }
+                    transition: { type: "spring", stiffness: 450, damping: 12 }
                   }}
                 >
                   {char}
@@ -80,6 +80,11 @@ function HowItWorksSection() {
             </span>
           ))}
         </motion.h2>
+        <div className="premium-header-line-container">
+          <div className="premium-header-line" />
+          <span className="sparkle-dot">✦</span>
+          <div className="premium-header-line" />
+        </div>
       </div>
 
       <section className="how-to-use" aria-labelledby="howto-heading">

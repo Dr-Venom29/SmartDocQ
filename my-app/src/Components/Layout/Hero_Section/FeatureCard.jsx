@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import Lottie from "lottie-react";
 
-const FeatureCard = ({ title, desc, anim, reduceMotion }) => {
+const FeatureCard = ({ index, title, desc, anim, reduceMotion }) => {
   const cardRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -34,6 +34,18 @@ const FeatureCard = ({ title, desc, anim, reduceMotion }) => {
     card.style.setProperty("--mouse-y", `${y}px`);
   };
 
+  const tags = [
+    "01 // Ingestion Engine",
+    "02 // Context Synthesis",
+    "03 // Document Summaries",
+    "04 // Practice Sandbox",
+    "05 // Chat Session Memory",
+    "06 // Alignment Loop",
+    "07 // File Workspace",
+    "08 // Data Security"
+  ];
+  const currentTag = tags[index] || `0${index + 1} // Module`;
+
   return (
     <article 
       className="box" 
@@ -45,16 +57,31 @@ const FeatureCard = ({ title, desc, anim, reduceMotion }) => {
         {/* Spotlight background glow */}
         <div className="spotlight" aria-hidden="true" />
         
-        <div className="feature-lottie-wrapper" aria-hidden="true">
-          {isVisible && (
-            <Lottie
-              animationData={anim}
-              loop={!reduceMotion}
-              autoplay={!reduceMotion}
-              className="feature-lottie"
-            />
-          )}
+        {/* Monospace Metadata Tag */}
+        <div className="card-tag">{currentTag}</div>
+
+        {/* Premium console wrapper for the Lottie graphic */}
+        <div className="feature-console-window" aria-hidden="true">
+          <div className="console-titlebar">
+            <div className="console-dots">
+              <span className="console-dot active" />
+              <span className="console-dot" />
+              <span className="console-dot" />
+            </div>
+            <span className="console-label">diagnostics.log</span>
+          </div>
+          <div className="console-body">
+            {isVisible && (
+              <Lottie
+                animationData={anim}
+                loop={!reduceMotion}
+                autoplay={!reduceMotion}
+                className="feature-lottie"
+              />
+            )}
+          </div>
         </div>
+
         <div className="content">
           <h3>{title}</h3>
           <p>{desc}</p>

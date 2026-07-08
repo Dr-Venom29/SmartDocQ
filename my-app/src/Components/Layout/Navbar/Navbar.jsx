@@ -26,6 +26,8 @@ export default function Navbar() {
   const [popup, setPopup]                     = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [activeTab, setActiveTab]             = useState(() => getActiveTab(location.pathname));
+  const [hoveredTab, setHoveredTab]           = useState(null);
+  const [scrolled, setScrolled]               = useState(false);
   const [sliderStyle, setSliderStyle]         = useState({ left: 0, width: 0, opacity: 0 });
 
   const navContainerRef  = useRef(null);
@@ -83,16 +85,28 @@ export default function Navbar() {
     };
   }, [popup]);
 
-  // Update desktop navigation slider position
+  // Lock scroll states and morph background on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 15);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Update desktop navigation slider position based on active or hovered tab
   const updateSlider = useCallback(() => {
-    const activeEl    = itemsRef.current[activeTab];
+    const targetTab = hoveredTab || activeTab;
+    const activeEl    = itemsRef.current[targetTab];
     const containerEl = navContainerRef.current;
     if (activeEl && containerEl) {
       const navRect = containerEl.getBoundingClientRect();
       const elRect  = activeEl.getBoundingClientRect();
       setSliderStyle({ left: elRect.left - navRect.left, width: elRect.width, opacity: 1 });
+    } else {
+      setSliderStyle(prev => ({ ...prev, opacity: 0 }));
     }
-  }, [activeTab]);
+  }, [activeTab, hoveredTab]);
 
   useEffect(() => {
     const raf = requestAnimationFrame(updateSlider);
@@ -165,7 +179,7 @@ export default function Navbar() {
   return (
     <>
       <nav
-          className={`navbar ${isUploadPage ? "upload-navbar" : ""}`}
+          className={`navbar ${scrolled ? "scrolled" : ""} ${isUploadPage ? "upload-navbar" : ""}`}
           role="navigation"
           aria-label="Main navigation"
           id="navbar">
@@ -181,13 +195,15 @@ export default function Navbar() {
           <div
             id="nav-links"
             className="nav-links-container"
-            ref={navContainerRef}>
+            ref={navContainerRef}
+            onMouseLeave={() => setHoveredTab(null)}>
             <div className="nav-slider" style={sliderStyle} />
 
             <button
               type="button"
               className={`nav-item ${activeTab === "Home" ? "active" : ""}`}
               aria-current={activeTab === "Home" ? "page" : undefined}
+              onMouseEnter={() => setHoveredTab("Home")}
               onClick={() => {
                 navigate("/");
                 setActiveTab("Home");
@@ -206,6 +222,7 @@ export default function Navbar() {
               type="button"
               className={`nav-item ${activeTab === "Features" ? "active" : ""}`}
               aria-current={activeTab === "Features" ? "page" : undefined}
+              onMouseEnter={() => setHoveredTab("Features")}
               onClick={() => {
                 setActiveTab("Features");
                 clearMenuTimeout();
@@ -230,6 +247,7 @@ export default function Navbar() {
               type="button"
               className={`nav-item ${activeTab === "Contact" ? "active" : ""}`}
               aria-current={activeTab === "Contact" ? "page" : undefined}
+              onMouseEnter={() => setHoveredTab("Contact")}
               onClick={() => {
                 setActiveTab("Contact");
                 clearMenuTimeout();
@@ -296,6 +314,10 @@ export default function Navbar() {
                       </g>
                     </svg>
                     <span>Log In</span>
+                    <svg className="login-arrow-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                      <polyline points="12 5 19 12 12 19" />
+                    </svg>
                   </span>
                 </button>
               )

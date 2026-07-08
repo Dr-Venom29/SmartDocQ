@@ -16,7 +16,7 @@ import HelpCenter from './Components/HelpCenter';
 import PrivacyPolicy from './Components/Pages/Legal/PrivacyPolicy';
 import TermsOfService from './Components/Pages/Legal/TermsOfService';
 import ShareChat from './Components/ShareChat';
-import LandingPage from './Components/LandingPage';
+import IntroScene from './Components/IntroScene/IntroScene';
 import errorAnimation from './Animations/404-Page-Error.json';
 import "./App.css";
 
@@ -135,32 +135,36 @@ function AppContent() {
     };
   }, []);
 
-  // Prevent background page from scrolling while auth popup is open
+  // Prevent page scrolling while intro animation is active or login popup is open
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
 
     const html = document.documentElement;
     const { body } = document;
 
-    if (!showLogin) {
+    const needsScrollLock = shouldShowLanding || showLogin;
+
+    if (needsScrollLock) {
+      html.style.overflow = "hidden";
+      body.style.overflow = "hidden";
+      body.style.height = "100vh";
+    } else {
       html.style.overflow = "";
       body.style.overflow = "";
-      return undefined;
+      body.style.height = "";
     }
-
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
 
     return () => {
       html.style.overflow = "";
       body.style.overflow = "";
+      body.style.height = "";
     };
-  }, [showLogin]);
+  }, [shouldShowLanding, showLogin]);
 
   return (
     <>
       {shouldShowLanding && (
-        <LandingPage onRevealStart={() => {
+        <IntroScene onRevealStart={() => {
           try {
             sessionStorage.setItem('smartdocqLandingShown', 'true');
           } catch (e) {

@@ -1313,7 +1313,7 @@
 }
 
 /* Tablet adjustments */
-@media (max-width: 1024px) {
+@media (max-width: 1300px) {
   .simulation-section {
     flex: 1 1 100%;
     width: 100%;
@@ -1530,7 +1530,7 @@
   100% { background-position: 0% 50%; }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1300px) {
   .howto-container {
     flex-direction: column;
     gap: 32px;
@@ -1538,6 +1538,7 @@
   .simulation-section {
     flex: 1 1 100%;
     max-width: 880px;
+    margin: 0 auto;
   }
   .sim-vertical-steps {
     flex: 1 1 100%;
@@ -1545,12 +1546,12 @@
     flex-direction: row;
     gap: 24px;
     align-items: stretch;
+    margin: 0 auto;
   }
 }
 
-@media (max-width: 768px) {
-  .sim-vertical-steps {
-    flex-direction: column;
-    gap: 24px;
+@media (max-width: 900px) and (min-width: 769px) {
+  .sim-vertical-step-card {
+    padding: 20px 16px !important;
   }
 }

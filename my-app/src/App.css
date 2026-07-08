@@ -1,6 +1,7 @@
 body {
   margin: 0;
   padding: 0;
+  background-color: #000000; /* Prevent white background bleed on sub-pixel scroll gaps */
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -13,6 +14,7 @@ body {
 }
 
 html {
+  background-color: #000000; /* Prevent white background bleed on sub-pixel scroll gaps */
   background-attachment: fixed;
   overflow-x: hidden;
 }
