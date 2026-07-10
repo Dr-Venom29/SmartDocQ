@@ -7,8 +7,7 @@ function getTransporter() {
   if (_transporter) return _transporter;
 
   if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
-    logger.error("Gmail SMTP not configured (MAIL_USER/MAIL_PASS missing)");
-    return null;
+    throw new Error("Gmail SMTP credentials (MAIL_USER/MAIL_PASS) are not configured");
   }
 
   _transporter = nodemailer.createTransport({
@@ -33,9 +32,6 @@ function getTransporter() {
 
 async function send(mailOptions) {
   const transporter = getTransporter();
-  if (!transporter) {
-    throw new Error("Gmail SMTP is not configured");
-  }
 
   logger.debug("Calling transporter.sendMail");
   try {

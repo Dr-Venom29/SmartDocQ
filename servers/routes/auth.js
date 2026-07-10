@@ -170,14 +170,13 @@ router.post("/forgot-password", authLimiter, validate(forgotPasswordSchema), asy
 
     const frontendBase = process.env.FRONTEND_URL || "http://localhost:3000";
     const resetLink = `${frontendBase.replace(/\/$/, "")}/reset-password?token=${rawToken}`;
-    if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
-      logger.error({ mailUser: process.env.MAIL_USER, hasPass: !!process.env.MAIL_PASS }, "MAIL_USER/MAIL_PASS not configured for forgot-password");
-      return sendError(res, 500, "Email service is not configured");
+    try {
+      logger.info("Sending reset email...");
+      await sendPasswordResetEmail(user.email, resetLink);
+      logger.info("Reset email sent.");
+    } catch (mailErr) {
+      logger.error({ err: mailErr }, "Failed to send reset link email (background)");
     }
-
-    logger.info("Sending reset email...");
-    await sendPasswordResetEmail(user.email, resetLink);
-    logger.info("Reset email sent.");
 
     return sendSuccess(res, 200, {}, "If an account exists, a reset link has been sent.");
   } catch (err) {
@@ -247,7 +246,6 @@ router.post("/reset-password", authLimiter, validate(resetPasswordSchema), async
 });
 
 // Logout - clears httpOnly cookie and marks current session inactive
-// Logout - clears cookies and marks current session inactive
 router.post("/logout", verifyToken, verifyCsrf, async (req, res) => {
   try {
     if (req.userSession) {

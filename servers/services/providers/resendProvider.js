@@ -7,8 +7,7 @@ function getResendClient() {
   if (_resend) return _resend;
 
   if (!process.env.RESEND_API_KEY) {
-    logger.error("Resend API key missing (RESEND_API_KEY missing)");
-    return null;
+    throw new Error("RESEND_API_KEY is not configured");
   }
 
   _resend = new Resend(process.env.RESEND_API_KEY);
@@ -17,15 +16,12 @@ function getResendClient() {
 
 async function send(mailOptions) {
   const resend = getResendClient();
-  if (!resend) {
-    throw new Error("Resend provider is not configured");
-  }
 
   logger.debug("Calling resend.emails.send");
   try {
-    // Production From address: SmartDocQ <onboarding@resend.dev>
-    // Can later be changed to noreply@smartdocq.com after domain verification in Resend dashboard
-    const fromAddress = "SmartDocQ <onboarding@resend.dev>";
+    // Production From address: can be configured via RESEND_FROM env var
+    // Default fallback to "SmartDocQ <onboarding@resend.dev>" (verification pending domain config)
+    const fromAddress = process.env.RESEND_FROM || "SmartDocQ <onboarding@resend.dev>";
 
     const { data, error } = await resend.emails.send({
       from: fromAddress,
