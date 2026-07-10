@@ -15,17 +15,21 @@ function getTransporter() {
   }
 
   _transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
     auth: {
       user: process.env.MAIL_USER,
       pass: process.env.MAIL_PASS,
     },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
   });
 
-  // Verify SMTP connection on first creation (non-blocking)
-  _transporter.verify().catch((err) => {
-    logger.error({ err }, "SMTP transporter verification failed");
-  });
+  _transporter.verify()
+    .then(() => logger.info("SMTP connection verified"))
+    .catch((err) => logger.error({ err }, "SMTP verify failed"));
 
   return _transporter;
 }
@@ -34,16 +38,25 @@ function getTransporter() {
  * Send an email using the shared transporter.
  * Returns a promise. Caller decides whether to await or fire-and-forget.
  */
-function sendMail(mailOptions) {
+async function sendMail(mailOptions) {
   const transporter = getTransporter();
   if (!transporter) {
     logger.error("Mail not configured (MAIL_USER/MAIL_PASS missing)");
-    return Promise.reject(new Error("Email service is not configured"));
+    throw new Error("Email service is not configured");
   }
-  return transporter.sendMail({
-    from: `"SmartDocQ" <${process.env.MAIL_USER}>`,
-    ...mailOptions,
-  });
+  
+  logger.info("Calling transporter.sendMail");
+  try {
+    const info = await transporter.sendMail({
+      from: `"SmartDocQ" <${process.env.MAIL_USER}>`,
+      ...mailOptions,
+    });
+    logger.info(`Email sent successfully: ${info.messageId}`);
+    return info;
+  } catch (err) {
+    logger.error({ err }, "SMTP transporter sendMail failed");
+    throw err;
+  }
 }
 
 /**
@@ -88,7 +101,7 @@ function sendPasswordResetEmail(email, resetLink) {
 /**
  * Sends a password changed confirmation email.
  */
-function sendPasswordChangedEmail(email, changeTime, frontendBase) {
+function sendPasswordChangedEmail(email, changeTime) {
   return sendMail({
     to: email,
     subject: "Your SmartDocQ password was changed",

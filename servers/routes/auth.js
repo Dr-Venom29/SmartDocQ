@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const User = require("../models/User");
 const UserSession = require("../models/UserSession");
@@ -16,7 +15,7 @@ const { sendPasswordResetEmail, sendPasswordChangedEmail } = require("../service
 const { createSession } = require("../services/sessionService");
 const { verifyGoogleLogin } = require("../services/googleAuthService");
 const logger = require("../lib/logger");
-const { verifyToken, ensureActive, isAdmin, clearAuthCookie } = require("../middlewares/auth");
+const { verifyToken, clearAuthCookie } = require("../middlewares/auth");
 const { extractCloudinaryPublicId } = require("../utils/cloudinary");
 const { verifyCsrf } = require("../middlewares/csrf");
 const { validate } = require("../middlewares/validate");
@@ -140,6 +139,7 @@ router.post("/login", authLimiter, validate(loginSchema), async (req, res) => {
 // Forgot password - request reset link
 router.post("/forgot-password", authLimiter, validate(forgotPasswordSchema), async (req, res) => {
   try {
+    logger.info("Starting forgot-password");
     const { email: normalizedEmail } = req.validated.body;
     const user = await User.findOne({ email: normalizedEmail });
 
@@ -175,7 +175,9 @@ router.post("/forgot-password", authLimiter, validate(forgotPasswordSchema), asy
       return sendError(res, 500, "Email service is not configured");
     }
 
+    logger.info("Sending reset email...");
     await sendPasswordResetEmail(user.email, resetLink);
+    logger.info("Reset email sent.");
 
     return sendSuccess(res, 200, {}, "If an account exists, a reset link has been sent.");
   } catch (err) {
@@ -233,9 +235,7 @@ router.post("/reset-password", authLimiter, validate(resetPasswordSchema), async
       hour12: true,
     }) + " IST";
 
-    const frontendBase = process.env.FRONTEND_URL || "https://smartdocq.vercel.app";
-
-    sendPasswordChangedEmail(user.email, changeTime, frontendBase).catch((mailErr) => {
+    sendPasswordChangedEmail(user.email, changeTime).catch((mailErr) => {
       logger.error({ err: mailErr }, "Password-changed confirmation email failed");
     });
 
@@ -284,10 +284,16 @@ router.get("/verify", verifyToken, (req, res) => {
 
 
 // Delete current user
-router.delete("/me", verifyToken, async (req, res) => {
+router.delete("/me", verifyToken, verifyCsrf, async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.userId);
     if (!user) return sendError(res, 404, "User not found");
+
+    // Invalidate all user sessions in DB
+    await UserSession.deleteMany({ userId: user._id });
+
+    // Clear client-side cookies
+    clearAuthCookie(res);
 
     // Best-effort: remove avatar from Cloudinary to free storage
     try {
@@ -322,7 +328,7 @@ router.delete("/me", verifyToken, async (req, res) => {
 
 
 // Update current user (name, email, password)
-router.put("/me", verifyToken, validate(updateMeSchema), async (req, res) => {
+router.put("/me", verifyToken, verifyCsrf, validate(updateMeSchema), async (req, res) => {
   try {
     const { name, email, password } = req.validated.body || {};
     const user = await User.findById(req.userId);
@@ -377,6 +383,12 @@ router.put("/me", verifyToken, validate(updateMeSchema), async (req, res) => {
       user.password = await bcrypt.hash(password, 10);
       user.lastPasswordChange = new Date(now);
       user.passwordChangeCount += 1;
+
+      // Invalidate all other user sessions when password is changed via profile update
+      await UserSession.updateMany(
+        { userId: user._id, _id: { $ne: req.sessionId } },
+        { $set: { isActive: false } }
+      );
     }
 
     await user.save();
@@ -406,9 +418,12 @@ const avatarUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
   fileFilter: (req, file, cb) => {
-    const allowed = [".png", ".jpg", ".jpeg", ".webp"];
+    const allowedExts = [".png", ".jpg", ".jpeg", ".webp"];
+    const allowedMimes = ["image/png", "image/jpeg", "image/webp"];
     const ext = path.extname(file.originalname || "").toLowerCase();
-    if (!allowed.includes(ext)) return cb(new Error("Only PNG, JPG, JPEG, WEBP allowed"));
+    if (!allowedExts.includes(ext) || !allowedMimes.includes(file.mimetype)) {
+      return cb(new Error("Only PNG, JPG, JPEG, WEBP allowed"));
+    }
     cb(null, true);
   }
 });
@@ -421,33 +436,37 @@ router.post("/me/avatar", verifyToken, verifyCsrf, avatarUpload.single("avatar")
     if (!user) return sendError(res, 404, "User not found");
     const previousAvatarUrl = user.avatar; // keep for deletion after successful upload
 
-    // Upload to Cloudinary using a stream
+    // Upload to Cloudinary using a stream (wrapped in a promise)
     const folder = process.env.CLOUDINARY_AVATAR_FOLDER || "smartdoc/avatars";
-    const uploadStream = cloudinary.uploader.upload_stream(
-      { folder, public_id: `${req.userId}-${Date.now()}`, resource_type: "image", overwrite: true },
-      async (error, result) => {
-        try {
-          if (error) {
-            logger.error({ err: error }, "Cloudinary upload failed");
-            return sendError(res, 500, "Upload failed");
+    let uploadResult;
+    try {
+      uploadResult = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder, public_id: `${req.userId}-${Date.now()}`, resource_type: "image", overwrite: true },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
           }
-          user.avatar = result.secure_url;
-          await user.save();
-          // After saving new avatar, delete previous one to avoid wasting storage
-          try {
-            const pubId = extractCloudinaryPublicId(previousAvatarUrl);
-            if (pubId) {
-              await cloudinary.uploader.destroy(pubId, { invalidate: true, resource_type: 'image' });
-            }
-          } catch (_) { /* ignore deletion errors */ }
-          return sendSuccess(res, 200, { avatar: user.avatar });
-        } catch (e) {
-          logger.error({ err: e }, "Failed to save avatar");
-          return sendError(res, 500, "Failed to save avatar");
-        }
+        );
+        streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+      });
+    } catch (error) {
+      logger.error({ err: error }, "Cloudinary upload failed");
+      return sendError(res, 500, "Upload failed");
+    }
+
+    user.avatar = uploadResult.secure_url;
+    await user.save();
+
+    // After saving new avatar, delete previous one to avoid wasting storage
+    try {
+      const pubId = extractCloudinaryPublicId(previousAvatarUrl);
+      if (pubId) {
+        await cloudinary.uploader.destroy(pubId, { invalidate: true, resource_type: 'image' });
       }
-    );
-    streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+    } catch (_) { /* ignore deletion errors */ }
+
+    return sendSuccess(res, 200, { avatar: user.avatar });
   } catch (err) {
     logger.error({ err }, "Failed to upload avatar");
     return sendError(res, 500, "Failed to upload avatar");
