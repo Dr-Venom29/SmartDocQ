@@ -59,12 +59,6 @@ const pinoLogger = expressPino({
   autoLogging: {
     ignore: (req) => req.method === "OPTIONS"
   },
-  customSuccessMessage: (req, res, responseTime) => {
-    return `${req.method} ${req.originalUrl || req.url} ${res.statusCode} ${responseTime}ms`;
-  },
-  customErrorMessage: (req, res, err) => {
-    return `${req.method} ${req.originalUrl || req.url} ${res.statusCode} - ${err.message}`;
-  },
   serializers: {
     req: (req) => {
       return {
