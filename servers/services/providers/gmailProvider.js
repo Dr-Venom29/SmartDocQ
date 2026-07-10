@@ -31,6 +31,7 @@ function getTransporter() {
 }
 
 async function send(mailOptions) {
+  logger.info("Entered Gmail send()");
   const transporter = getTransporter();
 
   try {

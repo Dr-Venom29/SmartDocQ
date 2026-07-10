@@ -35,11 +35,13 @@ function getTransporter() {
 }
 
 async function send(mailOptions) {
+  logger.info("Entered Brevo send()");
   const transporter = getTransporter();
 
   try {
+    const fromAddress = process.env.BREVO_MAIL_SENDER || "smartdocq@gmail.com";
     const info = await transporter.sendMail({
-      from: `"SmartDocQ" <${process.env.BREVO_MAIL_USER}>`,
+      from: `"SmartDocQ" <${fromAddress}>`,
       to: mailOptions.to,
       subject: mailOptions.subject,
       html: mailOptions.html,
