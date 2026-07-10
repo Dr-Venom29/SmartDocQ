@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const ContactReport = require("../models/ContactReport");
 const User = require("../models/User");
-const { verifyToken, ensureActive } = require("./auth");
+const { verifyToken, ensureActive } = require("../middlewares/auth");
 const { verifyCsrf } = require("../middlewares/csrf");
 const logger = require("../lib/logger");
 

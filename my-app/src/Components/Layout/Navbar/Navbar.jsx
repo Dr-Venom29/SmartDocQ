@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import "./Navbar.css";
 import logo from "./assets/logo.png";
 import icon from "./assets/icon1.png";
-import { useToast } from "../../ToastContext";
+import { useToast } from "../../Toast/ToastContext";
 import { useAuth } from "./useAuth";
 import ProfileMenu from "./ProfileMenu";
 import NavDialogs from "./NavDialogs";

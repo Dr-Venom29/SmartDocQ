@@ -49,7 +49,7 @@ SmartDocQ uses a Hybrid Retrieval-Augmented Generation (Hybrid RAG) architecture
 - **User Management**: Comprehensive admin dashboard for user oversight and role assignment.
 - **Document Analytics**: Track document uploads, processing status, and usage statistics.
 - **Report Management**: Handle user feedback and support inquiries efficiently.
-- **System Monitoring**: Real-time logs and performance metrics.
+- **System Monitoring**: Structured request logging (Pino), Prometheus metrics, health checks, and background maintenance jobs.
 
 ---
 
@@ -87,6 +87,9 @@ flowchart TD
 - **Mongoose 8.x**: MongoDB object modeling
 - **JWT & bcryptjs**: Authentication and password security
 - **Multer**: File upload handling
+- **Helmet**: Security-oriented HTTP response headers
+- **Compression**: gzip response compression for payloads > 1 KB
+- **Pino**: Structured request and error logging
 - **CORS**: Cross-origin resource sharing configuration
 - **express-rate-limit**: API rate limiting for public sharing and authentication endpoints
 
@@ -133,7 +136,7 @@ graph TD
 
     %% Business Logic Layer
     subgraph Middleware_Layer ["Business Logic Layer (Express Server)"]
-        ExpressRouter["Express API Router<br/>(JWT Authentication)<br/>(Document Ownership)<br/>(Rate Limiting)<br/>(Service Token Proxy)"]:::business
+        ExpressRouter["Express API Router<br/>(JWT Authentication)<br/>(Session Management)<br/>(CSRF Validation)<br/>(Rate Limiting)<br/>(Structured Logging)<br/>(Service Token Proxy)"]:::business
         AuthGuard["Auth & Session Middleware<br/>(JWT httpOnly Cookie Validation)"]:::business
         ZodValidator["Input Validation<br/>(Zod Schemas)"]:::business
         MongooseDB["Mongoose ODM<br/>(User, Document, Chat, DocChunk models)"]:::business

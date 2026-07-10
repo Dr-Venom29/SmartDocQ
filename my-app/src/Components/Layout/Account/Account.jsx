@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Account.css";
 import userIcon from "./assets/user.svg";
-import { useToast } from "../../ToastContext";
+import { useToast } from "../../Toast/ToastContext";
 import AccountProfileTab from "./AccountProfileTab";
 import AccountSettingsTab from "./AccountSettingsTab";
 import DeleteAccountModal from "./DeleteAccountModal";

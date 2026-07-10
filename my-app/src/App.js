@@ -1,26 +1,32 @@
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import Lottie from 'lottie-react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { ToastProvider } from './Components/ToastContext';
+import { ToastProvider } from './Components/Toast/ToastContext';
 import Navbar from './Components/Layout/Navbar';
 import Hero from './Components/Layout/Hero_Section/HeroSection';
 import Body from './Components/Layout/Body_Section/BodySection';
 import Footer from './Components/Layout/Footer/Footer';
-import Upload from './Components/Pages/Upload_Page/UploadPage';
-import Login from './Components/Auth/Login';
-import ResetPasswordPage from './Components/Auth/ResetPasswordPage';
 import RequireAuth from './Components/Auth/RequireAuth';
-import AdminRoute from './Components/Admin/AdminRoute';
-import HelpCenter from './Components/HelpCenter';
-import PrivacyPolicy from './Components/Pages/Legal/PrivacyPolicy';
-import TermsOfService from './Components/Pages/Legal/TermsOfService';
-import ShareChat from './Components/ShareChat';
 import IntroScene from './Components/IntroScene/IntroScene';
 import errorAnimation from './Animations/404-Page-Error.json';
 import "./App.css";
 
-const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
+//Lazy-load non-critical sub-pages to optimize bundle size and first-load speed (LCP)
+const Upload = lazy(() => import('./Components/Pages/Upload_Page/UploadPage'));
+const Login = lazy(() => import('./Components/Auth/Login'));
+const ResetPasswordPage = lazy(() => import('./Components/Auth/ResetPasswordPage'));
+const HelpCenter = lazy(() => import('./Components/HelpCenter'));
+const PrivacyPolicy = lazy(() => import('./Components/Pages/Legal/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./Components/Pages/Legal/TermsOfService'));
+const ShareChat = lazy(() => import('./Components/ShareChat'));
+const AdminRoute = lazy(() => import('./Components/Admin/AdminRoute'));
+
+const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
+if (!googleClientId) {
+  console.warn("Google Client ID is not configured. Please define REACT_APP_GOOGLE_CLIENT_ID in your environment variables.");
+}
 
 function PageLayout({ children }) {
   return (
@@ -33,6 +39,30 @@ function PageLayout({ children }) {
     </div>
   );
 }
+
+const LoadingFallback = () => (
+  <div style={{
+    minHeight: "60vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "transparent"
+  }}>
+    <div style={{
+      width: "24px",
+      height: "24px",
+      border: "2px solid rgba(255, 255, 255, 0.1)",
+      borderTopColor: "#00f2fe",
+      borderRadius: "50%",
+      animation: "spin 0.8s linear infinite"
+    }} />
+    <style>{`
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    `}</style>
+  </div>
+);
 
 function Main() {
   useEffect(() => {
@@ -52,45 +82,47 @@ function Main() {
   }, []);
 
   return (
-    <Routes>
-      <Route path="/"            element={<PageLayout><Hero /><Body /></PageLayout>} />
-      <Route path="/reset-password" element={<PageLayout><ResetPasswordPage /></PageLayout>} />
-      <Route path="/help"        element={<PageLayout><HelpCenter /></PageLayout>} />
-      <Route path="/privacy"     element={<PageLayout><PrivacyPolicy /></PageLayout>} />
-      <Route path="/terms"       element={<PageLayout><TermsOfService /></PageLayout>} />
-      <Route path="/share/:shareId" element={<PageLayout><ShareChat /></PageLayout>} />
-      <Route path="/upload"      element={<RequireAuth><PageLayout><Upload /></PageLayout></RequireAuth>} />
-      <Route path="/admin"       element={<AdminRoute />} />
-      <Route
-        path="*"
-        element={(
-          <PageLayout>
-            <div
-              style={{
-                minHeight: "60vh",
-                padding: "40px 16px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center",
-              }}
-            >
-              <Lottie
-                animationData={errorAnimation}
-                loop
-                autoplay
-                style={{ width: 220, maxWidth: '80%', marginBottom: 24 }}
-              />
-              <h1 style={{ fontSize: "2rem", marginBottom: "12px" }}>Page not found</h1>
-              <p style={{ opacity: 0.7 }}>
-                The page you&apos;re looking for doesn&apos;t exist or has moved.
-              </p>
-            </div>
-          </PageLayout>
-        )}
-      />
-    </Routes>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route path="/"            element={<PageLayout><Hero /><Body /></PageLayout>} />
+        <Route path="/reset-password" element={<PageLayout><ResetPasswordPage /></PageLayout>} />
+        <Route path="/help"        element={<PageLayout><HelpCenter /></PageLayout>} />
+        <Route path="/privacy"     element={<PageLayout><PrivacyPolicy /></PageLayout>} />
+        <Route path="/terms"       element={<PageLayout><TermsOfService /></PageLayout>} />
+        <Route path="/share/:shareId" element={<PageLayout><ShareChat /></PageLayout>} />
+        <Route path="/upload"      element={<RequireAuth><PageLayout><Upload /></PageLayout></RequireAuth>} />
+        <Route path="/admin"       element={<AdminRoute />} />
+        <Route
+          path="*"
+          element={(
+            <PageLayout>
+              <div
+                style={{
+                  minHeight: "60vh",
+                  padding: "40px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                }}
+              >
+                <Lottie
+                  animationData={errorAnimation}
+                  loop
+                  autoplay
+                  style={{ width: 220, maxWidth: '80%', marginBottom: 24 }}
+                />
+                <h1 style={{ fontSize: "2rem", marginBottom: "12px" }}>Page not found</h1>
+                <p style={{ opacity: 0.7 }}>
+                  The page you&apos;re looking for doesn&apos;t exist or has moved.
+                </p>
+              </div>
+            </PageLayout>
+          )}
+        />
+      </Routes>
+    </Suspense>
   );
 }
 
@@ -190,7 +222,9 @@ function AppContent() {
             >
               ✕
             </button>
-            <Login onClose={() => setShowLogin(false)} />
+            <Suspense fallback={<div style={{ minHeight: "200px", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.5)" }}>Loading...</div>}>
+              <Login onClose={() => setShowLogin(false)} />
+            </Suspense>
           </div>
         </div>
       )}

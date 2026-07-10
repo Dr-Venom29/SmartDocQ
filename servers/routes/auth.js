@@ -3,7 +3,6 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
 const User = require("../models/User");
 const UserSession = require("../models/UserSession");
 const multer = require("multer");
@@ -13,8 +12,12 @@ const cloudinary = require('cloudinary').v2;
 const Chat = require("../models/Chat");
 const Document = require("../models/Document");
 const ContactReport = require("../models/ContactReport");
-const { OAuth2Client } = require('google-auth-library');
+const { sendPasswordResetEmail, sendPasswordChangedEmail } = require("../services/mailService");
+const { createSession } = require("../services/sessionService");
+const { verifyGoogleLogin } = require("../services/googleAuthService");
 const logger = require("../lib/logger");
+const { verifyToken, ensureActive, isAdmin, clearAuthCookie } = require("../middlewares/auth");
+const { extractCloudinaryPublicId } = require("../utils/cloudinary");
 const { verifyCsrf } = require("../middlewares/csrf");
 const { validate } = require("../middlewares/validate");
 const { sendError, sendSuccess } = require("../middlewares/apiResponse");
@@ -56,99 +59,6 @@ const setAuthCookie = (res, token, csrfToken) => {
   }
 };
 
-// Helper to clear auth cookie
-const clearAuthCookie = (res) => {
-  res.clearCookie("auth_token", { ...COOKIE_OPTIONS, maxAge: 0 });
-  res.clearCookie("csrf_token", { ...CSRF_COOKIE_OPTIONS, maxAge: 0 });
-};
-
-// Helper to extract device name from user-agent
-const getDeviceName = (req) => {
-  const ua = req.headers["user-agent"] || "";
-  let browser = "Browser";
-  if (/chrome|crios/i.test(ua) && !/edge|edg/i.test(ua) && !/opr/i.test(ua)) browser = "Chrome";
-  else if (/safari/i.test(ua) && !/chrome|crios/i.test(ua)) browser = "Safari";
-  else if (/firefox|fxios/i.test(ua)) browser = "Firefox";
-  else if (/edge|edg/i.test(ua)) browser = "Edge";
-  else if (/opr/i.test(ua)) browser = "Opera";
-
-  let os = "Unknown OS";
-  if (/windows/i.test(ua)) os = "Windows";
-  else if (/macintosh|mac os x/i.test(ua)) os = "macOS";
-  else if (/iphone/i.test(ua)) os = "iPhone";
-  else if (/ipad/i.test(ua)) os = "iPad";
-  else if (/android/i.test(ua)) os = "Android";
-  else if (/linux/i.test(ua)) os = "Linux";
-
-  return `${browser} on ${os}`;
-};
-
-// Helper to extract IP address safely
-const getIpAddress = (req) => {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (forwarded) {
-    return forwarded.split(",")[0].trim();
-  }
-  return req.ip || req.connection?.remoteAddress || "Unknown IP";
-};
-
-// Auth middleware: reads from cookie first, then Authorization header, and attaches user
-async function verifyToken(req, res, next) {
-  try {
-    const token =
-      req.cookies?.auth_token ||
-      (req.headers.authorization?.startsWith("Bearer ")
-        ? req.headers.authorization.slice(7)
-        : null);
-
-    if (!token) return sendError(res, 401, "Missing token");
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    if (!decoded.sessionId) {
-      return sendError(res, 401, "Session verification required");
-    }
-
-    const session = await UserSession.findOne({
-      _id: decoded.sessionId,
-      userId: decoded.id,
-      isActive: true
-    });
-
-    if (!session) {
-      clearAuthCookie(res);
-      return sendError(res, 401, "Session expired or logged out");
-    }
-
-    // Auto-upgrade check: Invalidate old sessions created before CSRF hardening
-    if (!session.csrfHash) {
-      await UserSession.updateOne({ _id: session._id }, { $set: { isActive: false } });
-      clearAuthCookie(res);
-      return sendError(res, 401, "Session upgraded for security. Please log in again.");
-    }
-
-    req.userSession = session;
-
-    const user = await User.findById(decoded.id);
-    if (!user) return sendError(res, 401, "User not found");
-
-    // Throttle lastSeen updates to database to once every 15 minutes
-    const now = Date.now();
-    const lastSeenTime = session.lastSeen ? new Date(session.lastSeen).getTime() : 0;
-    if (now - lastSeenTime > 15 * 60 * 1000) {
-      UserSession.updateOne({ _id: session._id }, { $set: { lastSeen: new Date() } }).catch((err) => {
-        logger.error({ err }, "Failed to update lastSeen in background");
-      });
-    }
-
-    req.user = user;
-    req.userId = user._id;
-    req.sessionId = session._id;
-    return next();
-  } catch (err) {
-    return sendError(res, 401, "Invalid or expired token");
-  }
-}
 
 // Signup
 router.post("/signup", authLimiter, validate(signupSchema), async (req, res) => {
@@ -173,7 +83,8 @@ router.post("/signup", authLimiter, validate(signupSchema), async (req, res) => 
 
     return sendSuccess(res, 201, {}, "User registered successfully");
   } catch (err) {
-    sendError(res, 500, err.message || "Signup failed");
+    logger.error({ err }, "Signup failed");
+    return sendError(res, 500, "Signup failed");
   }
 });
 
@@ -199,29 +110,12 @@ router.post("/login", authLimiter, validate(loginSchema), async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return sendError(res, 400, "Invalid email or password");
 
-    // ✅ Update lastLogin
+    // Update lastLogin
     user.lastLogin = new Date();
     await user.save();
 
-    // Create session in database
-    const csrfToken = crypto.randomBytes(32).toString("hex");
-    const csrfHash = crypto.createHash("sha256").update(csrfToken).digest("hex");
-
-    const session = new UserSession({
-      userId: user._id,
-      deviceName: getDeviceName(req),
-      ipAddress: getIpAddress(req),
-      isActive: true,
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour session TTL (matches JWT)
-      csrfHash: csrfHash
-    });
-    await session.save();
-
-    const token = jwt.sign(
-      { id: user._id, sessionId: session._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+    // Create session and token using centralized sessionService
+    const { token, csrfToken } = await createSession(user, req);
 
     setAuthCookie(res, token, csrfToken);
     return sendSuccess(res, 200, {
@@ -238,7 +132,8 @@ router.post("/login", authLimiter, validate(loginSchema), async (req, res) => {
       isAdmin: user.isAdmin || false,
     });
   } catch (err) {
-    sendError(res, 500, err.message || "Login failed");
+    logger.error({ err }, "Login failed");
+    return sendError(res, 500, "Login failed");
   }
 });
 
@@ -275,59 +170,17 @@ router.post("/forgot-password", authLimiter, validate(forgotPasswordSchema), asy
 
     const frontendBase = process.env.FRONTEND_URL || "http://localhost:3000";
     const resetLink = `${frontendBase.replace(/\/$/, "")}/reset-password?token=${rawToken}`;
-
     if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
       logger.error({ mailUser: process.env.MAIL_USER, hasPass: !!process.env.MAIL_PASS }, "MAIL_USER/MAIL_PASS not configured for forgot-password");
       return sendError(res, 500, "Email service is not configured");
     }
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
-      },
-    });
-
-    await transporter.sendMail({
-      from: `"SmartDocQ" <${process.env.MAIL_USER}>`,
-      to: user.email,
-      subject: "Reset your SmartDocQ password",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #eee; border-radius: 12px; color: #111;">
-          <h2 style="margin-bottom: 16px;">Reset your password</h2>
-
-          <p>Hello,</p>
-
-          <p>We received a request to reset the password for your SmartDocQ account.</p>
-
-          <p>This reset link will remain valid for <strong>15 minutes</strong>.</p>
-
-          <p style="margin: 24px 0;">
-            <a 
-              href="${resetLink}" 
-              style="display: inline-block; padding: 12px 20px; background: #111; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600;"
-            >
-              Reset your password
-            </a>
-          </p>
-
-          <p>If you didn’t request a password reset, you can safely ignore this email.</p>
-
-          <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;" />
-
-          <p style="font-size: 12px; color: #666;">
-            SmartDocQ Team<br/>
-            This is an automated email, so replies aren’t monitored.
-          </p>
-        </div>
-      `,
-    });
+    await sendPasswordResetEmail(user.email, resetLink);
 
     return sendSuccess(res, 200, {}, "If an account exists, a reset link has been sent.");
   } catch (err) {
-    logger.error({ err }, "Forgot-password sendMail failed");
-    return sendError(res, 500, err.message || "Failed to send reset link");
+    logger.error({ err }, "Failed to send reset link");
+    return sendError(res, 500, "Failed to send reset link");
   }
 });
 
@@ -363,9 +216,33 @@ router.post("/reset-password", authLimiter, validate(resetPasswordSchema), async
 
     await user.save();
 
+    // Invalidate all active sessions (force logout on all devices)
+    await UserSession.updateMany(
+      { userId: user._id },
+      { $set: { isActive: false } }
+    );
+
+    // Send password-changed confirmation email (fire-and-forget — don't block the response)
+    const changeTime = new Date().toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }) + " IST";
+
+    const frontendBase = process.env.FRONTEND_URL || "https://smartdocq.vercel.app";
+
+    sendPasswordChangedEmail(user.email, changeTime, frontendBase).catch((mailErr) => {
+      logger.error({ err: mailErr }, "Password-changed confirmation email failed");
+    });
+
     return sendSuccess(res, 200, {}, "Password reset successful");
   } catch (err) {
-    return sendError(res, 500, err.message || "Failed to reset password");
+    logger.error({ err }, "Reset-password handler failed");
+    return sendError(res, 500, "Failed to reset password");
   }
 });
 
@@ -395,8 +272,8 @@ router.post("/logout-all", verifyToken, verifyCsrf, async (req, res) => {
     clearAuthCookie(res);
     return sendSuccess(res, 200, {}, "Logged out from all devices successfully");
   } catch (err) {
-    logger.error({ err }, "Error in logout-all");
-    return sendError(res, 500, err.message || "Failed to log out from all devices");
+    logger.error({ err }, "Failed to log out from all devices");
+    return sendError(res, 500, "Failed to log out from all devices");
   }
 });
 
@@ -405,30 +282,6 @@ router.get("/verify", verifyToken, (req, res) => {
   return sendSuccess(res, 200, { valid: true, userId: req.userId });
 });
 
-// Utility: derive Cloudinary public_id from a secure URL
-function extractCloudinaryPublicId(url) {
-  try {
-    if (!url || typeof url !== 'string') return null;
-    const u = new URL(url);
-    // Expect path like: /<cloud_name?>/image/upload/v<ver>/<folder>/<name>.<ext>
-    const p = u.pathname; // e.g., /image/upload/v1721234567/smartdoc/avatars/USER-ts.jpg
-    const idx = p.indexOf('/upload/');
-    if (idx === -1) return null;
-    let rest = p.substring(idx + '/upload/'.length); // v172.../smartdoc/avatars/USER-ts.jpg
-    // Drop version prefix if present
-    if (rest.startsWith('v') && rest.includes('/')) {
-      rest = rest.substring(rest.indexOf('/') + 1);
-    }
-    // Remove leading slash if any
-    if (rest.startsWith('/')) rest = rest.slice(1);
-    // Remove extension (last .ext)
-    const lastDot = rest.lastIndexOf('.');
-    if (lastDot > -1) rest = rest.substring(0, lastDot);
-    return rest || null; // e.g., smartdoc/avatars/USER-ts
-  } catch (_) {
-    return null;
-  }
-}
 
 // Delete current user
 router.delete("/me", verifyToken, async (req, res) => {
@@ -462,7 +315,8 @@ router.delete("/me", verifyToken, async (req, res) => {
       return sendSuccess(res, 200, {}, "Account deleted successfully");
     }
   } catch (err) {
-    return sendError(res, 500, err.message || "Failed to delete account");
+    logger.error({ err }, "Failed to delete account");
+    return sendError(res, 500, "Failed to delete account");
   }
 });
 
@@ -539,37 +393,13 @@ router.put("/me", verifyToken, validate(updateMeSchema), async (req, res) => {
 
     return sendSuccess(res, 200, { user: sanitized });
   } catch (err) {
-    return sendError(res, 500, err.message || "Failed to update profile");
+    logger.error({ err }, "Failed to update profile");
+    return sendError(res, 500, "Failed to update profile");
   }
 });
 
 
 module.exports = router;
-module.exports.verifyToken = verifyToken;
-
-// Middleware to ensure current user is active
-module.exports.ensureActive = async function ensureActive(req, res, next) {
-  try {
-    const user = req.user;
-    if (!user) return sendError(res, 401, 'User not found');
-    if (user.isActive === false) {
-      return sendError(res, 403, 'Account is deactivated');
-    }
-    next();
-  } catch (err) {
-    return sendError(res, 500, err.message || 'Internal server error');
-  }
-};
-
-// Middleware to ensure current user is admin
-function isAdmin(req, res, next) {
-  if (!req.user?.isAdmin) {
-    return sendError(res, 403, "Admin access required");
-  }
-  next();
-}
-
-module.exports.isAdmin = isAdmin;
 
 // Configure Multer memory storage for avatars (no local files)
 const avatarUpload = multer({
@@ -597,7 +427,10 @@ router.post("/me/avatar", verifyToken, verifyCsrf, avatarUpload.single("avatar")
       { folder, public_id: `${req.userId}-${Date.now()}`, resource_type: "image", overwrite: true },
       async (error, result) => {
         try {
-          if (error) return sendError(res, 500, error.message || "Upload failed");
+          if (error) {
+            logger.error({ err: error }, "Cloudinary upload failed");
+            return sendError(res, 500, "Upload failed");
+          }
           user.avatar = result.secure_url;
           await user.save();
           // After saving new avatar, delete previous one to avoid wasting storage
@@ -609,91 +442,33 @@ router.post("/me/avatar", verifyToken, verifyCsrf, avatarUpload.single("avatar")
           } catch (_) { /* ignore deletion errors */ }
           return sendSuccess(res, 200, { avatar: user.avatar });
         } catch (e) {
-          return sendError(res, 500, e.message || "Failed to save avatar");
+          logger.error({ err: e }, "Failed to save avatar");
+          return sendError(res, 500, "Failed to save avatar");
         }
       }
     );
     streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
   } catch (err) {
-    return sendError(res, 500, err.message || "Failed to upload avatar");
+    logger.error({ err }, "Failed to upload avatar");
+    return sendError(res, 500, "Failed to upload avatar");
   }
 });
 // ===== GOOGLE OAUTH =====
-// Initialize Google OAuth client
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
 // Google Sign-In (verify token from frontend)
 router.post('/google', authLimiter, validate(googleSchema), async (req, res) => {
   try {
     const { credential } = req.validated.body; // Google JWT token from @react-oauth/google
     
-    // Verify the Google token
-    const ticket = await googleClient.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-    const { sub: googleId, email, name, picture } = payload;
-
-    if (!email) {
-      return sendError(res, 400, 'Email not provided by Google');
-    }
-
-    // Check if user exists
-    let user = await User.findOne({ $or: [{ googleId }, { email }] });
-
-    if (user) {
-      // Existing user - link Google account if not already linked
-      if (!user.googleId) {
-        user.googleId = googleId;
-        user.authProvider = 'google';
-        if (picture && !user.avatar) user.avatar = picture;
-        await user.save();
-      }
-      
-      // Update last login
-      user.lastLogin = new Date();
-      await user.save();
-    } else {
-      // Create new user with Google auth
-      user = new User({
-        name: name || email.split('@')[0],
-        email,
-        googleId,
-        authProvider: 'google',
-        avatar: picture || null,
-        lastLogin: new Date(),
-        isActive: true,
-      });
-      await user.save();
-    }
+    // Verify Google login and find or create the user in the database
+    const user = await verifyGoogleLogin(credential);
 
     // Block if deactivated
     if (user.isActive === false) {
       return sendError(res, 403, 'Account is deactivated. Contact support.');
     }
 
-    // Create session in database
-    const csrfToken = crypto.randomBytes(32).toString("hex");
-    const csrfHash = crypto.createHash("sha256").update(csrfToken).digest("hex");
-
-    const session = new UserSession({
-      userId: user._id,
-      deviceName: getDeviceName(req),
-      ipAddress: getIpAddress(req),
-      isActive: true,
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour session TTL (matches JWT)
-      csrfHash: csrfHash
-    });
-    await session.save();
-
-    // Generate JWT
-    const token = jwt.sign(
-      { id: user._id, sessionId: session._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    // Create session and token using centralized sessionService
+    const { token, csrfToken } = await createSession(user, req);
 
     setAuthCookie(res, token, csrfToken);
     return sendSuccess(res, 200, {
@@ -711,6 +486,6 @@ router.post('/google', authLimiter, validate(googleSchema), async (req, res) => 
     });
   } catch (err) {
     logger.error({ err }, "Google auth error");
-    return sendError(res, 500, 'Google authentication failed', [{ message: err.message }]);
+    return sendError(res, 500, 'Google authentication failed');
   }
 });

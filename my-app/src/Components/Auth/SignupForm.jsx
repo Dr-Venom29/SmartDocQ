@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
-import { useToast } from "../ToastContext";
+import { useToast } from "../Toast/ToastContext";
 import PasswordStrength from "./PasswordStrength";
 import { useNavigate } from "react-router-dom";
 

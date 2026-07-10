@@ -24,6 +24,7 @@ export default function PrivacyPolicy() {
 
   return (
     <main className="privacy-page" aria-label="Privacy Policy Page">
+      <div className="leg-glow-bg" aria-hidden="true" />
       <div className="privacy-container">
         <header id="top" className="privacy-hero">
           <h1>Privacy Policy</h1>

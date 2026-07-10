@@ -3,7 +3,7 @@ const router = express.Router();
 const mongoose = require("mongoose");
 const Document = require("../models/Document");
 const DocChunk = require("../models/DocChunk");
-const { verifyToken, ensureActive } = require("./auth");
+const { verifyToken, ensureActive } = require("../middlewares/auth");
 
 // Internal upsert endpoint for Flask to persist chunk texts for keyword/metadata search
 router.post("/internal/chunks/upsert", async (req, res) => {

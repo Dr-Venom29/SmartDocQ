@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { useToast } from "../ToastContext";
-import AdminDashboard from "./AdminDashboard";
+import React, { useEffect, useState, lazy, Suspense } from "react";
+import { useToast } from "../Toast/ToastContext";
 import { apiUrl } from "../../config";
+
+const AdminDashboard = lazy(() => import("./AdminDashboard"));
 
 const AdminRoute = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -94,7 +95,22 @@ const AdminRoute = () => {
     );
   }
 
-  return <AdminDashboard />;
+  return (
+    <Suspense fallback={
+      <div style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh",
+        background: "#0a0a0a",
+        color: "#e0e0e0"
+      }}>
+        <p>Loading Dashboard...</p>
+      </div>
+    }>
+      <AdminDashboard />
+    </Suspense>
+  );
 };
 
 export default AdminRoute;

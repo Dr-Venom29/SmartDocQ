@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import logo from "../Navbar/assets/logo.png";
 import avatarIcon from "../Navbar/assets/icon1.png";
 import "./SimulationSection.css";
@@ -14,24 +14,15 @@ const SIMULATION_STEPS = [
 /* ============================================================================
  * INTERACTIVE PLATFORM SIMULATION SECTION
  * ============================================================================ */
-const SimulationSection = ({ 
-  activeStep, 
-  setActiveStep, 
-  uploadComplete, 
-  setUploadComplete, 
-  uploadProgress, 
-  setUploadProgress, 
-  dragPhase, 
-  setDragPhase, 
-  dragPosition, 
-  setDragPosition, 
-  chatTypedText, 
-  setChatTypedText, 
-  cardFlipped, 
-  setCardFlipped, 
-  quizSelected, 
-  setQuizSelected 
-}) => {
+const SimulationSection = ({ activeStep, setActiveStep }) => {
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadComplete, setUploadComplete] = useState(false);
+  const [dragPhase, setDragPhase] = useState("idle");
+  const [dragPosition, setDragPosition] = useState({ x: 80, y: 80 });
+  const [chatTypedText, setChatTypedText] = useState("");
+  const [cardFlipped, setCardFlipped] = useState(false);
+  const [quizSelected, setQuizSelected] = useState(null);
+
   const timerRef = useRef(null);
   const chatHistoryRef = useRef(null);
 

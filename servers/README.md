@@ -13,12 +13,55 @@ Copy `.env.example` to `.env` and fill in:
 - SERVICE_TOKEN: Shared secret used to authenticate all server-to-server communication with the Flask AI service (must match the Flask backend's `SERVICE_TOKEN` exactly). The browser never receives or uses this token.
 - FLASK_BASE_URL (or PY_API_URL / FLASK_URL): Base URL of the Flask AI service (e.g., `http://localhost:5001`). Used to derive the base URL for proxying quiz, flashcard, text summarization, and PDF preview requests.
 - FLASK_ASK_URL, FLASK_INDEX_URL, FLASK_CONVERT_URL: Specific override Flask service endpoints. If `FLASK_BASE_URL` is configured, these default to paths on that base URL.
+- LOG_LEVEL: Optional Pino log level (e.g., `info`, `warn`, `error`, `debug`; default: `info`).
+- NODE_ENV: Application environment (e.g., `development`, `production`).
+- MAX_UPLOAD_SIZE_MB: Maximum upload size accepted by the Node gateway (default: `15`).
 
-## Authentication
-Uses httpOnly cookies for JWT storage. All AI endpoints require a valid authenticated session before requests are forwarded to the Flask AI service. Key endpoints:
-- POST `/api/auth/login` — Sets auth cookie
-- POST `/api/auth/logout` — Clears auth cookie
-- GET `/api/auth/verify` — Validates session from cookie
+## Authentication & Session Management
+Uses secure HTTP-Only cookies for JWT storage coupled with database-backed session tracking in MongoDB. All AI endpoints require a valid authenticated session before requests are forwarded to the Flask AI service.
+
+Key endpoints:
+- POST `/api/auth/signup` — Registers a new user
+- POST `/api/auth/login` — Creates a session and sets the JWT `auth_token` and `csrf_token` cookies
+- POST `/api/auth/logout` — Revokes the current session and clears cookies
+- POST `/api/auth/logout-all` — Revokes all active database sessions for the user (invalidation)
+- GET `/api/auth/verify` — Validates the session from cookies
+
+### Session Security & Validation Flow
+Each login creates an active `UserSession` record in MongoDB.
+Sessions store:
+- Device name (parsed from User-Agent)
+- IP address
+- Last activity timestamp
+- Expiration date
+- CSRF token hash
+
+Sessions are automatically invalidated on logout, logout-all, and password reset.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    Browser->>Node Gateway: Mutating Request + auth_token (Cookie) + X-CSRF-Token (Header)
+    Note over Node Gateway: Extract user session & CSRF token
+    Node Gateway->>MongoDB: Fetch UserSession & User
+    MongoDB-->>Node Gateway: Session & User data
+    Note over Node Gateway: timingSafeEqual(X-CSRF-Token, session.csrfHash)
+    alt Validation Successful
+        Node Gateway->>Flask AI Service: Request Proxied (x-user-id + x-service-token)
+    else Validation Failed
+        Node Gateway-->>Browser: 401 Unauthorized / 403 Forbidden
+    end
+```
+
+### Password Security & Reset
+- **Password Reset Flow**: Requesting a password reset generates a cryptographically secure 32-byte token that is SHA-256 hashed before database storage.
+- **Expiration**: Reset tokens expire after 15 minutes and are single-use.
+- **Secure Changed Notifications**: Successfully resetting a password invalidates all other active sessions and sends a transactional email notification detailing the action timestamp.
+
+### Google Authentication
+- Supports Google Sign-In via token verification.
+- Existing local accounts are automatically linked by email.
+- Accounts created exclusively via Google OAuth cannot use local password resets unless a password is explicitly configured on the profile.
 
 ## AI Service Gateway
 
@@ -90,8 +133,41 @@ The following limits are enforced before requests reach the AI service:
 ## Scripts
 - `npm start` to run the server (default port 5000)
 
-## Health
-- GET /healthz returns `{ "status": "ok" }` (Public endpoint; does not require JWT or SERVICE_TOKEN).
+## Logging
+The API uses Pino for structured logging.
+- **Production**: Structured JSON logs. Sensitive fields (`password`, `token`, `refreshToken`, `accessToken`, `csrfToken`, `secret`, `clientSecret`, `apiKey`) and cookie/authorization headers are redacted.
+- **Development**: Pretty-colored, human-readable terminal output.
+- **Automatic Requests**: Logs method, url, status code, and execution time (e.g., `POST /api/auth/login 200 320ms`). Ignores preflight `OPTIONS` requests.
+
+## HTTP Security
+The API applies Helmet to enable standard HTTP security headers:
+- X-Content-Type-Options
+- X-Frame-Options
+- Referrer-Policy
+- Cross-Origin policies
+
+*Note: Content Security Policy (CSP) is disabled (`contentSecurityPolicy: false`) because the React frontend integrates with external assets and services like Google OAuth and Cloudinary.*
+
+## Response Compression
+Responses larger than 1 KB are automatically compressed using `gzip` to reduce bandwidth and improve load times.
+
+## Health & Metrics
+- **Health check**: `GET /healthz` (Public endpoint).
+  - **Production**: Returns `{ "status": "ok" }`.
+  - **Development**: Returns status along with `uptime`, `mongodb` connection status, and application `version` (npm package version).
+- **Metrics**: `GET /metrics` exposes Prometheus metrics. Available only in development by default.
+
+## Graceful Shutdown
+The server supports graceful shutdown. Upon receiving a `SIGINT` or `SIGTERM` signal, it:
+1. Stops accepting new HTTP requests.
+2. Clears background `setInterval` timers.
+3. Closes the MongoDB client connection cleanly.
+4. Forces process exit after 10 seconds if any connection hangs.
+
+## Background Jobs
+Runs lightweight background tasks on interval:
+- **Shared Chat Cleanup**: Deletes expired public share records hourly.
+- **Stale Document Watchdog**: Runs every 2 minutes to mark documents stuck in processing (`queued`/`indexing`) for more than 10 minutes as `failed`.
 
 ## Public share links
 

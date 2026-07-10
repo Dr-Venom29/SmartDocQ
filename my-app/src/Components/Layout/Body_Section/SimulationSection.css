@@ -1354,10 +1354,10 @@
 
 .sim-vertical-step-card {
   width: 100%;
-  background: rgba(10, 10, 12, 0.65); /* frosted dark glass base */
+  background: rgba(10, 10, 12, 0.45); /* frosted dark glass base */
   backdrop-filter: blur(16px) saturate(130%);
   -webkit-backdrop-filter: blur(16px) saturate(130%);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.02);
   border-radius: 16px;
   padding: 20px 24px;
   position: relative;
@@ -1367,18 +1367,35 @@
   text-align: left;
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+  opacity: 0.4;
 }
 
-.sim-vertical-step-card.blue-theme {
-  background: rgba(6, 182, 212, 0.03); /* subtle cyan glass tint */
-  border: 1px solid rgba(6, 182, 212, 0.25);
-  box-shadow: 0 8px 32px 0 rgba(6, 182, 212, 0.03), 0 4px 20px rgba(0, 0, 0, 0.2);
+.sim-vertical-step-card:hover {
+  opacity: 0.7;
+  background: rgba(10, 10, 12, 0.65);
+  border-color: rgba(255, 255, 255, 0.05);
 }
-.sim-vertical-step-card.blue-theme:hover {
-  background: rgba(6, 182, 212, 0.06);
-  border-color: #06b6d4;
-  box-shadow: 0 12px 40px rgba(6, 182, 212, 0.1);
+
+.sim-vertical-step-card.active {
+  opacity: 1;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.sim-vertical-step-card .sim-card-active-glow {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.sim-vertical-step-card.active .sim-card-active-glow {
+  opacity: 1;
+}
+
+.sim-vertical-step-card.blue-theme.active {
+  background: rgba(6, 182, 212, 0.04); /* subtle cyan glass tint */
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  box-shadow: 0 8px 32px 0 rgba(6, 182, 212, 0.05), 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 .sim-vertical-step-card.blue-theme .sim-step-num {
   color: #06b6d4;
@@ -1388,15 +1405,10 @@
   box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
 }
 
-.sim-vertical-step-card.green-theme {
-  background: rgba(16, 185, 129, 0.03); /* subtle emerald glass tint */
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  box-shadow: 0 8px 32px 0 rgba(16, 185, 129, 0.03), 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-.sim-vertical-step-card.green-theme:hover {
-  background: rgba(16, 185, 129, 0.06);
-  border-color: #10b981;
-  box-shadow: 0 12px 40px rgba(16, 185, 129, 0.1);
+.sim-vertical-step-card.green-theme.active {
+  background: rgba(16, 185, 129, 0.04); /* subtle emerald glass tint */
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  box-shadow: 0 8px 32px 0 rgba(16, 185, 129, 0.05), 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 .sim-vertical-step-card.green-theme .sim-step-num {
   color: #10b981;
@@ -1406,15 +1418,10 @@
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
 }
 
-.sim-vertical-step-card.purple-theme {
-  background: rgba(139, 92, 246, 0.03); /* subtle violet glass tint */
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  box-shadow: 0 8px 32px 0 rgba(139, 92, 246, 0.03), 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-.sim-vertical-step-card.purple-theme:hover {
-  background: rgba(139, 92, 246, 0.06);
-  border-color: #8b5cf6;
-  box-shadow: 0 12px 40px rgba(139, 92, 246, 0.1);
+.sim-vertical-step-card.purple-theme.active {
+  background: rgba(139, 92, 246, 0.04); /* subtle violet glass tint */
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  box-shadow: 0 8px 32px 0 rgba(139, 92, 246, 0.05), 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 .sim-vertical-step-card.purple-theme .sim-step-num {
   color: #8b5cf6;

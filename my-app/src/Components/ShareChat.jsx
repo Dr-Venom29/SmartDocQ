@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import './Chat.css';
-import { useToast } from './ToastContext';
+import { useToast } from './Toast/ToastContext';
 import { exportSharedChat, getSharedChat } from '../Services/ServiceChat';
 import DOMPurify from 'dompurify';
 

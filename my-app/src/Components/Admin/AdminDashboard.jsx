@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import "./AdminDashboard.css";
-import { useToast } from "../ToastContext";
-import AdminStats from "./AdminStats";
-import RealTimeMetrics from "./RealTimeMetrics";
-import UserManagement from "./UserManagement";
-import ReportManagement from "./ReportManagement";
-import SystemLogs from "./SystemLogs";
-import SystemSettings from "./SystemSettings";
+import { useToast } from "../Toast/ToastContext";
 import logo from "../logo.png";
 import { apiUrl } from "../../config";
+
+const AdminStats = lazy(() => import("./AdminStats"));
+const RealTimeMetrics = lazy(() => import("./RealTimeMetrics"));
+const UserManagement = lazy(() => import("./UserManagement"));
+const ReportManagement = lazy(() => import("./ReportManagement"));
+const SystemLogs = lazy(() => import("./SystemLogs"));
+const SystemSettings = lazy(() => import("./SystemSettings"));
 
 const AdminDashboard = () => {
   const { showToast } = useToast();
@@ -96,17 +97,25 @@ const AdminDashboard = () => {
       );
     }
 
-    switch (activeTab) {
-      case "dashboard": return (
-        <AdminStats data={adminData.stats} onRefresh={fetchAdminData} />
-      );
-      case "realtime": return <RealTimeMetrics stats={adminData.stats} onRefresh={fetchAdminData} />;
-      case "users": return <UserManagement users={adminData.users} onRefresh={fetchAdminData} />;
-  case "reports": return <ReportManagement reports={adminData.reports} onRefresh={fetchAdminData} />;
-      case "logs": return <SystemLogs logs={adminData.logs} onRefresh={fetchAdminData} />;
-      case "settings": return <SystemSettings settings={adminData.settings} onRefresh={fetchAdminData} />;
-      default: return <AdminStats data={adminData.stats} onRefresh={fetchAdminData} />;
-    }
+    return (
+      <Suspense fallback={
+        <div style={{ padding: 40, textAlign: "center", color: "rgba(255,255,255,0.4)" }}>
+          Loading panel module...
+        </div>
+      }>
+        {(() => {
+          switch (activeTab) {
+            case "dashboard": return <AdminStats data={adminData.stats} onRefresh={fetchAdminData} />;
+            case "realtime": return <RealTimeMetrics stats={adminData.stats} onRefresh={fetchAdminData} />;
+            case "users": return <UserManagement users={adminData.users} onRefresh={fetchAdminData} />;
+            case "reports": return <ReportManagement reports={adminData.reports} onRefresh={fetchAdminData} />;
+            case "logs": return <SystemLogs logs={adminData.logs} onRefresh={fetchAdminData} />;
+            case "settings": return <SystemSettings settings={adminData.settings} onRefresh={fetchAdminData} />;
+            default: return <AdminStats data={adminData.stats} onRefresh={fetchAdminData} />;
+          }
+        })()}
+      </Suspense>
+    );
   };
 
   return (

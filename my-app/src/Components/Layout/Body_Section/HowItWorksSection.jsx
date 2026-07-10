@@ -8,15 +8,6 @@ import "./SimulationSection.css";
  * ============================================================================ */
 function HowItWorksSection() {
   const [activeStep, setActiveStep] = useState(0);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadComplete, setUploadComplete] = useState(false);
-  const [chatTypedText, setChatTypedText] = useState("");
-  const [cardFlipped, setCardFlipped] = useState(false);
-  const [quizSelected, setQuizSelected] = useState(null);
-
-  // Drag states
-  const [dragPhase, setDragPhase] = useState("idle");
-  const [dragPosition, setDragPosition] = useState({ x: 80, y: 80 });
 
   // Framer Motion kinetic text variants
   const containerVariants = {
@@ -93,26 +84,12 @@ function HowItWorksSection() {
           <SimulationSection 
             activeStep={activeStep}
             setActiveStep={setActiveStep}
-            uploadProgress={uploadProgress}
-            setUploadProgress={setUploadProgress}
-            uploadComplete={uploadComplete}
-            setUploadComplete={setUploadComplete}
-            dragPhase={dragPhase}
-            setDragPhase={setDragPhase}
-            dragPosition={dragPosition}
-            setDragPosition={setDragPosition}
-            chatTypedText={chatTypedText}
-            setChatTypedText={setChatTypedText}
-            cardFlipped={cardFlipped}
-            setCardFlipped={setCardFlipped}
-            quizSelected={quizSelected}
-            setQuizSelected={setQuizSelected}
           />
 
           {/* Premium Vertical Steps Process flow positioned on the Right */}
           <div className="sim-vertical-steps" role="list" aria-label="Getting started steps">
-            <div className="sim-vertical-step-card blue-theme" role="listitem">
-              <div className="sim-step-num">01 / UPLOAD</div>
+            <div className="sim-vertical-step-card blue-theme active" role="listitem">
+              <div className="sim-step-num">UPLOAD</div>
               <h3 className="sim-step-title">Upload Your Documents</h3>
               <p className="sim-step-desc">
                 Upload PDFs, Word documents, spreadsheets, or text files. SmartDocQ automatically processes and indexes them.
@@ -120,8 +97,8 @@ function HowItWorksSection() {
               <div className="sim-card-active-glow" />
             </div>
 
-            <div className="sim-vertical-step-card green-theme" role="listitem">
-              <div className="sim-step-num">02 / INTERACT</div>
+            <div className="sim-vertical-step-card green-theme active" role="listitem">
+              <div className="sim-step-num">INTERACT</div>
               <h3 className="sim-step-title">Ask AI About Your Documents</h3>
               <p className="sim-step-desc">
                 Ask questions, generate summaries, flashcards, quizzes, and receive document-grounded answers with citations.
@@ -129,8 +106,8 @@ function HowItWorksSection() {
               <div className="sim-card-active-glow" />
             </div>
 
-            <div className="sim-vertical-step-card purple-theme" role="listitem">
-              <div className="sim-step-num">03 / MASTER</div>
+            <div className="sim-vertical-step-card purple-theme active" role="listitem">
+              <div className="sim-step-num">MASTER</div>
               <h3 className="sim-step-title">Study Smarter</h3>
               <p className="sim-step-desc">
                 Every response is grounded in your documents with highlighted citations for transparent and trustworthy learning.

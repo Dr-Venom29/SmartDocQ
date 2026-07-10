@@ -1,6 +1,6 @@
 import React from "react";
 import { GoogleLogin } from "@react-oauth/google";
-import { useToast } from "../ToastContext";
+import { useToast } from "../Toast/ToastContext";
 
 export default function LoginForm({
   loginData,

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./Contact.css";
-import { useToast } from "../../ToastContext";
+import { useToast } from "../../Toast/ToastContext";
 import { useAuth } from "./useAuth";
 import { submitContactForm } from "../../../Services/ContactService";
 import {

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "./UploadPage.css";
-import { useToast } from "../../ToastContext";
+import { useToast } from "../../Toast/ToastContext";
 import { MAX_UPLOAD_SIZE_MB } from "../../../config";
 
 import History from "../../History";

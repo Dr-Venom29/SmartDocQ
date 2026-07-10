@@ -1101,6 +1101,13 @@
   text-align: center;
   z-index: 10;
   overflow: visible;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.premium-header-wrap * {
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 /* Connective vertical line from hero section */

@@ -6,11 +6,12 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const bodyParser = require("body-parser");
 const expressPino = require("express-pino-logger");
 const client = require("prom-client");
 const logger = require("./lib/logger");
 const dns = require("dns");
+const helmet = require("helmet");
+const compression = require("compression");
 
 // ---- Required server-to-server secret ----
 // Used to authorize internal requests from the Flask service.
@@ -27,6 +28,10 @@ const searchRoutes = require("./routes/search");
 const shareRoutes = require("./routes/share");
 
 const app = express();
+app.disable("x-powered-by");
+
+let cleanupInterval = null;
+let watchdogInterval = null;
 
 // Fail fast instead of buffering queries when MongoDB isn't connected.
 // We'll only start listening after a successful connection.
@@ -48,7 +53,44 @@ cloudinary.config({
 });
 
 // ===== Logging (Pino) =====
-app.use(expressPino({ logger }));
+const isProduction = process.env.NODE_ENV === "production";
+const pinoLogger = expressPino({
+  logger,
+  autoLogging: {
+    ignore: (req) => req.method === "OPTIONS"
+  },
+  customSuccessMessage: (req, res, responseTime) => {
+    return `${req.method} ${req.originalUrl || req.url} ${res.statusCode} ${responseTime}ms`;
+  },
+  customErrorMessage: (req, res, err) => {
+    return `${req.method} ${req.originalUrl || req.url} ${res.statusCode} - ${err.message}`;
+  },
+  serializers: {
+    req: (req) => {
+      return {
+        method: req.method,
+        url: req.url,
+        headers: isProduction ? undefined : {
+          host: req.headers.host,
+          "user-agent": req.headers["user-agent"]
+        }
+      };
+    },
+    res: (res) => {
+      return {
+        statusCode: res.statusCode
+      };
+    },
+    err: (err) => {
+      if (!err) return undefined;
+      return {
+        type: err.constructor.name,
+        message: err.message,
+        stack: isProduction ? undefined : err.stack
+      };
+    }
+  }
+});
 
 // ===== Metrics (prom-client) =====
 // Use the default/global registry so other modules (e.g., admin routes) can read metrics
@@ -87,11 +129,18 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization", "x-service-token", "x-csrf-token"],
   credentials: true,
 };
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
+app.use(compression({ threshold: 1024 }));
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
 app.use(cookieParser());
-app.use(bodyParser.json({ limit: "5mb" }));
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+
+app.use(pinoLogger);
 
 const rawMb = Number(process.env.MAX_UPLOAD_SIZE_MB);
 const MAX_UPLOAD_SIZE_MB = Number.isFinite(rawMb) && rawMb > 0 ? rawMb : 15;
@@ -120,16 +169,29 @@ app.use((err, req, res, next) => {
 });
 
 // Health and metrics
-app.get("/healthz", (req, res) => res.json({ status: "ok" }));
-app.get("/", (req, res) => res.send("SmartDoc API is running"));
-app.get("/metrics", async (req, res) => {
-  try {
-    res.set("Content-Type", register.contentType);
-    res.end(await register.metrics());
-  } catch (e) {
-    res.status(500).end(e?.message || "metrics error");
+app.get("/healthz", (req, res) => {
+  if (process.env.NODE_ENV === "production") {
+    return res.json({ status: "ok" });
   }
+  res.json({
+    status: "ok",
+    uptime: process.uptime(),
+    mongodb: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    version: process.env.npm_package_version || "1.0.0"
+  });
 });
+app.get("/", (req, res) => res.send("SmartDoc API is running"));
+
+if (process.env.NODE_ENV !== "production") {
+  app.get("/metrics", async (req, res) => {
+    try {
+      res.set("Content-Type", register.contentType);
+      res.end(await register.metrics());
+    } catch (e) {
+      res.status(500).end(e?.message || "metrics error");
+    }
+  });
+}
 
 // Ensure indexes are set once connected
 async function onDbOpen() {
@@ -168,7 +230,8 @@ async function onDbOpen() {
   }
 
   // Fallback cleaner: remove expired shares hourly
-  setInterval(async () => {
+  cleanupInterval = setInterval(async () => {
+    if (mongoose.connection.readyState !== 1) return;
     try {
       const SharedChat = require("./models/SharedChat");
       const result = await SharedChat.deleteMany({ expiresAt: { $lte: new Date() } });
@@ -185,7 +248,8 @@ async function onDbOpen() {
   // Reset them to "failed" to unblock the deduplication index
   // Uses optimistic locking (processingVersion) to prevent race with active workers
   const STALE_PROCESSING_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
-  setInterval(async () => {
+  watchdogInterval = setInterval(async () => {
+    if (mongoose.connection.readyState !== 1) return;
     try {
       const Document = require("./models/Document");
       const staleThreshold = new Date(Date.now() - STALE_PROCESSING_TIMEOUT_MS);
@@ -269,7 +333,43 @@ async function start() {
     await onDbOpen();
 
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+    const server = app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+
+    // Graceful shutdown handler
+    const gracefulShutdown = (signal) => {
+      logger.info(`Received ${signal}. Gracefully shutting down...`);
+
+      // Clear cleanup and watchdog intervals
+      if (cleanupInterval) clearInterval(cleanupInterval);
+      if (watchdogInterval) clearInterval(watchdogInterval);
+
+      // Force exit after 10 seconds if connections hang
+      const forceShutdownTimeout = setTimeout(() => {
+        logger.warn("Graceful shutdown timed out. Forcing exit.");
+        process.exit(1);
+      }, 10000);
+
+      // Unref the timeout so it doesn't keep the process alive
+      forceShutdownTimeout.unref();
+
+      server.close(async () => {
+        logger.info("HTTP server closed.");
+        try {
+          await mongoose.connection.close();
+          logger.info("MongoDB connection closed.");
+          clearTimeout(forceShutdownTimeout);
+          process.exit(0);
+        } catch (dbErr) {
+          logger.error({ err: dbErr }, "Error during database disconnection");
+          clearTimeout(forceShutdownTimeout);
+          process.exit(1);
+        }
+      });
+    };
+
+    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
   } catch (err) {
     logger.error({ err }, "Failed to start server (MongoDB connection failed)");
     process.exit(1);

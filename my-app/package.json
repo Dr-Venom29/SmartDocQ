@@ -21,7 +21,6 @@
     "lucide-react": "^0.534.0",
     "multer": "^2.0.2",
     "react": "^19.1.1",
-    "react-data-grid": "^7.0.0-beta.59",
     "react-dom": "^19.1.1",
     "react-icons": "^5.5.0",
     "react-intersection-observer": "^9.16.0",

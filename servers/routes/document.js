@@ -4,7 +4,7 @@ const multer = require("multer");
 const crypto = require("crypto");
 const path = require("path");
 const Document = require("../models/Document");
-const { verifyToken, ensureActive } = require("./auth");
+const { verifyToken, ensureActive } = require("../middlewares/auth");
 const { verifyCsrf } = require("../middlewares/csrf");
 const fetch = require("node-fetch");
 const logger = require("../lib/logger");
@@ -462,7 +462,7 @@ router.get("/:id/download", async (req, res) => {
       // Service access: accept any doc, no user scoping
     } else {
       // Fallback to normal user token
-      const auth = require("./auth");
+      const auth = require("../middlewares/auth");
       await new Promise((resolve, reject) => {
         auth.verifyToken(req, res, (err) => (err ? reject(err) : resolve()));
       }).catch(() => {});
@@ -787,7 +787,6 @@ router.post("/summarize", verifyToken, ensureActive, verifyCsrf, summarizeLimite
 });
 
 module.exports = router;
-module.exports.verifyToken = verifyToken;
 
 // ---- Background Indexing Helper ----
 async function triggerIndexing(documentId) {

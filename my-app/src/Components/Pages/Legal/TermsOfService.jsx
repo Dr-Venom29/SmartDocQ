@@ -24,6 +24,7 @@ export default function TermsOfService() {
 
   return (
     <main className="terms-page" aria-label="Terms of Service Page">
+      <div className="leg-glow-bg" aria-hidden="true" />
       <div className="terms-container">
         <header id="top" className="terms-hero">
           <h1>Terms of Service</h1>

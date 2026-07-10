@@ -1,0 +1,128 @@
+/* Hallmark · component: Toast · genre: modern-minimal · theme: dark-premium */
+
+.toast-container {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  z-index: 25000;
+  pointer-events: none;
+}
+
+.toast-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: rgba(10, 10, 12, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  box-shadow: 
+    0 12px 32px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  color: #f8fafc;
+  font-family: 'Inter', system-ui, sans-serif;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: auto;
+  max-width: 380px;
+  overflow: hidden;
+  
+  /* Smooth Slide In from Top */
+  animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+.toast-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.toast-message {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Success Type */
+.toast-card.success .toast-accent {
+  background: #10b981;
+}
+.toast-card.success .toast-icon {
+  color: #10b981;
+}
+
+/* Error Type */
+.toast-card.error .toast-accent {
+  background: #ef4444;
+}
+.toast-card.error .toast-icon {
+  color: #ef4444;
+}
+
+/* Info Type */
+.toast-card.info .toast-accent {
+  background: rgba(255, 255, 255, 0.4);
+}
+.toast-card.info .toast-icon {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Slide In */
+@keyframes toastSlideIn {
+  from {
+    transform: translateY(-20px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Exit Slide Out */
+.toast-card.exiting {
+  animation: toastSlideOut 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes toastSlideOut {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-12px) scale(0.96);
+    opacity: 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .toast-container {
+    left: 16px;
+    right: 16px;
+    top: 1rem;
+    bottom: auto;
+  }
+  .toast-card {
+    max-width: 100%;
+    width: 100%;
+  }
+}

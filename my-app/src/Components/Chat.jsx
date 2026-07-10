@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import "./Chat.css";
 import Lottie from "lottie-react";
 import display from "../Animations/Chat-D.json"
-import { useToast } from "./ToastContext";
+import { useToast } from "./Toast/ToastContext";
 import Quiz from "./Quiz";
 import Flashcard from "./Flashcard";
 import { apiUrl, apiFetch } from "../config";

@@ -14,6 +14,15 @@
 /* ============================================================================
  * WHY CHOOSE SMARTDOCQ SECTION STYLING
  * ============================================================================ */
+.why-choose-section *,
+.how-to-use *,
+.mobile-body-section *,
+.simple-header-wrap *,
+.simple-header-wrap {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 .why-choose-section {
   display: flex;
   flex-direction: column;
@@ -39,9 +48,9 @@
 
 .why-choose-container {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: 1.15fr 0.85fr;
   gap: 40px;
-  max-width: 1200px;
+  max-width: 1220px;
   width: 100%;
   margin-top: 40px;
   opacity: 0;
@@ -58,17 +67,17 @@
  * LEFT COLUMN: WORKFLOW COMPARISON PANEL
  * ============================================================================ */
 .workflow-comparison-panel {
-  background: rgba(10, 10, 12, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(9, 9, 11, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.035);
   border-radius: 16px;
-  padding: 32px 28px;
+  padding: 36px 32px;
   display: flex;
   flex-direction: column;
   box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.6),
-    inset 0 1px 1px rgba(255, 255, 255, 0.02);
+    0 30px 60px -15px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
 }
 
 .workflow-header {
@@ -76,105 +85,165 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   width: 100%;
-  padding-bottom: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  margin-bottom: 20px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 24px;
 }
 
 .workflow-title {
   font-family: 'Outfit', system-ui, sans-serif;
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-align: center;
 }
 
 .workflow-title.traditional {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.1em;
 }
 
 .workflow-title.smartdocq {
   color: #06b6d4;
-  text-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(6, 182, 212, 0.15);
 }
 
-.workflow-separator {
-  width: 28px;
+.workflow-separator-line {
+  width: 32px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .workflow-rows {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .workflow-row {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 14px 16px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.01);
-  border: 1px solid rgba(255, 255, 255, 0.02);
-  transition: all 0.3s ease;
+  padding: 10px;
+  border-radius: 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .workflow-row:hover {
-  background: rgba(255, 255, 255, 0.025);
-  border-color: rgba(6, 182, 212, 0.15);
-  transform: translateX(4px);
+  background: rgba(255, 255, 255, 0.01);
+  border-color: rgba(255, 255, 255, 0.03);
+  transform: scale(1.008);
 }
 
 .workflow-col {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .traditional-col {
   justify-content: flex-start;
-  color: rgba(255, 255, 255, 0.45);
+  background: rgba(239, 68, 68, 0.025);
+  border-color: rgba(239, 68, 68, 0.08);
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.workflow-row:hover .traditional-col {
+  background: rgba(239, 68, 68, 0.01);
+  border-color: rgba(239, 68, 68, 0.04);
+  color: rgba(255, 255, 255, 0.4);
+  transform: scale(0.985);
+  opacity: 0.8;
 }
 
 .smartdocq-col {
   justify-content: flex-start;
-  color: #ffffff;
+  background: rgba(16, 185, 129, 0.025);
+  border-color: rgba(16, 185, 129, 0.15);
+  color: rgba(255, 255, 255, 0.85);
   font-weight: 500;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.01);
 }
 
-.workflow-bullet {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+.workflow-row:hover .smartdocq-col {
+  background: rgba(16, 185, 129, 0.065);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #ffffff;
+  transform: scale(1.02);
+  box-shadow: 
+    0 10px 24px -10px rgba(16, 185, 129, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.02);
+}
+
+.workflow-status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
   flex-shrink: 0;
+  border: 1px solid transparent;
 }
 
-.traditional-bullet {
-  background: rgba(255, 255, 255, 0.2);
+.traditional-status {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
 }
 
-.smartdocq-bullet {
-  background: #10b981;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+.smartdocq-status {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.workflow-row:hover .smartdocq-status {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
 }
 
 .workflow-text {
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.4;
+  letter-spacing: -0.005em;
 }
 
-.workflow-arrow {
-  color: rgba(255, 255, 255, 0.2);
-  font-size: 15px;
-  text-align: center;
-  width: 28px;
-  font-weight: bold;
+.workflow-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  margin: 0 4px;
+}
+
+.workflow-connector-svg {
+  color: rgba(255, 255, 255, 0.08);
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: transform;
+}
+
+.workflow-row:hover .workflow-connector-svg {
+  color: #10b981;
+  transform: scaleX(1.1) translateX(1px);
+  filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.35));
 }
 
 /* ============================================================================
- * RIGHT COLUMN: OUTCOME CARDS GRID
+ * RIGHT COLUMN: OUTCOME BENTO CARDS GRID
  * ============================================================================ */
 .outcome-grid {
   display: grid;
@@ -184,38 +253,44 @@
 }
 
 .outcome-card {
-  background: rgba(10, 10, 12, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 12px;
-  padding: 24px;
+  background: rgba(9, 9, 11, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.035);
+  border-radius: 14px;
+  padding: 26px;
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   box-shadow: 
-    0 10px 24px rgba(0, 0, 0, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.02);
-  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    0 16px 36px -10px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), 
+              background-color 0.3s ease, 
+              border-color 0.3s ease, 
+              box-shadow 0.3s ease;
 }
 
 .outcome-card:hover {
   transform: translateY(-4px);
   background: rgba(6, 6, 8, 0.95);
-  border-color: var(--theme-color);
+  border-color: rgba(255, 255, 255, 0.07);
   box-shadow: 
-    0 16px 32px rgba(0, 0, 0, 0.8),
-    0 0 20px var(--theme-border-glow);
+    0 24px 48px -12px rgba(0, 0, 0, 0.9),
+    0 0 25px var(--theme-border-glow);
 }
 
+/* Premium Card back-reflections */
 .card-backing-glow {
   position: absolute;
   inset: 0;
-  border-radius: 12px;
+  border-radius: 14px;
   background: radial-gradient(
-    180px circle at 50% 50%,
+    200px circle at 50% 50%,
     var(--theme-glow),
-    transparent 80%
+    transparent 85%
   );
   opacity: 0;
   pointer-events: none;
@@ -240,41 +315,48 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.035);
+  transition: all 0.3s ease;
 }
 
 .outcome-card:hover .outcome-icon {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
   border-color: var(--theme-color);
+  box-shadow: 0 0 12px var(--theme-border-glow);
 }
 
 .outcome-title {
   font-family: 'Outfit', system-ui, sans-serif;
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 700;
-  color: #ffffff;
   margin: 0;
   letter-spacing: -0.01em;
+  background: var(--title-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .outcome-desc {
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: 13.5px;
+  font-size: 13.2px;
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.55);
   margin: 0;
   position: relative;
   z-index: 1;
+  transition: color 0.3s ease;
 }
 
 .outcome-card:hover .outcome-desc {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.75);
 }
 
+/* Monospace file Extension Badges */
 .outcome-badge-container {
   display: flex;
   flex-wrap: wrap;
@@ -285,14 +367,14 @@
 }
 
 .outcome-badge {
-  padding: 4px 10px;
+  padding: 4.5px 11px;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 500;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.6);
-  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.72);
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .outcome-badge.monospace-badge {
@@ -303,14 +385,27 @@
   font-family: 'Inter', system-ui, sans-serif;
 }
 
+/* Dynamic glow highlights on hover for the badge list */
 .outcome-card:hover .outcome-badge {
   color: #ffffff;
-  border-color: var(--theme-color);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.outcome-card.card-type-files:hover .outcome-badge {
+  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(99, 102, 241, 0.08);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.06);
+}
+
+.outcome-card.card-type-audience:hover .outcome-badge {
+  border-color: rgba(244, 63, 94, 0.45);
+  background: rgba(244, 63, 94, 0.08);
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.06);
 }
 
 /* ============================================================================
- * RESPONSIVENESS AND TABLET/MOBILE OVERRIDES
+ * RESPONSIVENESS AND BREAKPOINTS
  * ============================================================================ */
 @media (max-width: 1024px) {
   .why-choose-container {
@@ -325,7 +420,7 @@
   }
 
   .workflow-comparison-panel {
-    padding: 24px 16px;
+    padding: 24px 20px;
   }
 
   .workflow-title {
@@ -348,6 +443,6 @@
   }
 
   .outcome-card {
-    padding: 20px;
+    padding: 22px;
   }
 }

@@ -342,42 +342,48 @@
 
 .popup {
   position: relative;
-  background: #060608;
+  background: rgba(10, 10, 12, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   padding: 36px;
-  border-radius: 20px;
+  border-radius: 24px;
   width: 440px;
   max-width: 90vw;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   box-shadow: 
-    0 32px 80px rgba(0, 0, 0, 0.85),
+    0 32px 80px rgba(0, 0, 0, 0.8),
     inset 0 1px 0 rgba(255, 255, 255, 0.02);
   z-index: 20001;
   animation: popupSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   color: #fff;
 }
 
+.login-popup {
+  padding-top: 56px;
+}
+
 .login-popup .auth-popup-close {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 14px;
+  right: 14px;
   border: none;
   background: transparent;
   font-size: 16px;
   cursor: pointer;
   color: rgba(255, 255, 255, 0.4);
-  transition: all 0.2s ease;
-  border-radius: 999px;
-  padding: 4px;
-  width: 28px;
-  height: 28px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .login-popup .auth-popup-close:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   color: #ffffff;
+  transform: rotate(90deg);
 }
 
 .contact-popup {

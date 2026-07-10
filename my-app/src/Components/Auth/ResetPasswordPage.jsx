@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { resetPassword } from "../../Services/AuthService";
-import { useToast } from "../ToastContext";
+import { useToast } from "../Toast/ToastContext";
 import PasswordStrength from "./PasswordStrength";
+import "./Login.css";
 
 const INITIAL_STRENGTH = { score: 0, label: "", requirements: {} };
 
@@ -78,6 +79,7 @@ export default function ResetPasswordPage() {
   if (!token) {
     return (
       <div className="reset-page">
+        <div className="leg-glow-bg" aria-hidden="true" />
         <div className="reset-card">
           <h2 className="form-title">Invalid reset link</h2>
           <p className="form-subtitle">
@@ -90,6 +92,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="reset-page">
+      <div className="leg-glow-bg" aria-hidden="true" />
       <div className="reset-card">
         <h2 className="form-title">Reset password</h2>
         <p className="form-subtitle">Choose a new password for your account</p>
