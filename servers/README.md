@@ -18,14 +18,15 @@ Copy `.env.example` to `.env` and fill in:
 - MAX_UPLOAD_SIZE_MB: Maximum upload size accepted by the Node gateway (default: `15`).
 - MAIL_USER: Gmail address used by Nodemailer (required for development only)
 - MAIL_PASS: Google App Password used by Nodemailer (required for development only)
-- RESEND_API_KEY: API key for the Resend Node SDK (required for production only)
+- BREVO_MAIL_USER: Brevo SMTP login email (required for production only)
+- BREVO_MAIL_PASS: Brevo SMTP relay key (required for production only)
 
 ## Email Infrastructure
 SmartDocQ features a dual-provider abstraction architecture inside `services/mailService.js`.
 Depending on the environment configuration, the gateway selects the corresponding provider at boot time:
-* **Development (`NODE_ENV !== "production"`)**: Dynamically resolves to `gmailProvider.js` utilizing **Nodemailer SMTP** (ports 465, secured, custom timeouts).
-* **Production (`NODE_ENV === "production"`)**: Dynamically resolves to `resendProvider.js` utilizing the official **Resend Node SDK**.
-This architecture ensures Nodemailer is never initialized in production and Resend is never initialized in development, maintaining a clean runtime memory footprint.
+* **Development (`NODE_ENV !== "production"`)**: Dynamically resolves to `gmailProvider.js` utilizing **Gmail SMTP** via Nodemailer (port 465, SSL/TLS, custom timeouts).
+* **Production (`NODE_ENV === "production"`)**: Dynamically resolves to `brevoProvider.js` utilizing **Brevo SMTP** via Nodemailer (port 587, STARTTLS).
+This architecture ensures Gmail SMTP configurations are never loaded in production and Brevo SMTP configurations are never loaded in development, maintaining a clean runtime state.
 
 ## Authentication & Session Management
 Uses secure HTTP-Only cookies for JWT storage coupled with database-backed session tracking in MongoDB. All AI endpoints require a valid authenticated session before requests are forwarded to the Flask AI service.

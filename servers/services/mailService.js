@@ -2,16 +2,10 @@ const logger = require("../lib/logger");
 const isProduction = process.env.NODE_ENV === "production";
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "smartdocq@gmail.com";
 
-let provider = null;
-
-// Initialize the email provider once on startup
-if (isProduction) {
-  logger.info("Email provider: Resend");
-  provider = require("./providers/resendProvider");
-} else {
-  logger.info("Email provider: Gmail SMTP");
-  provider = require("./providers/gmailProvider");
-}
+logger.info(`Email provider: ${isProduction ? "Brevo SMTP" : "Gmail SMTP"}`);
+const provider = isProduction
+  ? require("./providers/brevoProvider")
+  : require("./providers/gmailProvider");
 
 /**
  * Send an email using the selected provider abstraction.

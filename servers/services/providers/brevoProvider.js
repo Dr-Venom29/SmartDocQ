@@ -6,17 +6,17 @@ let _transporter = null;
 function getTransporter() {
   if (_transporter) return _transporter;
 
-  if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
-    throw new Error("Gmail SMTP credentials (MAIL_USER/MAIL_PASS) are not configured");
+  if (!process.env.BREVO_MAIL_USER || !process.env.BREVO_MAIL_PASS) {
+    throw new Error("Brevo SMTP credentials (BREVO_MAIL_USER/BREVO_MAIL_PASS) are not configured");
   }
 
   _transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    secure: false,
     auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS,
+      user: process.env.BREVO_MAIL_USER,
+      pass: process.env.BREVO_MAIL_PASS,
     },
     connectionTimeout: 10000,
     greetingTimeout: 10000,
@@ -24,8 +24,8 @@ function getTransporter() {
   });
 
   _transporter.verify()
-    .then(() => logger.info("Gmail SMTP verified"))
-    .catch((err) => logger.error({ err }, "Gmail SMTP verify failed"));
+    .then(() => logger.info("Brevo SMTP verified"))
+    .catch((err) => logger.error({ err }, "Brevo SMTP verify failed"));
 
   return _transporter;
 }
@@ -35,15 +35,15 @@ async function send(mailOptions) {
 
   try {
     const info = await transporter.sendMail({
-      from: `"SmartDocQ" <${process.env.MAIL_USER}>`,
+      from: `"SmartDocQ" <${process.env.BREVO_MAIL_USER}>`,
       to: mailOptions.to,
       subject: mailOptions.subject,
       html: mailOptions.html,
     });
-    logger.info({ messageId: info.messageId }, "Email sent successfully via Gmail SMTP");
+    logger.info({ messageId: info.messageId }, "Email sent successfully via Brevo SMTP");
     return info;
   } catch (err) {
-    logger.error({ err }, "Gmail sendMail failed");
+    logger.error({ err }, "Brevo sendMail failed");
     throw err;
   }
 }
