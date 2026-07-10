@@ -45,13 +45,13 @@ async function sendMail(mailOptions) {
     throw new Error("Email service is not configured");
   }
   
-  logger.info("Calling transporter.sendMail");
+  logger.debug("Calling transporter.sendMail");
   try {
     const info = await transporter.sendMail({
       from: `"SmartDocQ" <${process.env.MAIL_USER}>`,
       ...mailOptions,
     });
-    logger.info(`Email sent successfully: ${info.messageId}`);
+    logger.info({ messageId: info.messageId }, "Email sent successfully");
     return info;
   } catch (err) {
     logger.error({ err }, "SMTP transporter sendMail failed");

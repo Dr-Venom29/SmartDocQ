@@ -10,6 +10,7 @@ const expressPino = require("express-pino-logger");
 const client = require("prom-client");
 const logger = require("./lib/logger");
 const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first");
 const helmet = require("helmet");
 const compression = require("compression");
 
