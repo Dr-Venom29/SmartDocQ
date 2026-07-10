@@ -1,55 +1,39 @@
-const nodemailer = require("nodemailer");
+const SibApiV3Sdk = require("sib-api-v3-sdk");
 const logger = require("../../lib/logger");
 
-let _transporter = null;
+logger.info("Brevo HTTPS API provider selected");
 
-function getTransporter() {
-  if (_transporter) return _transporter;
-
-  if (!process.env.BREVO_MAIL_USER || !process.env.BREVO_MAIL_PASS) {
-    throw new Error("Brevo SMTP credentials (BREVO_MAIL_USER/BREVO_MAIL_PASS) are not configured");
-  }
-
-  const host = process.env.BREVO_MAIL_HOST || "smtp-relay.brevo.com";
-  const port = parseInt(process.env.BREVO_MAIL_PORT || "587", 10);
-  const secure = process.env.BREVO_MAIL_SECURE === "true" || (process.env.BREVO_MAIL_SECURE !== "false" && port === 465);
-
-  _transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: {
-      user: process.env.BREVO_MAIL_USER,
-      pass: process.env.BREVO_MAIL_PASS,
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-  });
-
-  _transporter.verify()
-    .then(() => logger.info("Brevo SMTP verified"))
-    .catch((err) => logger.error({ err }, "Brevo SMTP verify failed"));
-
-  return _transporter;
+if (!process.env.BREVO_API_KEY) {
+  throw new Error("BREVO_API_KEY is not configured");
 }
 
+if (!process.env.BREVO_SENDER_EMAIL) {
+  throw new Error("BREVO_SENDER_EMAIL is not configured");
+}
+
+const client = SibApiV3Sdk.ApiClient.instance;
+client.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
+
+const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+
 async function send(mailOptions) {
-  logger.info("Entered Brevo send()");
-  const transporter = getTransporter();
+  logger.info({ recipient: mailOptions.to, subject: mailOptions.subject }, "Entered Brevo send()");
+
+  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+  sendSmtpEmail.subject = mailOptions.subject;
+  sendSmtpEmail.htmlContent = mailOptions.html;
+  sendSmtpEmail.sender = {
+    name: process.env.BREVO_SENDER_NAME || "SmartDocQ",
+    email: process.env.BREVO_SENDER_EMAIL
+  };
+  sendSmtpEmail.to = [{ email: mailOptions.to }];
 
   try {
-    const fromAddress = process.env.BREVO_MAIL_SENDER || "smartdocq@gmail.com";
-    const info = await transporter.sendMail({
-      from: `"SmartDocQ" <${fromAddress}>`,
-      to: mailOptions.to,
-      subject: mailOptions.subject,
-      html: mailOptions.html,
-    });
-    logger.info({ messageId: info.messageId }, "Email sent successfully via Brevo SMTP");
-    return info;
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    logger.info({ messageId: data.messageId, recipient: mailOptions.to }, "Email sent successfully via Brevo HTTPS API");
+    return data;
   } catch (err) {
-    logger.error({ err }, "Brevo sendMail failed");
+    logger.error({ err, recipient: mailOptions.to }, "Brevo API sendTransacEmail failed");
     throw err;
   }
 }

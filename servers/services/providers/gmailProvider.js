@@ -1,6 +1,8 @@
 const nodemailer = require("nodemailer");
 const logger = require("../../lib/logger");
 
+logger.info("Gmail SMTP provider selected");
+
 let _transporter = null;
 
 function getTransporter() {
@@ -31,7 +33,7 @@ function getTransporter() {
 }
 
 async function send(mailOptions) {
-  logger.info("Entered Gmail send()");
+  logger.info({ recipient: mailOptions.to, subject: mailOptions.subject }, "Entered Gmail send()");
   const transporter = getTransporter();
 
   try {
@@ -41,10 +43,10 @@ async function send(mailOptions) {
       subject: mailOptions.subject,
       html: mailOptions.html,
     });
-    logger.info({ messageId: info.messageId }, "Email sent successfully via Gmail SMTP");
+    logger.info({ messageId: info.messageId, recipient: mailOptions.to }, "Email sent successfully via Gmail SMTP");
     return info;
   } catch (err) {
-    logger.error({ err }, "Gmail sendMail failed");
+    logger.error({ err, recipient: mailOptions.to }, "Gmail sendMail failed");
     throw err;
   }
 }
