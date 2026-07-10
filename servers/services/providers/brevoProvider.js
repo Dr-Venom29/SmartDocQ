@@ -10,10 +10,14 @@ function getTransporter() {
     throw new Error("Brevo SMTP credentials (BREVO_MAIL_USER/BREVO_MAIL_PASS) are not configured");
   }
 
+  const host = process.env.BREVO_MAIL_HOST || "smtp-relay.brevo.com";
+  const port = parseInt(process.env.BREVO_MAIL_PORT || "587", 10);
+  const secure = process.env.BREVO_MAIL_SECURE === "true" || (process.env.BREVO_MAIL_SECURE !== "false" && port === 465);
+
   _transporter = nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 587,
-    secure: false,
+    host,
+    port,
+    secure,
     auth: {
       user: process.env.BREVO_MAIL_USER,
       pass: process.env.BREVO_MAIL_PASS,
