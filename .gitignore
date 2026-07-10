@@ -44,3 +44,6 @@ coverage.xml
 # Python virtual environments
 venv/
 .venv/
+
+# Workspace Agent Configurations
+.agents/

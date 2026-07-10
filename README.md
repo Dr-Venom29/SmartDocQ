@@ -255,6 +255,9 @@ npm install
 # FLASK_INDEX_URL=http://localhost:5001/api/index-from-atlas
 # FLASK_CONVERT_URL=http://localhost:5001/api/convert/word-to-pdf
 # MAX_UPLOAD_SIZE_MB=15
+# MAIL_USER=your_gmail_address (required in development only)
+# MAIL_PASS=your_gmail_app_password (required in development only)
+# RESEND_API_KEY=your_resend_api_key (required in production only)
 
 npm start
 ```

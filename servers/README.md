@@ -16,6 +16,16 @@ Copy `.env.example` to `.env` and fill in:
 - LOG_LEVEL: Optional Pino log level (e.g., `info`, `warn`, `error`, `debug`; default: `info`).
 - NODE_ENV: Application environment (e.g., `development`, `production`).
 - MAX_UPLOAD_SIZE_MB: Maximum upload size accepted by the Node gateway (default: `15`).
+- MAIL_USER: Gmail address used by Nodemailer (required for development only)
+- MAIL_PASS: Google App Password used by Nodemailer (required for development only)
+- RESEND_API_KEY: API key for the Resend Node SDK (required for production only)
+
+## Email Infrastructure
+SmartDocQ features a dual-provider abstraction architecture inside `services/mailService.js`.
+Depending on the environment configuration, the gateway selects the corresponding provider at boot time:
+* **Development (`NODE_ENV !== "production"`)**: Dynamically resolves to `gmailProvider.js` utilizing **Nodemailer SMTP** (ports 465, secured, custom timeouts).
+* **Production (`NODE_ENV === "production"`)**: Dynamically resolves to `resendProvider.js` utilizing the official **Resend Node SDK**.
+This architecture ensures Nodemailer is never initialized in production and Resend is never initialized in development, maintaining a clean runtime memory footprint.
 
 ## Authentication & Session Management
 Uses secure HTTP-Only cookies for JWT storage coupled with database-backed session tracking in MongoDB. All AI endpoints require a valid authenticated session before requests are forwarded to the Flask AI service.

@@ -1,62 +1,24 @@
-const nodemailer = require("nodemailer");
 const logger = require("../lib/logger");
+const isProduction = process.env.NODE_ENV === "production";
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "smartdocq@gmail.com";
 
-let _transporter = null;
+let provider = null;
 
-/**
- * Returns a reusable nodemailer transporter.
- * Created once on first call and cached for the lifetime of the process.
- */
-function getTransporter() {
-  if (_transporter) return _transporter;
-
-  if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
-    return null;
-  }
-
-  _transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS,
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-  });
-
-  _transporter.verify()
-    .then(() => logger.info("SMTP connection verified"))
-    .catch((err) => logger.error({ err }, "SMTP verify failed"));
-
-  return _transporter;
+// Initialize the email provider once on startup
+if (isProduction) {
+  logger.info("Email provider: Resend");
+  provider = require("./providers/resendProvider");
+} else {
+  logger.info("Email provider: Gmail SMTP");
+  provider = require("./providers/gmailProvider");
 }
 
 /**
- * Send an email using the shared transporter.
- * Returns a promise. Caller decides whether to await or fire-and-forget.
+ * Send an email using the selected provider abstraction.
+ * Returns a promise.
  */
-async function sendMail(mailOptions) {
-  const transporter = getTransporter();
-  if (!transporter) {
-    logger.error("Mail not configured (MAIL_USER/MAIL_PASS missing)");
-    throw new Error("Email service is not configured");
-  }
-  
-  logger.debug("Calling transporter.sendMail");
-  try {
-    const info = await transporter.sendMail({
-      from: `"SmartDocQ" <${process.env.MAIL_USER}>`,
-      ...mailOptions,
-    });
-    logger.info({ messageId: info.messageId }, "Email sent successfully");
-    return info;
-  } catch (err) {
-    logger.error({ err }, "SMTP transporter sendMail failed");
-    throw err;
-  }
+function sendMail(mailOptions) {
+  return provider.send(mailOptions);
 }
 
 /**
@@ -124,7 +86,7 @@ function sendPasswordChangedEmail(email, changeTime) {
           </p>
           <p style="margin: 0 0 0; font-size: 14px; line-height: 1.6; color: #555555;">
             If you did not change your password, please secure your account immediately and
-            <a href="mailto:${process.env.MAIL_USER || 'support@smartdocq.com'}" style="color: #111; font-weight: 600; text-decoration: underline;">contact support</a>.
+            <a href="mailto:${SUPPORT_EMAIL}" style="color: #111; font-weight: 600; text-decoration: underline;">contact support</a>.
           </p>
         </div>
         <div style="border-top: 1px solid #eeeeee; padding: 18px 32px;">
@@ -139,7 +101,6 @@ function sendPasswordChangedEmail(email, changeTime) {
 }
 
 module.exports = {
-  getTransporter,
   sendMail,
   sendPasswordResetEmail,
   sendPasswordChangedEmail
