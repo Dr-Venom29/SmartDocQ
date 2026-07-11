@@ -67,6 +67,9 @@ export const apiFetch = async (
 
     return res;
   } catch (err) {
+    if (err.name === "AbortError") {
+      throw err;
+    }
     console.error("API Fetch Error:", err);
     throw new Error("Network error");
   }

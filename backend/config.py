@@ -92,3 +92,7 @@ JAILBREAK_THRESHOLD = int(os.environ.get("JAILBREAK_THRESHOLD", "3"))
 
 # When enabled, client-facing error responses may include exception details.
 FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "0").strip().lower() in ("1", "true", "yes")
+
+# ====== SPREADSHEET PREVIEW CONFIG ======
+MAX_PREVIEW_ROWS_PER_SHEET = int(os.environ.get("MAX_PREVIEW_ROWS_PER_SHEET", "500"))
+MAX_PREVIEW_COLUMNS = int(os.environ.get("MAX_PREVIEW_COLUMNS", "100"))

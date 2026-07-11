@@ -42,6 +42,7 @@
   display: flex;
   flex: 1;
   z-index: 1; /* Place above ambient glows */
+  min-width: 0;
 }
 
 .upload-section {
@@ -269,7 +270,7 @@
 .upload-container-dark.three-cols .history-section { width: 20%; }
 .upload-container-dark.three-cols .chat-section { width: 35%; }
 .right-section.full-width { width: calc(100% - 50px); }
-.three-cols-container { display: flex; flex: 1; gap: 10px; }
+.three-cols-container { display: flex; flex: 1; gap: 10px; min-width: 0; overflow: hidden; }
 
 /* Responsive */
 @media (max-width: 768px) {

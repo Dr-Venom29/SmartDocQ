@@ -92,6 +92,7 @@ if (!FLASK_BASE) FLASK_BASE = "http://localhost:5001"; // dev fallback only
 const FLASK_INDEX_URL = process.env.FLASK_INDEX_URL || `${FLASK_BASE}/api/index-from-atlas`;
 const FLASK_REPLACE_TEXT_URL = process.env.FLASK_REPLACE_TEXT_URL || `${FLASK_BASE}/api/index/replace-text`;
 const FLASK_CONVERT_URL = process.env.FLASK_CONVERT_URL || `${FLASK_BASE}/api/convert/word-to-pdf`;
+const FLASK_FETCH_TIMEOUT = Number(process.env.FLASK_FETCH_TIMEOUT || "45") * 1000;
 
 const rawMb = Number(process.env.MAX_UPLOAD_SIZE_MB);
 const MAX_UPLOAD_SIZE_MB = Number.isFinite(rawMb) && rawMb > 0 ? rawMb : 15;
@@ -613,6 +614,51 @@ router.get("/preview/:docId.pdf", verifyToken, ensureActive, async (req, res) =>
     flaskRes.body.pipe(res);
   } catch (err) {
     logger.error({ err }, "Error fetching document preview");
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/document/:id/preview/spreadsheet
+router.get("/:id/preview/spreadsheet", verifyToken, ensureActive, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const mongoose = require("mongoose");
+
+    const query = {
+      user: req.userId,
+      $or: [
+        { doc_id: id }
+      ]
+    };
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query.$or.push({ _id: id });
+    }
+    const doc = await Document.findOne(query);
+    if (!doc) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+
+    const flaskUrl = `${FLASK_BASE}/api/document/preview/${doc.doc_id}/spreadsheet`;
+    const flaskRes = await fetch(flaskUrl, {
+      method: "GET",
+      headers: {
+        "x-service-token": process.env.SERVICE_TOKEN,
+        "x-user-id": req.userId.toString()
+      },
+      timeout: FLASK_FETCH_TIMEOUT
+    });
+
+    if (!flaskRes.ok) {
+      const errPayload = await flaskRes.json().catch(() => ({}));
+      return res.status(flaskRes.status).json({ 
+        message: errPayload.error || "Failed to retrieve spreadsheet preview from Python service" 
+      });
+    }
+
+    const data = await flaskRes.json();
+    return res.json(data);
+  } catch (err) {
+    logger.error({ err }, "Error fetching spreadsheet preview");
     res.status(500).json({ message: err.message });
   }
 });

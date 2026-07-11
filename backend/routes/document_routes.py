@@ -316,3 +316,106 @@ def replace_text_index():
         logger.exception("Unexpected error in /api/index/replace-text")
         message = str(e) if FLASK_DEBUG else "An unexpected server error occurred."
         return jsonify({"error": message}), 500
+
+
+def _normalize_cell(val):
+    if val is None:
+        return ""
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        import math
+        if math.isnan(val) or math.isinf(val):
+            return str(val)
+        return val
+    import datetime
+    if isinstance(val, (datetime.datetime, datetime.date)):
+        return val.isoformat()
+    try:
+        return str(val)
+    except Exception:
+        return ""
+
+
+@document_bp.route("/api/document/preview/<doc_id>/spreadsheet", methods=["GET"])
+def preview_spreadsheet(doc_id):
+    try:
+        if not doc_id or not doc_id.strip():
+            return jsonify({"error": "Missing doc_id"}), 400
+
+        ok, filename, mimetype, data = fetch_doc_from_node(doc_id)
+        if not ok:
+            return jsonify({"error": filename}), 404
+
+        from utils.extraction import get_document_type
+        doc_type = get_document_type(filename, mimetype)
+
+        if doc_type not in ("csv", "xlsx"):
+            return jsonify({"error": "Unsupported document type for spreadsheet preview"}), 415
+
+        from utils.table_extraction import extract_tables_for_file
+        tables = extract_tables_for_file(filename, mimetype, data, source_key=doc_id)
+
+        # Group and combine tables by sheet
+        final_sheets = []
+        for t in tables:
+            base_sheet_name = t.get("sheet") or "Sheet1"
+            headers = [_normalize_cell(h) for h in t.get("headers", [])]
+            rows = [[_normalize_cell(cell) for cell in row] for row in t.get("rows", [])]
+
+            matched_entry = None
+            for entry in final_sheets:
+                if entry["base_name"] == base_sheet_name and entry["headers"] == headers:
+                    matched_entry = entry
+                    break
+
+            if matched_entry:
+                matched_entry["rows"].extend(rows)
+            else:
+                count = sum(1 for entry in final_sheets if entry["base_name"] == base_sheet_name)
+                name = base_sheet_name if count == 0 else f"{base_sheet_name} · Table {count + 1}"
+                new_entry = {
+                    "base_name": base_sheet_name,
+                    "name": name,
+                    "headers": headers,
+                    "rows": rows,
+                }
+                final_sheets.append(new_entry)
+
+        # Apply configuration limits
+        from config import MAX_PREVIEW_ROWS_PER_SHEET, MAX_PREVIEW_COLUMNS
+        sheets_response = []
+        for entry in final_sheets:
+            all_rows = entry["rows"]
+            headers = entry["headers"]
+
+            raw_row_count = len(all_rows)
+            raw_col_count = max(len(headers), max((len(r) for r in all_rows), default=0))
+
+            truncated_headers = headers[:MAX_PREVIEW_COLUMNS]
+            truncated_rows = [r[:MAX_PREVIEW_COLUMNS] for r in all_rows[:MAX_PREVIEW_ROWS_PER_SHEET]]
+
+            is_truncated = (raw_row_count > MAX_PREVIEW_ROWS_PER_SHEET) or (raw_col_count > MAX_PREVIEW_COLUMNS)
+
+            sheets_response.append({
+                "name": entry["name"],
+                "headers": truncated_headers,
+                "rows": truncated_rows,
+                "rowCount": raw_row_count,
+                "columnCount": raw_col_count,
+                "truncated": is_truncated
+            })
+
+        if doc_type == "csv":
+            if sheets_response:
+                sheets_response[0]["name"] = "CSV"
+
+        return jsonify({
+            "type": doc_type,
+            "sheets": sheets_response
+        })
+    except Exception as e:
+        logger.exception("Unexpected error in spreadsheet preview endpoint")
+        message = str(e) if FLASK_DEBUG else "An unexpected server error occurred."
+        return jsonify({"error": message}), 500
+

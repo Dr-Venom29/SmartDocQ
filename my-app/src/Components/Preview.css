@@ -8,6 +8,7 @@
   transition: all 0.3s ease;
   position: relative;
   max-height: 90vh;
+  min-width: 0;
 }
 
 .preview-header {
@@ -35,6 +36,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .preview-empty-state {

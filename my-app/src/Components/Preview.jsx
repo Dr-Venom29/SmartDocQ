@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "./Toast/ToastContext";
 import { apiFetch } from "../config";
+import SpreadsheetPreview from "./SpreadsheetPreview";
 import "./Preview.css";
 
 const Preview = ({
@@ -315,6 +316,16 @@ function PreviewRenderer({ file, fileUrl, documentId, filename, onTextSaved }) {
   // Text preview
   if (type === "text/plain" || extension === "txt") {
     return <PlainTextPreview file={file} documentId={documentId} filename={filename} onTextSaved={onTextSaved} />;
+  }
+
+  // Spreadsheet preview
+  if (
+    type === "text/csv" ||
+    type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    extension === "csv" ||
+    extension === "xlsx"
+  ) {
+    return <SpreadsheetPreview documentId={documentId} fileType={extension} />;
   }
 
   // Word preview fallback
