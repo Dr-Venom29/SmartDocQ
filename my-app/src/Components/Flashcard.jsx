@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useToast } from "./Toast/ToastContext";
 import { apiFetch } from "../config";
 import "./Flashcard.css";
@@ -43,28 +44,17 @@ const Flashcard = ({ docId, onClose }) => {
 
       const data = await response.json();
       if (response.ok && data.success) {
-        const cards = data.flashcards || [];
-        const generated = cards.length;
-        if (generated === 0) {
-          showToast("No flashcards could be generated from this document. Try choosing fewer cards or use a richer document.", { type: "error" });
-          setShowSettings(true);
-          return;
-        }
-        if (generated < numCards) {
-          showToast(`Only ${generated} of ${numCards} flashcards could be generated from this document.`, { type: "warning" });
-        } else {
-          showToast(`Generated ${generated} flashcards.`, { type: "success" });
-        }
-        setFlashcards(cards);
+        setFlashcards(data.flashcards);
         setCurrentIndex(0);
         setIsFlipped(false);
         setStudyMode(true);
+        setMasteredCards(new Set());
       } else {
         showToast(data.error || "Failed to generate flashcards", { type: "error" });
         setShowSettings(true);
       }
     } catch (error) {
-      console.error("Flashcard generation error:", error);
+      console.error("Flashcards generation error:", error);
       showToast("Failed to generate flashcards: " + error.message, { type: "error" });
       setShowSettings(true);
     } finally {
@@ -72,9 +62,24 @@ const Flashcard = ({ docId, onClose }) => {
     }
   };
 
-  const handleFlip = () => setIsFlipped(!isFlipped);
-  const handleNext = () => { if (currentIndex < flashcards.length - 1) { setCurrentIndex(currentIndex + 1); setIsFlipped(false); } };
-  const handlePrevious = () => { if (currentIndex > 0) { setCurrentIndex(currentIndex - 1); setIsFlipped(false); } };
+  const handleFlip = () => {
+    setIsFlipped(!isFlipped);
+  };
+
+  const handleNext = () => {
+    setIsFlipped(false);
+    if (currentIndex < flashcards.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    setIsFlipped(false);
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
+  };
+
   const toggleMastered = () => {
     const next = new Set(masteredCards);
     if (next.has(currentIndex)) next.delete(currentIndex); else next.add(currentIndex);
@@ -92,24 +97,25 @@ const Flashcard = ({ docId, onClose }) => {
   };
 
   if (isLoading) {
-    return (
-  <div className="flashcard-backdrop" onClick={onBackdropClick}>
+    return createPortal(
+      <div className="flashcard-backdrop" onClick={onBackdropClick}>
         <div className="flashcard-container">
           <div className="flashcard-loading">
             <div className="spinner"></div>
             <p>Generating your flashcards...</p>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
   if (showSettings) {
-    return (
-  <div className="flashcard-backdrop" onClick={onBackdropClick}>
+    return createPortal(
+      <div className="flashcard-backdrop" onClick={onBackdropClick}>
         <div className="flashcard-container">
           <div className="flashcard-header">
-            <h2>SmartCardsQ</h2>
+            <h2>SmartCards</h2>
             <button className="close-btn" onClick={onClose}>✕</button>
           </div>
 
@@ -132,15 +138,16 @@ const Flashcard = ({ docId, onClose }) => {
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
   if (!studyMode || flashcards.length === 0) return null;
   const currentCard = flashcards[currentIndex];
 
-  return (
-  <div className="flashcard-backdrop" onClick={onBackdropClick}>
+  return createPortal(
+    <div className="flashcard-backdrop" onClick={onBackdropClick}>
       <div className="flashcard-container">
         <div className="flashcard-header">
           <h2>SmartCardsQ</h2>
@@ -188,7 +195,8 @@ const Flashcard = ({ docId, onClose }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

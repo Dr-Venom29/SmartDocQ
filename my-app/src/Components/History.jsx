@@ -12,6 +12,15 @@ const HistoryPropTypes = {
     }
     return null;
   },
+  isOpen: (props) => {
+    if (typeof props.isOpen !== 'boolean') {
+      return new Error('isOpen must be a boolean');
+    }
+    return null;
+  },
+  activeId: (props) => {
+    return null;
+  },
   onToggle: (props) => {
     if (typeof props.onToggle !== 'function') {
       return new Error('onToggle must be a function');
@@ -53,6 +62,7 @@ const HistoryPropTypes = {
 const History = ({
   history = [],
   isOpen,
+  activeId,
   onToggle,
   onSelect,
   onRemove,
@@ -388,107 +398,111 @@ const History = ({
               </div>
             ) : (
               <ul className="history-list">
-                {filteredAndSortedHistory.map((item) => (
-                  <li
-                    key={item.id}
-                    className={`history-item ${item.pinned ? 'pinned-item' : ''}`}
-                    onClick={() => !actionLock && onSelect(item)}
-                  >
-                    <div className="file-info">
-                      <div className="file-icon">{getFileIcon(item.name)}</div>
-                      <div className="file-size">{formatBytes(item.size)}</div>
-                    </div>
-
-                    <div className="item-details">
-                      {editingId === item.id ? (
-                        <div className="edit-mode">
-                          <input
-                            type="text"
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            onBlur={handleInputBlur}
-                            className="rename-input"
-                            autoFocus
-                            disabled={actionLock}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <div className="edit-actions">
-                            <button
-                              className="save-btn"
-                              onMouseDown={handleSaveMouseDown}
-                              title="Save"
-                              disabled={actionLock}
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            </button>
-                            <button
-                              className="cancel-btn"
-                              onMouseDown={handleCancelMouseDown}
-                              title="Cancel"
-                              disabled={actionLock}
-                            >
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                              </svg>
-                            </button>
-                          </div>
+                {filteredAndSortedHistory.map((item) => {
+                  const isActive = item.id === activeId || item._id === activeId || item.doc_id === activeId;
+                  return (
+                    <li
+                      key={item.id}
+                      className={`history-item ${item.pinned ? 'pinned-item' : ''} ${isActive ? 'active-item' : ''}`}
+                      onClick={() => !actionLock && onSelect(item)}
+                    >
+                      <div className="file-info">
+                        <div className={`file-icon ${formatFileType(item.type, item.name).toLowerCase()}-icon`}>
+                          {getFileIcon(item.name)}
                         </div>
-                      ) : (
-                        <>
-                          <div className="history-name">{item.name}</div>
-                          <div className="file-type">{formatFileType(item.type, item.name)}</div>
-                        </>
-                      )}
-                    </div>
+                        <div className="file-size">{formatBytes(item.size)}</div>
+                      </div>
 
-                    <div className="item-actions">
-                      {/* Pin/Unpin Button - Enhanced Styling */}
-                      <button
-                        className={`pin-button ${item.pinned ? 'pinned' : ''}`}
-                        title={item.pinned ? "Remove bookmark" : "Bookmark document"}
-                        aria-label={item.pinned ? "Remove bookmark" : "Bookmark document"}
-                        onClick={(e) => handlePinClick(item, e)}
-                        disabled={actionLock || editingId !== null}
-                      >
-                        <span className="pin-icon">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill={item.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                      <div className="item-details">
+                        {editingId === item.id ? (
+                          <div className="edit-mode" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              value={newName}
+                              onChange={(e) => setNewName(e.target.value)}
+                              onKeyDown={handleKeyDown}
+                              onBlur={handleInputBlur}
+                              className="rename-input"
+                              autoFocus
+                              disabled={actionLock}
+                            />
+                            <div className="edit-actions">
+                              <button
+                                className="save-btn"
+                                onMouseDown={handleSaveMouseDown}
+                                title="Save"
+                                disabled={actionLock}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              </button>
+                              <button
+                                className="cancel-btn"
+                                onMouseDown={handleCancelMouseDown}
+                                title="Cancel"
+                                disabled={actionLock}
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18" />
+                                  <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="history-name" title={item.name}>{item.name}</div>
+                            <div className="file-type">{formatFileType(item.type, item.name)}</div>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="item-actions" onClick={(e) => e.stopPropagation()}>
+                        {/* Pin/Unpin Button - Enhanced Styling */}
+                        <button
+                          className={`pin-button ${item.pinned ? 'pinned' : ''}`}
+                          title={item.pinned ? "Remove bookmark" : "Bookmark document"}
+                          aria-label={item.pinned ? "Remove bookmark" : "Bookmark document"}
+                          onClick={(e) => handlePinClick(item, e)}
+                          disabled={actionLock || editingId !== null}
+                        >
+                          <span className="pin-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill={item.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                            </svg>
+                          </span>
+                        </button>
+
+                        <button
+                          className="history-edit"
+                          title="Rename document"
+                          aria-label="Rename document"
+                          onClick={(e) => handleEditClick(item, e)}
+                          disabled={actionLock || editingId !== null}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                           </svg>
-                        </span>
-                      </button>
+                        </button>
 
-                      <button
-                        className="history-edit"
-                        title="Rename document"
-                        aria-label="Rename document"
-                        onClick={(e) => handleEditClick(item, e)}
-                        disabled={actionLock || editingId !== null}
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                          <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      </button>
-
-                      <button
-                        className="history-delete"
-                        title="Remove from history"
-                        aria-label="Remove from history"
-                        onClick={(e) => handleDeleteClick(item, e)}
-                        disabled={actionLock || editingId !== null}
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
-                      </button>
-                    </div>
-                  </li>
-                ))}
+                        <button
+                          className="history-delete"
+                          title="Remove from history"
+                          aria-label="Remove from history"
+                          onClick={(e) => handleDeleteClick(item, e)}
+                          disabled={actionLock || editingId !== null}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

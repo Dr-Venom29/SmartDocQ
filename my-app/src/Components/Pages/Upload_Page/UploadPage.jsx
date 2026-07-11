@@ -264,6 +264,7 @@ const UploadPage = () => {
       <History
         history={history}
         isOpen={isHistoryOpen}
+        activeId={resolveDocId(currentDoc)}
         onToggle={() => setIsHistoryOpen(!isHistoryOpen)}
         onSelect={selectHistoryItem}
         onRemove={(id) => removeHistoryItem(id, currentDoc)}

@@ -1,7 +1,7 @@
 .preview-section {
   padding: 0;
-  background: linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, #070708 0%, #020202 100%);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -15,20 +15,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px;
-  background: linear-gradient(90deg, #0f0f0f 0%, #050505 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  user-select: none;
-  -webkit-user-drag: none;
+  padding: 0 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  height: 77px;
+  box-sizing: border-box;
+  backdrop-filter: blur(10px);
 }
 
 .preview-section h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-family: 'Outfit', 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
   margin: 0;
-  color: #e0e0e0;
-  letter-spacing: 0.3px;
-  padding-left: 8px;
+  color: #ffffff;
+  letter-spacing: -0.4px;
 }
 
 .preview-content {
@@ -199,24 +200,25 @@
   color: #6366f1;
 }
 
-/* Toggle Button */
 .preview-toggle {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #e0e0e0;
+  color: #a1a1aa;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .preview-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  transform: scale(1.05);
 }
 
 /* Selection UI (floating toolbar) */
@@ -279,9 +281,10 @@
 }
 
 .preview-section.closed .preview-header {
-  padding: 16px 0;
+  padding: 0;
   justify-content: center;
-  height:69px;
+  height: 77px;
+  box-sizing: border-box;
 }
 
 .preview-section.closed .preview-header h2 {

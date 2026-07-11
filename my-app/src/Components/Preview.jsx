@@ -204,7 +204,7 @@ const Preview = ({
       style={{ width: isOpen ? `${previewWidth}%` : "60px" }}
     >
       <div className="preview-header">
-        <h2>Document Preview</h2>
+        <h2>Preview</h2>
         <button
           className="preview-toggle"
           title={isOpen ? "Collapse preview (Ctrl+P)" : "Expand preview (Ctrl+P)"}
@@ -212,7 +212,10 @@ const Preview = ({
           aria-expanded={isOpen}
           onClick={handleToggle}
         >
-          📰
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <line x1="9" y1="3" x2="9" y2="21" />
+          </svg>
         </button>
       </div>
 

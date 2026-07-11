@@ -1,85 +1,130 @@
 .flashcard-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(2, 2, 3, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  z-index: 1000;
+  padding: 1.5rem;
+  z-index: 2100;
   overscroll-behavior: contain;
   touch-action: none;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
 }
 
 .flashcard-container {
   width: min(760px, 92vw);
   max-height: 86vh;
-  background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(180deg, #0d0d10 0%, #060608 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 100px rgba(50, 50, 150, 0.2);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 255, 255, 0.02);
   overflow: hidden;
-  color: #e9ecf1;
+  color: #e4e4e7;
+  display: flex;
+  flex-direction: column;
 }
 
 .flashcard-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  background: linear-gradient(90deg, #1a1a1a, #0f0f0f);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0 24px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   position: relative;
+  height: 77px;
+  box-sizing: border-box;
+}
+
+.flashcard-header h2 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', 'Inter', sans-serif;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.4px;
 }
 
 .flashcard-settings {
-  padding: 24px;
+  padding: 28px 24px;
 }
 
 .setting-group {
-  margin: 16px 0 20px;
+  margin: 16px 0 24px;
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.setting-group label { color: #b0b0b0; font-weight: 500; }
-.setting-group select {
-  background: #1a1a1a;
-  color: #e0e0e0;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 15px;
-  transition: all 0.2s ease;
+.setting-group label {
+  color: #a1a1aa;
+  font-weight: 500;
+  font-size: 0.9rem;
 }
 
-.setting-group select:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  background: #222;
+.setting-group select {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.9rem;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.setting-group select:focus {
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.04);
 }
 
 .generate-btn, .close-btn, .control-btn, .export-btn {
-  background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  padding: 10px 16px;
+  padding: 8px 16px;
   cursor: pointer;
-  color: #e0e0e0;
-  font-weight: 500;
-  transition: all 0.2s ease;
+  color: #a1a1aa;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.generate-btn:hover, .control-btn:hover, .export-btn:hover, .close-btn:hover {
-  background: #252525;
-  border-color: rgba(255, 255, 255, 0.3);
+.generate-btn {
+  background: #ffffff;
+  color: #0c0c0e;
+  border: none;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.08);
+}
+
+.generate-btn:hover {
+  background: #f4f4f5;
+  color: #0c0c0e;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.12);
+}
+
+.control-btn:hover, .export-btn:hover, .close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
   transform: translateY(-1px);
 }
 
 .close-btn { 
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 14px;
+}
+
+.close-btn:hover {
+  transform: scale(1.05);
 }
 
 .flashcard-loading {
@@ -87,7 +132,7 @@
   flex-direction: column; 
   align-items: center; 
   justify-content: center; 
-  padding: 60px 20px;
+  padding: 80px 20px;
 }
 .spinner {
   width: 36px; 
@@ -198,4 +243,88 @@
   .flashcard-content { font-size: 16px; }
   .flashcard-container { width: 95vw; }
   .flashcard-settings, .flashcard-study { padding: 16px; }
+}
+
+/* Custom Dropdown Styling */
+.custom-select-container {
+  position: relative;
+  width: 100%;
+}
+
+.custom-select-trigger {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.custom-select-trigger:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.custom-select-trigger.open {
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.04);
+}
+
+.custom-select-arrow {
+  transition: transform 0.2s ease;
+  color: #71717a;
+}
+
+.custom-select-trigger.open .custom-select-arrow {
+  transform: rotate(180deg);
+  color: #ffffff;
+}
+
+.custom-select-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+.custom-select-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #0d0d10;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.custom-select-option {
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #a1a1aa;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  text-align: left;
+}
+
+.custom-select-option:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+}
+
+.custom-select-option.selected {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-weight: 500;
 }

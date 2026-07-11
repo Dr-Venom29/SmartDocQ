@@ -2,6 +2,26 @@ import React, { useState, useEffect } from "react";
 import { apiFetch } from "../config";
 import "./SpreadsheetPreview.css";
 
+const formatCellValue = (val) => {
+  if (val === null || val === undefined) return "";
+  const strVal = String(val).trim();
+  // Check for YYYY-MM-DD HH:MM:SS or YYYY-MM-DDTHH:MM:SS or YYYY-MM-DD
+  const dateTimeRegex = /^(\d{4})-(\d{2})-(\d{2})(?:\s|T)(\d{2}):(\d{2}):(\d{2})$/;
+  const dateRegex = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+  let match = strVal.match(dateTimeRegex) || strVal.match(dateRegex);
+  if (match) {
+    const year = match[1];
+    const monthIndex = parseInt(match[2], 10) - 1;
+    const day = parseInt(match[3], 10);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    if (monthIndex >= 0 && monthIndex < 12) {
+      return `${day} ${months[monthIndex]} ${year}`;
+    }
+  }
+  return strVal;
+};
+
 const SpreadsheetPreview = ({ documentId, fileType }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -123,11 +143,14 @@ const SpreadsheetPreview = ({ documentId, fileType }) => {
                 {activeSheet.rows.map((row, rowIndex) => (
                   <tr key={rowIndex}>
                     <td className="row-index-cell">{rowIndex + 1}</td>
-                    {row.map((cell, colIndex) => (
-                      <td key={colIndex} title={String(cell)}>
-                        {String(cell)}
-                      </td>
-                    ))}
+                    {row.map((cell, colIndex) => {
+                      const formatted = formatCellValue(cell);
+                      return (
+                        <td key={colIndex} title={formatted}>
+                          {formatted}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import "./Quiz.css";
 import { apiFetch } from "../config";
 
@@ -82,10 +83,10 @@ const Quiz = ({ docId, onClose }) => {
   };
 
   const handleNextQuestion = () => {
+    setSelectedAnswer(null);
+    setShowExplanation(false);
     if (currentQuestion < quizData.questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
-      setSelectedAnswer(null);
-      setShowExplanation(false);
     } else {
       setShowResults(true);
     }
@@ -103,7 +104,7 @@ const Quiz = ({ docId, onClose }) => {
   };
 
   if (isLoading) {
-    return (
+    return createPortal(
       <div className="quiz-backdrop">
         <div className="quiz-container">
           <div className="quiz-loading">
@@ -111,12 +112,13 @@ const Quiz = ({ docId, onClose }) => {
             <p>Generating your quiz...</p>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
   if (showSettings) {
-    return (
+    return createPortal(
       <div className="quiz-backdrop">
         <div className="quiz-container">
           <div className="quiz-header">
@@ -149,7 +151,8 @@ const Quiz = ({ docId, onClose }) => {
             <button className="generate-btn" onClick={generateQuiz}>Generate Quiz</button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
@@ -161,7 +164,7 @@ const Quiz = ({ docId, onClose }) => {
     else if (percentage >= 50) message = "Good effort! Keep practicing!";
     else message = "Keep studying! You'll improve!";
 
-    return (
+    return createPortal(
       <div className="quiz-backdrop">
         <div className="quiz-container">
           <div className="quiz-header">
@@ -183,7 +186,8 @@ const Quiz = ({ docId, onClose }) => {
             </div>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
@@ -191,7 +195,7 @@ const Quiz = ({ docId, onClose }) => {
 
   const currentQ = quizData.questions[currentQuestion];
 
-  return (
+  return createPortal(
     <div className="quiz-backdrop">
       <div className="quiz-container">
         <div className="quiz-header">
@@ -301,7 +305,8 @@ const Quiz = ({ docId, onClose }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
