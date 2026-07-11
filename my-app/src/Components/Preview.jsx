@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "./Toast/ToastContext";
-import { apiUrl } from "../config";
+import { apiFetch } from "../config";
 import "./Preview.css";
 
 const Preview = ({
@@ -414,12 +414,8 @@ function PlainTextPreview({ file, documentId, filename, onTextSaved }) {
     }
     try {
       setIsSaving(true);
-      const res = await fetch(apiUrl(`/api/document/${documentId}/text`), {
+      const res = await apiFetch(`/api/document/${documentId}/text`, {
         method: "PATCH",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ text: editedText }),
       });
       const data = await res.json().catch(() => ({}));

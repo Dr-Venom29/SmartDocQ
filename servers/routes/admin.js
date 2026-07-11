@@ -5,6 +5,7 @@ const Document = require("../models/Document");
 const Chat = require("../models/Chat");
 const ContactReport = require("../models/ContactReport");
 const { verifyToken, isAdmin } = require("../middlewares/auth");
+const { verifyCsrf } = require("../middlewares/csrf");
 const { validate } = require("../middlewares/validate");
 const { sendError } = require("../middlewares/apiResponse");
 const { idParamSchema } = require("../validators/adminSchemas");
@@ -497,7 +498,7 @@ router.get("/documents", verifyToken, isAdmin, async (req, res) => {
 });
 
 // Delete user (admin only)
-router.delete("/users/:id", verifyToken, isAdmin, validate(idParamSchema), async (req, res) => {
+router.delete("/users/:id", verifyToken, isAdmin, verifyCsrf, validate(idParamSchema), async (req, res) => {
   try {
     const userId = req.validated.params.id;
     
@@ -544,7 +545,7 @@ router.delete("/users/:id", verifyToken, isAdmin, validate(idParamSchema), async
 });
 
 // Delete document (admin only)
-router.delete("/documents/:id", verifyToken, isAdmin, validate(idParamSchema), async (req, res) => {
+router.delete("/documents/:id", verifyToken, isAdmin, verifyCsrf, validate(idParamSchema), async (req, res) => {
   try {
     const documentId = req.validated.params.id;
     
@@ -562,7 +563,7 @@ router.delete("/documents/:id", verifyToken, isAdmin, validate(idParamSchema), a
 });
 
 // Toggle user status (activate/deactivate)
-router.patch("/users/:id/toggle-status", verifyToken, isAdmin, validate(idParamSchema), async (req, res) => {
+router.patch("/users/:id/toggle-status", verifyToken, isAdmin, verifyCsrf, validate(idParamSchema), async (req, res) => {
   try {
     const userId = req.validated.params.id;
     
@@ -688,7 +689,7 @@ router.get("/contact-reports", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-router.patch("/contact-reports/:id", verifyToken, isAdmin, validate(idParamSchema), async (req, res) => {
+router.patch("/contact-reports/:id", verifyToken, isAdmin, verifyCsrf, validate(idParamSchema), async (req, res) => {
   try {
     const { status } = req.body || {};
     if (!status || !["open", "in_progress", "resolved"].includes(status)) {
@@ -708,7 +709,7 @@ router.patch("/contact-reports/:id", verifyToken, isAdmin, validate(idParamSchem
 });
 
 // Delete a contact report
-router.delete("/contact-reports/:id", verifyToken, isAdmin, validate(idParamSchema), async (req, res) => {
+router.delete("/contact-reports/:id", verifyToken, isAdmin, verifyCsrf, validate(idParamSchema), async (req, res) => {
   try {
     const result = await ContactReport.findByIdAndDelete(req.validated.params.id);
     if (!result) return sendError(res, 404, "Contact report not found");

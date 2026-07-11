@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./UserManagement.css";
-import { apiUrl } from "../../config";
+import { apiUrl, apiFetch } from "../../config";
 
 const UserManagement = ({ users = [], onRefresh }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -110,15 +110,11 @@ const UserManagement = ({ users = [], onRefresh }) => {
     try {
       setLoading(true);
       // Optimistic UI update
-  const prev = (Array.isArray(serverUsers) && serverUsers.length ? serverUsers : users);
+      const prev = (Array.isArray(serverUsers) && serverUsers.length ? serverUsers : users);
       const prevSnap = [...prev];
       setServerUsers(prev.filter(u => u._id !== userId));
-      const response = await fetch(apiUrl(`/api/admin/users/${userId}`), {
+      const response = await apiFetch(`/api/admin/users/${userId}`, {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "include"
       });
 
       if (!response.ok) {
@@ -142,18 +138,14 @@ const UserManagement = ({ users = [], onRefresh }) => {
     try {
       setLoading(true);
       // Optimistic UI update
-  setServerUsers((prev) => (Array.isArray(prev) && prev.length ? prev : sourceUsers).map(u => u._id === userId ? { ...u, isActive: !u.isActive } : u));
-      const response = await fetch(apiUrl(`/api/admin/users/${userId}/toggle-status`), {
+      setServerUsers((prev) => (Array.isArray(prev) && prev.length ? prev : sourceUsers).map(u => u._id === userId ? { ...u, isActive: !u.isActive } : u));
+      const response = await apiFetch(`/api/admin/users/${userId}/toggle-status`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "include"
       });
 
       if (!response.ok) {
         // Revert on error
-  setServerUsers((prev) => (Array.isArray(prev) && prev.length ? prev : sourceUsers).map(u => u._id === userId ? { ...u, isActive: !u.isActive } : u));
+        setServerUsers((prev) => (Array.isArray(prev) && prev.length ? prev : sourceUsers).map(u => u._id === userId ? { ...u, isActive: !u.isActive } : u));
         throw new Error(`Failed to update user status (${response.status})`);
       }
 

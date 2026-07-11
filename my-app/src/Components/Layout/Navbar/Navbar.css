@@ -5,7 +5,7 @@
 
 .navbar {
   width: 100%;
-  padding: 18px 40px;
+  padding: 20px 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -17,9 +17,10 @@
   transition: 
     background 0.35s cubic-bezier(0.16, 1, 0.3, 1),
     padding 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    height 0.35s cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
     border-color 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  height: 72px;
+  height: 80px;
   font-family: 'Outfit', 'Inter', sans-serif;
 }
 
@@ -35,6 +36,7 @@
   -webkit-backdrop-filter: blur(20px) saturate(120%);
   border-bottom-color: rgba(255, 255, 255, 0.05);
   padding: 12px 40px;
+  height: 72px;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
 }
 
@@ -220,6 +222,7 @@
 }
 
 /* User avatar button (logged-in state) */
+/* User avatar button (logged-in state) */
 .profile-btn {
   background: transparent;
   border: none;
@@ -228,25 +231,30 @@
   border-radius: 50%;
   display: block;
   outline: none;
-  transition: transform 0.25s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .profile-btn:hover {
-  transform: scale(1.05);
+  transform: scale(1.04);
 }
 
 .profile-btn:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.3);
+  outline: 2px solid rgba(255, 255, 255, 0.35);
   outline-offset: 2px;
 }
 
 .avatar {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   object-fit: cover;
   display: block;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  transition: border-color 0.25s ease;
+}
+
+.profile-btn:hover .avatar {
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .profile-section {
@@ -257,26 +265,58 @@
 /* Premium Glassmorphism dropdown menu */
 .profile-dropdown {
   position: absolute;
-  top: 48px;
+  top: 52px;
   right: 0;
-  width: 170px;
-  background: rgba(10, 10, 12, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  width: 190px;
+  background: rgba(10, 10, 12, 0.8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
-  padding: 5px;
+  border-radius: 16px;
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  padding: 6px;
   display: flex;
   flex-direction: column;
   z-index: 5000;
   transform-origin: top right;
-  animation: dropdownEnter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: dropdownEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes dropdownEnter {
-  from { opacity: 0; transform: scale(0.95) translateY(-5px); }
+  from { opacity: 0; transform: scale(0.96) translateY(-8px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Header style for User Profile inside Dropdown */
+.profile-dropdown-header {
+  padding: 10px 12px 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 6px;
+}
+
+.profile-dropdown-user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-dropdown-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-dropdown-email {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dd {
@@ -295,7 +335,7 @@
   color: rgba(255, 255, 255, 0.65);
   font-weight: 500;
   text-align: left;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
@@ -392,6 +432,7 @@
   overflow-y: auto;
   background: #060608;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
@@ -407,7 +448,7 @@
   border-radius: 999px;
 }
 
-.close-btn {
+.contact-popup .close-btn {
   position: absolute;
   top: 16px;
   right: 16px;
@@ -426,7 +467,7 @@
   justify-content: center;
 }
 
-.close-btn:hover {
+.contact-popup .close-btn:hover {
   background: rgba(255, 255, 255, 0.05);
   color: #fff;
   transform: rotate(90deg);

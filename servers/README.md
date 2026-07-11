@@ -16,18 +16,32 @@ Copy `.env.example` to `.env` and fill in:
 - LOG_LEVEL: Optional Pino log level (e.g., `info`, `warn`, `error`, `debug`; default: `info`).
 - NODE_ENV: Application environment (e.g., `development`, `production`).
 - MAX_UPLOAD_SIZE_MB: Maximum upload size accepted by the Node gateway (default: `15`).
-- MAIL_USER: Gmail address used by Nodemailer (required for development only)
-- MAIL_PASS: Google App Password used by Nodemailer (required for development only)
-- BREVO_API_KEY: API key for Brevo Transactional Email HTTPS API (required for production only)
-- BREVO_SENDER_EMAIL: Verified sender email address configured in Brevo dashboard (required for production only)
+- MAIL_USER: Gmail address used by Nodemailer (development only)
+- MAIL_PASS: Google App Password used by Nodemailer (development only)
+- BREVO_API_KEY: API key for Brevo Transactional Email HTTPS API (production only)
+- BREVO_SENDER_EMAIL: Verified sender email address configured in Brevo dashboard (production only)
 - BREVO_SENDER_NAME: Optional sender display name (default: `SmartDocQ`)
 
 ## Email Infrastructure
 SmartDocQ features a dual-provider abstraction architecture inside `services/mailService.js`.
 Depending on the environment configuration, the gateway selects the corresponding provider at boot time:
 * **Development (`NODE_ENV !== "production"`)**: Dynamically resolves to `gmailProvider.js` utilizing **Gmail SMTP** via Nodemailer (port 465, SSL/TLS, custom timeouts).
-* **Production (`NODE_ENV === "production"`)**: Dynamically resolves to `brevoProvider.js` utilizing the official **Brevo HTTPS Email API** (`sib-api-v3-sdk`) over port 443.
+* **Production (`NODE_ENV === "production"`)**: Dynamically resolves to `brevoProvider.js` utilizing the official **Brevo Transactional Email API** (`sib-api-v3-sdk`) over port 443.
 This architecture ensures Gmail SMTP is never loaded in production and the Brevo HTTPS client is never initialized in development, maintaining a clean runtime state and full compatibility with outbound port blocks (e.g. on Render Free).
+
+```mermaid
+graph TD
+    subgraph Development [Development Environment]
+        CallDev[Call sendPasswordResetEmail] --> MailDev[mailService.js]
+        MailDev -->|isProduction = false| Gmail[gmailProvider.js]
+        Gmail -->|Gmail SMTP port 465| SmtpGmail[Google SMTP Server]
+    end
+    subgraph Production [Production Environment]
+        CallProd[Call sendPasswordResetEmail] --> MailProd[mailService.js]
+        MailProd -->|isProduction = true| Brevo[brevoProvider.js]
+        Brevo -->|Brevo SDK HTTPS port 443| ApiBrevo[Brevo Transactional Email API]
+    end
+```
 
 ## Authentication & Session Management
 Uses secure HTTP-Only cookies for JWT storage coupled with database-backed session tracking in MongoDB. All AI endpoints require a valid authenticated session before requests are forwarded to the Flask AI service.
@@ -68,7 +82,7 @@ sequenceDiagram
 ### Password Security & Reset
 - **Password Reset Flow**: Requesting a password reset generates a cryptographically secure 32-byte token that is SHA-256 hashed before database storage.
 - **Expiration**: Reset tokens expire after 15 minutes and are single-use.
-- **Secure Changed Notifications**: Successfully resetting a password invalidates all other active sessions and sends a transactional email notification detailing the action timestamp.
+- **Secure Changed Notifications**: Successfully resetting a password invalidates all other active sessions and sends a best-effort transactional email notification detailing the action timestamp.
 
 ### Google Authentication
 - Supports Google Sign-In via token verification.
@@ -143,6 +157,7 @@ The following limits are enforced before requests reach the AI service:
 - Failed responses include `success: false`, a human-readable `message`, and, for validation failures, an `errors` array with structured details.
 
 ## Scripts
+- `npm install` to install dependencies
 - `npm start` to run the server (default port 5000)
 
 ## Logging

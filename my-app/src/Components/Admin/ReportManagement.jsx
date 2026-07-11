@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import "./AdminDashboard.css";
 import "./ReportManagement.css";
-import { apiUrl } from "../../config";
+import { apiUrl, apiFetch } from "../../config";
 
 const ReportManagement = () => {
   const [items, setItems] = useState([]);
@@ -64,10 +64,8 @@ const ReportManagement = () => {
 
   const updateStatus = async (id, nextStatus) => {
     try {
-      const res = await fetch(apiUrl(`/api/admin/contact-reports/${id}`), {
+      const res = await apiFetch(`/api/admin/contact-reports/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ status: nextStatus })
       });
       if (!res.ok) throw new Error("Failed to update status");
@@ -85,9 +83,8 @@ const ReportManagement = () => {
   const deleteReport = async (id) => {
     try {
       setLoading(true);
-      const res = await fetch(apiUrl(`/api/admin/contact-reports/${id}`), {
+      const res = await apiFetch(`/api/admin/contact-reports/${id}`, {
         method: "DELETE",
-        credentials: "include"
       });
       if (!res.ok) throw new Error("Failed to delete report");
       await fetchReports({ page });

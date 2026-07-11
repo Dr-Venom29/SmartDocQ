@@ -289,6 +289,7 @@ export default function Navbar() {
                   {showProfileMenu && (
                     <ProfileMenu
                       triggerRef={profileRef}
+                      user={user}
                       onProfile={() => { setPopup("account"); setShowProfileMenu(false); }}
                       onLogout={() => { setShowProfileMenu(false); logout(); }}
                       onClose={() => setShowProfileMenu(false)}

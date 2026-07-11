@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import profileIcon from "./assets/profile.svg";
 import logoutIcon from "./assets/logout.svg";
 
-export default function ProfileMenu({ triggerRef, onProfile, onLogout, onClose }) {
+export default function ProfileMenu({ triggerRef, user, onProfile, onLogout, onClose }) {
   const menuRef = useRef(null);
 
   // Auto-focus first button on mount
@@ -73,6 +73,14 @@ export default function ProfileMenu({ triggerRef, onProfile, onLogout, onClose }
       id="profile-menu"
       className="profile-dropdown"
     >
+      {user && (
+        <div className="profile-dropdown-header">
+          <div className="profile-dropdown-user-details">
+            <span className="profile-dropdown-name">{user.name}</span>
+            <span className="profile-dropdown-email">{user.email}</span>
+          </div>
+        </div>
+      )}
       <button className="dd" type="button" onClick={onProfile}>
         <img src={profileIcon} alt="" className="dpi" aria-hidden="true" />Profile
       </button>

@@ -18,6 +18,86 @@ function Contact({ onSuccess }) {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const selectRef = useRef(null);
+
+  // Click outside to close custom select dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (selectRef.current && !selectRef.current.contains(event.target)) {
+        setIsSelectOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleSubjectSelect = (value) => {
+    setFormData((prev) => ({
+      ...prev,
+      subject: value,
+    }));
+
+    if (errors.subject) {
+      setErrors((prev) => ({
+        ...prev,
+        subject: "",
+      }));
+    }
+    setIsSelectOpen(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (!isLoggedIn || isSubmitting || loading) return;
+
+    if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+      e.preventDefault();
+      if (!isSelectOpen) {
+        setIsSelectOpen(true);
+        const index = SUBJECT_OPTIONS.indexOf(formData.subject);
+        setHighlightedIndex(index >= 0 ? index : 0);
+      } else {
+        if (highlightedIndex >= 0 && highlightedIndex < SUBJECT_OPTIONS.length) {
+          handleSubjectSelect(SUBJECT_OPTIONS[highlightedIndex]);
+        } else {
+          setIsSelectOpen(false);
+        }
+      }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!isSelectOpen) {
+        setIsSelectOpen(true);
+        setHighlightedIndex(0);
+      } else {
+        setHighlightedIndex((prev) => 
+          prev < SUBJECT_OPTIONS.length - 1 ? prev + 1 : 0
+        );
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!isSelectOpen) {
+        setIsSelectOpen(true);
+        setHighlightedIndex(SUBJECT_OPTIONS.length - 1);
+      } else {
+        setHighlightedIndex((prev) => 
+          prev > 0 ? prev - 1 : SUBJECT_OPTIONS.length - 1
+        );
+      }
+    } else if (e.key === "Escape") {
+      if (isSelectOpen) {
+        e.preventDefault();
+        setIsSelectOpen(false);
+      }
+    } else if (e.key === "Tab") {
+      if (isSelectOpen) {
+        setIsSelectOpen(false);
+      }
+    }
+  };
+
   const { showToast } = useToast();
   const { user, loading } = useAuth();
 
@@ -144,29 +224,80 @@ function Contact({ onSuccess }) {
 
       <form onSubmit={handleSubmit} className="contact-form">
         <div className="input-group">
-          <label htmlFor="contact-subject">Subject</label>
-          <select
-            id="contact-subject"
-            name="subject"
-            value={formData.subject}
-            onChange={handleInputChange}
-            className={errors.subject ? "input-error" : ""}
-            aria-invalid={!!errors.subject}
-            aria-describedby={
-              errors.subject ? "contact-subject-error" : undefined
-            }
-            disabled={!isLoggedIn || isSubmitting || loading}
-            required
+          <label htmlFor="contact-subject-trigger">Subject</label>
+          <div 
+            className={`custom-select-container ${errors.subject ? "input-error" : ""}`}
+            ref={selectRef}
           >
-            <option value="" disabled>
-              Select a subject
-            </option>
-            {SUBJECT_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+            <button
+              id="contact-subject-trigger"
+              type="button"
+              className={`custom-select-trigger ${!formData.subject ? "placeholder" : ""}`}
+              onClick={() => {
+                if (isLoggedIn && !isSubmitting && !loading) {
+                  setIsSelectOpen((prev) => !prev);
+                  if (!isSelectOpen) {
+                    const idx = SUBJECT_OPTIONS.indexOf(formData.subject);
+                    setHighlightedIndex(idx >= 0 ? idx : 0);
+                  }
+                }
+              }}
+              onKeyDown={handleKeyDown}
+              aria-haspopup="listbox"
+              aria-expanded={isSelectOpen}
+              aria-controls="contact-subject-listbox"
+              aria-describedby={errors.subject ? "contact-subject-error" : undefined}
+              disabled={!isLoggedIn || isSubmitting || loading}
+            >
+              <span className="selected-value">
+                {formData.subject || "Select a subject"}
+              </span>
+              <svg
+                className={`select-chevron ${isSelectOpen ? "open" : ""}`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                aria-hidden="true"
+              >
+                <path d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {isSelectOpen && (
+              <ul
+                id="contact-subject-listbox"
+                className="custom-select-options"
+                role="listbox"
+                aria-label="Subject options"
+              >
+                {SUBJECT_OPTIONS.map((opt, index) => (
+                  <li
+                    key={opt}
+                    className={`custom-select-option ${formData.subject === opt ? "selected" : ""} ${highlightedIndex === index ? "highlighted" : ""}`}
+                    role="option"
+                    aria-selected={formData.subject === opt}
+                    onClick={() => handleSubjectSelect(opt)}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                  >
+                    <span className="option-text">{opt}</span>
+                    {formData.subject === opt && (
+                      <svg
+                        className="option-check-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        aria-hidden="true"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           {errors.subject && (
             <span id="contact-subject-error" className="error-message">
               {errors.subject}
