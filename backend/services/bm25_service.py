@@ -197,5 +197,6 @@ def bm25_search(
 
     return [
         (cid, float(score), text, is_tbl)
-        for cid, score, text, is_tbl in ranked[:top_k]
-    ]
+        for cid, score, text, is_tbl in ranked
+        if float(score) > 0
+    ][:top_k]

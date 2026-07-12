@@ -62,56 +62,7 @@ from utils.table_extraction import (
 )
 
 
-# ============================================================================
-# 1. Retrieval keyword extraction Tests (tokenize)
-# ============================================================================
-
-def _kw(text: str) -> set:
-    """Wrapper around bm25_service.tokenize that returns a set, matching
-    the old _keywords() interface used by tests."""
-    return set(bm25_service.tokenize(text))
-
-
-def _overlap(query: str, doc: str) -> int:
-    return len(_kw(query) & _kw(doc))
-
-
-def test_keywords_preserve_numeric_tokens():
-    terms = _kw("team 6 project title")
-    assert "6" in terms
-    assert _overlap("team 6 project title", "Team 6 final project submission") >= 3
-
-
-def test_keywords_normalize_leading_zero_numbers():
-    terms = _kw("invoice 00045 approved")
-    assert "45" in terms
-    assert "00045" not in terms
-    assert _overlap("invoice 00045", "Invoice 45 approved") >= 2
-
-
-def test_keywords_do_not_normalize_alphanumeric_identifiers():
-    terms = _kw("47QZ9K2M7P CS001 A045X 00123AB")
-    assert "47qz9k2m7p" in terms
-    assert "cs001" in terms
-    assert "a045x" in terms
-    assert "00123ab" in terms
-
-
-def test_keywords_support_team_number_overlap():
-    assert _overlap("team 06 project", "Team 6 final project submission") >= 2
-
-
-def test_keywords_support_marksheet_row_overlap():
-    assert _overlap("marksheet row 003", "Row 3 marksheet for student") >= 3
-
-
-def test_keywords_support_csv_xlsx_identifier_overlap():
-    assert _overlap("Sheet1 row 06 total", "Sheet1 Row 6 Total = 95") >= 3
-
-
-def test_keywords_filters_noise_and_stopwords():
-    terms = _kw("a, the; -- x 1 ?")
-    assert terms == {"1"}
+# Keyword extraction/tokenizer tests have been moved to test_bm25_service.py.
 
 
 # ============================================================================
