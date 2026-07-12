@@ -118,7 +118,7 @@ def fake_collection(monkeypatch) -> FakeCollection:
 def mock_embedding(monkeypatch):
     """Replace Gemini embeddings with deterministic vectors."""
 
-    monkeypatch.setattr(pipeline, "generate_embeddings", lambda _text: [0.1, 0.2, 0.3])
+    monkeypatch.setattr(pipeline, "embed_document", lambda *_a, **_k: [0.1, 0.2, 0.3])
 
 @pytest.fixture
 def disable_node_push(monkeypatch):
@@ -256,11 +256,13 @@ def test_index_sections_passes_contextual_header_to_embeddings(
 ):
     captured = {}
 
-    def capture_embedding_input(text: str):
+    def capture_embedding_input(text, title=None, context=None, timeout_sec=20):
         captured["text"] = text
+        captured["title"] = title
+        captured["context"] = context
         return [0.1, 0.2, 0.3]
 
-    monkeypatch.setattr(pipeline, "generate_embeddings", capture_embedding_input)
+    monkeypatch.setattr(pipeline, "embed_document", capture_embedding_input)
 
     chunk = "This is a sufficiently long paragraph to be indexed. " * 20
 
@@ -272,15 +274,15 @@ def test_index_sections_passes_contextual_header_to_embeddings(
     assert ok is True
     assert added == 1
 
-    assert captured["text"].startswith("Document: sample.txt")
-    assert "\n\n" in captured["text"]
+    assert captured["title"] == "sample.txt"
+    assert captured["text"] == chunk.strip()
 
     stored = next(iter(fake_collection.store.values()))["document"]
     assert stored == chunk.strip()
     assert "Document:" not in stored
 
 def test_chunk_header_saved_in_metadata(fake_collection, disable_node_push, monkeypatch):
-    monkeypatch.setattr(pipeline, "generate_embeddings", lambda _text: [0.1, 0.2, 0.3])
+    monkeypatch.setattr(pipeline, "embed_document", lambda *_a, **_k: [0.1, 0.2, 0.3])
 
     chunk = "This is a sufficiently long paragraph for metadata testing. " * 20
     monkeypatch.setattr(indexer, "split_sheet_sections", lambda _text: [(None, "dummy")])
@@ -295,7 +297,7 @@ def test_chunk_header_saved_in_metadata(fake_collection, disable_node_push, monk
     assert meta["chunk_header"] == "Document: sample.txt"
 
 def test_chunk_header_with_sheet_saved_in_metadata(fake_collection, disable_node_push, monkeypatch):
-    monkeypatch.setattr(pipeline, "generate_embeddings", lambda _text: [0.1, 0.2, 0.3])
+    monkeypatch.setattr(pipeline, "embed_document", lambda *_a, **_k: [0.1, 0.2, 0.3])
 
     chunk = "This is a sufficiently long paragraph for sheet header testing. " * 20
     monkeypatch.setattr(chunking_mod, "chunk_text", lambda _body: [chunk])
@@ -565,7 +567,7 @@ def test_sheet_metadata(fake_collection, mock_embedding, monkeypatch):
     assert chunk_records[0]["sheet"] == "Sheet1"
 
 def test_embedding_failure_skips_chunk(fake_collection, disable_node_push, monkeypatch):
-    monkeypatch.setattr(pipeline, "generate_embeddings", lambda _text: None)
+    monkeypatch.setattr(pipeline, "embed_document", lambda *_a, **_k: None)
     body = "Valid content for embedding failure test. " * 20
     monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
@@ -937,13 +939,15 @@ def test_rich_metadata_validation(fake_collection, mock_embedding, disable_node_
     assert meta["end_page"] == 1
 
 def test_contextual_embedding_header(fake_collection, disable_node_push, monkeypatch):
-    captured_inputs = []
+    captured = {}
     
-    def capture_embeddings(text):
-        captured_inputs.append(text)
+    def capture_embeddings(text, title=None, context=None, timeout_sec=20):
+        captured["text"] = text
+        captured["title"] = title
+        captured["context"] = context
         return [0.1, 0.2, 0.3]
         
-    monkeypatch.setattr(pipeline, "generate_embeddings", capture_embeddings)
+    monkeypatch.setattr(pipeline, "embed_document", capture_embeddings)
     import utils.extraction as extraction_mod
     
     # We will mock the parser output to simulate a nested block structure
@@ -968,10 +972,7 @@ def test_contextual_embedding_header(fake_collection, disable_node_push, monkeyp
     assert ok is True
     
     # Verify contextual header content prepended to embedding service
-    assert len(captured_inputs) == 1
-    header_input = captured_inputs[0]
-    
-    assert "Document: ML_paper.pdf" in header_input
-    assert "Section: Section Title" in header_input
-    assert "Subsection: Subsection Title" in header_input
-    assert "Pages: 2-3" in header_input
+    assert captured["title"] == "ML_paper.pdf"
+    assert "Section: Section Title" in captured["context"]
+    assert "Subsection: Subsection Title" in captured["context"]
+    assert "Pages: 2-3" in captured["context"]

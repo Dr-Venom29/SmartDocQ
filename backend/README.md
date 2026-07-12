@@ -246,6 +246,9 @@ python -m pytest tests/test_security.py -v
 
 # Run vector store versioning and lifecycle tests
 python -m pytest tests/test_vector_versioning.py -v
+
+# Run embedding formatting tests (asymmetric query/document embeddings)
+python -m pytest tests/test_embedding_service.py -v
 ```
 
 ## INDEXING ARCHITECTURE

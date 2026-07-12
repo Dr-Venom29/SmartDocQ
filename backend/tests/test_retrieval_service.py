@@ -33,9 +33,7 @@ fake_db_chroma.collection = _ImportCollectionStub()
 sys.modules["db.chroma"] = fake_db_chroma
 
 
-fake_embedding_service = types.ModuleType("services.embedding_service")
-fake_embedding_service.generate_embeddings = lambda *_a, **_k: [0.0]
-sys.modules["services.embedding_service"] = fake_embedding_service
+# No longer stubbing services.embedding_service globally as it is fully mockable.
 
 
 # bm25_service is imported by retrieval_service; stub the search function only
@@ -306,7 +304,7 @@ def _no_node_push(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _mock_indexer_embeddings(monkeypatch):
-    monkeypatch.setattr(pipeline, "generate_embeddings", lambda _t: [0.0, 0.1, 0.2])
+    monkeypatch.setattr(pipeline, "embed_document", lambda *_a, **_k: [0.0, 0.1, 0.2])
 
 
 def test_csv_indexes_table_chunks_with_metadata(fake_indexer_collection):
@@ -419,11 +417,11 @@ def test_deterministic_chunk_numbering_consumes_indices_on_embedding_fail(fake_i
 
     calls = {"n": 0}
 
-    def flaky_embeddings(_t):
+    def flaky_embeddings(*_a, **_k):
         calls["n"] += 1
         return None if calls["n"] == 1 else [0.0, 0.1, 0.2]
 
-    monkeypatch.setattr(pipeline, "generate_embeddings", flaky_embeddings)
+    monkeypatch.setattr(pipeline, "embed_document", flaky_embeddings)
 
     ok, added = indexer.index_text("doc_det", "sample.txt", "ignored")
     assert ok is True
@@ -522,7 +520,7 @@ class FakeRetrievalCollection:
 
 @pytest.fixture(autouse=True)
 def _mock_retrieval_embeddings(monkeypatch):
-    monkeypatch.setattr(retrieval_service, "generate_embeddings", lambda _q: [0.0, 0.1, 0.2])
+    monkeypatch.setattr(retrieval_service, "embed_query", lambda _q: [0.0, 0.1, 0.2])
 
 
 def test_table_question_boosts_table_chunks(monkeypatch):
@@ -838,4 +836,20 @@ def test_end_to_end_pdf_indexing_and_retrieval(monkeypatch):
     assert ctx is not None
     # Ensure correct contextual retrieval and page contents return
     assert "page 2 content" in ctx
+
+
+def test_retrieval_uses_embed_query():
+    """Verify that retrieval path calls embed_query."""
+    from unittest.mock import patch
+    with patch("services.retrieval_service.embed_query") as mock_query:
+        mock_query.return_value = [0.5, 0.5, 0.5]
+
+        # Mock Chroma collection.query to avoid real DB access
+        with patch("services.retrieval_service.collection") as mock_coll:
+            mock_coll.query.return_value = {"documents": [[]], "distances": [[]], "metadatas": [[]]}
+
+            # This should invoke embed_query
+            retrieval_service.retrieve_context("User question", "doc123")
+
+            mock_query.assert_called_once_with("User question")
 

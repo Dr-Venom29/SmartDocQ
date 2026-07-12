@@ -9,7 +9,7 @@ from config import (
     CHUNKING_VERSION,
 )
 from utils.table_extraction import render_markdown_table, flatten_table_for_embedding
-from services.embedding_service import generate_embeddings
+from services.embedding_service import embed_document
 import indexing.chunking as chunking
 from indexing.chunking import (
     remove_page_artifacts_and_repeated_headers,
@@ -100,10 +100,13 @@ def _build_contextual_header(
     end_page: int | None = None,
     sheet_name: str | None = None,
     source_type: str | None = None,
+    include_filename: bool = True,
 ) -> str:
     """Build a contextual header prepended ONLY to embedding input."""
-    filename = (filename or "").strip() or "document"
-    parts = [f"Document: {filename}"]
+    parts = []
+    if include_filename:
+        filename_val = (filename or "").strip() or "document"
+        parts.append(f"Document: {filename_val}")
     
     if sheet_name:
         sheet_name = (sheet_name or "").strip()
@@ -277,8 +280,6 @@ def _index_blocks_pipeline(
     seen = set()
     chunk_index = 0
 
-    embed_fn = generate_embeddings
-
     for chunk in packed_chunks:
         c = (chunk["text"] or "").strip()
         if not c:
@@ -295,7 +296,7 @@ def _index_blocks_pipeline(
         if is_dup:
             continue
             
-        header = _build_contextual_header(
+        meta_header = _build_contextual_header(
             filename=filename,
             section=chunk["section"],
             subsection=chunk["subsection"],
@@ -303,8 +304,16 @@ def _index_blocks_pipeline(
             end_page=chunk["end_page"],
             source_type=source_type
         )
-        chunk_with_header = f"{header}\n\n{c}"
-        emb = embed_fn(chunk_with_header)
+        embed_header = _build_contextual_header(
+            filename=filename,
+            section=chunk["section"],
+            subsection=chunk["subsection"],
+            start_page=chunk["start_page"],
+            end_page=chunk["end_page"],
+            source_type=source_type,
+            include_filename=False
+        )
+        emb = embed_document(text=c, title=filename, context=embed_header)
         if not emb:
             continue
             
@@ -323,7 +332,7 @@ def _index_blocks_pipeline(
             chunk_type=chunk["chunk_type"],
             paragraph_count=chunk["paragraph_count"],
             token_count=chunk["token_count"],
-            chunk_header=header,
+            chunk_header=meta_header,
             file_hash=file_hash
         )
 
@@ -353,7 +362,6 @@ def _index_sections_spreadsheet(
     chunk_index = 0
     seen = set()
 
-    embed_fn = generate_embeddings
     noise_fn = _is_noise
 
     for sheet_name, body in sections:
@@ -376,9 +384,9 @@ def _index_sections_spreadsheet(
             if is_dup:
                 continue
 
-            header = _build_contextual_header(filename, sheet_name=sheet_name)
-            chunk_with_header = f"{header}\n\n{c}"
-            emb = embed_fn(chunk_with_header)
+            meta_header = _build_contextual_header(filename, sheet_name=sheet_name)
+            embed_header = _build_contextual_header(filename, sheet_name=sheet_name, include_filename=False)
+            emb = embed_document(text=c, title=filename, context=embed_header)
             if not emb:
                 continue
 
@@ -390,7 +398,7 @@ def _index_sections_spreadsheet(
                 chunk_index=reserved_chunk_index,
                 paragraph_count=len(c.split("\n\n")),
                 token_count=estimate_token_count(c),
-                chunk_header=header,
+                chunk_header=meta_header,
                 file_hash=file_hash,
                 sheet=sheet_name
             )
@@ -425,7 +433,6 @@ def _index_tables_spreadsheet(
     chunk_index = int(start_chunk_index or 0)
     seen_tables = set()
 
-    embed_fn = generate_embeddings
     render_fn = render_markdown_table
 
     for table_index, t in enumerate(tables):
@@ -456,9 +463,9 @@ def _index_tables_spreadsheet(
             if is_dup:
                 continue
 
-            header = _build_contextual_header(filename, sheet_name=sheet_name)
-            embed_in = f"{header}\n\n{flat}"
-            emb = embed_fn(embed_in)
+            meta_header = _build_contextual_header(filename, sheet_name=sheet_name)
+            embed_header = _build_contextual_header(filename, sheet_name=sheet_name, include_filename=False)
+            emb = embed_document(text=flat, title=filename, context=embed_header)
             if not emb:
                 continue
 
@@ -471,7 +478,7 @@ def _index_tables_spreadsheet(
                 chunk_type="table",
                 paragraph_count=1,
                 token_count=estimate_token_count(flat),
-                chunk_header=header,
+                chunk_header=meta_header,
                 file_hash=file_hash,
                 sheet=sheet_name,
                 is_table=True,

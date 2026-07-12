@@ -15,7 +15,7 @@ import time
 
 from config import NODE_BASE_URL, SERVICE_TOKEN, NODE_FETCH_TIMEOUT
 from db.chroma import collection
-from services.embedding_service import generate_embeddings
+from services.embedding_service import embed_query
 from services.bm25_service import bm25_search
 
 logger = logging.getLogger(__name__)
@@ -137,7 +137,7 @@ def retrieve_context(question: str, doc_id: str) -> tuple[str | None, str | None
     """
 
     # --- 1. Vector Search ---
-    q_emb = generate_embeddings(question)
+    q_emb = embed_query(question)
     if not q_emb:
         logger.error("[Retrieval] Embedding failed")
         return None, "Failed to generate embedding"

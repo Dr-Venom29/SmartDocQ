@@ -9,13 +9,12 @@ if GEMINI_API_KEY:
 def _embed_call(text: str):
     return genai.embed_content(
         model=EMBED_MODEL,
-        content=text,
-        task_type="retrieval_document"
+        content=text
     )
 
 
-def generate_embeddings(text: str, timeout_sec: int = 20):
-    """Generate embeddings with a timeout to avoid hanging requests."""
+def _generate_embedding(text: str, timeout_sec: int = 20):
+    """Low-level function to perform the Gemini embedding request with a timeout."""
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
             fut = ex.submit(_embed_call, text)
@@ -27,3 +26,32 @@ def generate_embeddings(text: str, timeout_sec: int = 20):
     except Exception as e:
         print("Embedding error:", e)
         return None
+
+
+def embed_query(question: str, timeout_sec: int = 20):
+    """Format and generate query embedding."""
+    if not question or not question.strip():
+        return None
+    prepared = f"task: question answering | query: {question.strip()}"
+    return _generate_embedding(prepared, timeout_sec)
+
+
+def embed_document(
+    text: str,
+    title: str | None = None,
+    context: str | None = None,
+    timeout_sec: int = 20,
+):
+    """Format and generate document embedding."""
+    if not text or not text.strip():
+        return None
+    title_str = title.strip() if title and title.strip() else "none"
+    text_str = text.strip()
+
+    if context and context.strip():
+        content = f"{context.strip()}\n\n{text_str}"
+    else:
+        content = text_str
+
+    prepared = f"title: {title_str} | text: {content}"
+    return _generate_embedding(prepared, timeout_sec)

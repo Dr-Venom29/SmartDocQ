@@ -47,6 +47,3 @@ venv/
 
 # Workspace Agent Configurations
 .agents/
-
-# CodeGraph
-.codegraph/
