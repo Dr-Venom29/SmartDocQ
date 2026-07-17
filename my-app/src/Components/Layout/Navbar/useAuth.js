@@ -39,6 +39,8 @@ const getStoredUser = () => {
   return parsed;
 };
 
+let activeCheckPromise = null;
+
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -75,20 +77,30 @@ export function useAuth() {
 
   // Session check helper
   const checkSession = useCallback(async (options = {}) => {
-    try {
-      const res = await fetch(apiUrl("/api/auth/verify"), {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        console.warn("Backend session invalid. Logging out...");
-        forceLogout(options);
-        return false;
-      }
-      return true;
-    } catch (err) {
-      console.warn("Session verification failed (network/CORS):", err);
-      return false;
+    if (activeCheckPromise) {
+      return activeCheckPromise;
     }
+
+    activeCheckPromise = (async () => {
+      try {
+        const res = await fetch(apiUrl("/api/auth/verify"), {
+          credentials: "include",
+        });
+        if (!res.ok) {
+          console.warn("Backend session invalid. Logging out...");
+          forceLogout(options);
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.warn("Session verification failed (network/CORS):", err);
+        return false;
+      } finally {
+        activeCheckPromise = null;
+      }
+    })();
+
+    return activeCheckPromise;
   }, [forceLogout]);
 
   // Session verification helper

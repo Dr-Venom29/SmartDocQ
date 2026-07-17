@@ -50,6 +50,7 @@ sys.modules["db.chroma"] = fake_db_chroma
 
 # Now this import is safe
 from indexing import indexer  # noqa: E402
+from indexing.pipeline import IndexBuildError
 
 # ============================================================================
 # Fake Chroma Collection
@@ -67,7 +68,7 @@ class FakeCollection:
         for emb, doc, meta, _id in zip(embeddings, documents, metadatas, ids):
             self.store[_id] = {"embedding": emb, "document": doc, "metadata": meta}
 
-    def get(self, where=None, ids=None):
+    def get(self, where=None, ids=None, **_kwargs):
         # get by explicit ids
         if ids is not None:
             result_ids, result_docs, result_metas = [], [], []
@@ -101,9 +102,56 @@ class FakeCollection:
         for _id in (ids or []):
             self.store.pop(_id, None)
 
-# ============================================================================
-# Shared Fixtures
-# ============================================================================
+@pytest.fixture(autouse=True)
+def mock_vector_versioning_lifecycle(monkeypatch, fake_collection):
+    """Automatically mock all vector versioning lifecycle hooks for indexer tests."""
+    def mock_get_state(doc_id):
+        return {
+            "activeVersion": None,
+            "previousVersion": None,
+            "activeMetadata": {},
+            "build": {}
+        }
+
+    def mock_cleanup(doc_id, active, previous):
+        # In unit tests, we want to simulate old versions deletion
+        # Keep active and previous. If active is None, keep the newest version in the store.
+        keep = {active, previous}
+        doc_versions = []
+        for _id, item in fake_collection.store.items():
+            meta = item.get("metadata") or {}
+            if meta.get("doc_id") == doc_id:
+                v = meta.get("index_version")
+                if v:
+                    doc_versions.append(v)
+        if not active and doc_versions:
+            keep.add(doc_versions[-1])
+
+        to_del = []
+        for _id, item in list(fake_collection.store.items()):
+            meta = item.get("metadata") or {}
+            if meta.get("doc_id") == doc_id:
+                if meta.get("index_version") not in keep:
+                    to_del.append(_id)
+        for _id in to_del:
+            fake_collection.store.pop(_id, None)
+
+    import services.vector_versioning as vv
+    monkeypatch.setattr(vv, "get_index_state", mock_get_state)
+    monkeypatch.setattr(vv, "mark_index_building", lambda *a, **k: True)
+    monkeypatch.setattr(vv, "activate_index_version", lambda *a, **k: True)
+    monkeypatch.setattr(vv, "mark_index_failed", lambda *a, **k: True)
+    monkeypatch.setattr(vv, "validate_index_version", lambda *a, **k: True)
+    monkeypatch.setattr(vv, "delete_index_version", lambda *a, **k: None)
+    monkeypatch.setattr(vv, "cleanup_old_versions", mock_cleanup)
+
+    monkeypatch.setattr(indexer, "mark_index_building", lambda *a, **k: True)
+    monkeypatch.setattr(indexer, "activate_index_version", lambda *a, **k: True)
+    monkeypatch.setattr(indexer, "mark_index_failed", lambda *a, **k: True)
+    monkeypatch.setattr(indexer, "validate_index_version", lambda *a, **k: True)
+    monkeypatch.setattr(indexer, "delete_index_version", lambda *a, **k: None)
+    monkeypatch.setattr(indexer, "cleanup_old_versions", mock_cleanup)
+
 
 @pytest.fixture
 def fake_collection(monkeypatch) -> FakeCollection:
@@ -112,6 +160,8 @@ def fake_collection(monkeypatch) -> FakeCollection:
     coll = FakeCollection()
     monkeypatch.setattr(indexer, "collection", coll)
     monkeypatch.setattr(pipeline, "collection", coll)
+    monkeypatch.setattr("services.vector_versioning.collection", coll)
+    monkeypatch.setattr("services.retrieval_service.collection", coll)
     return coll
 
 @pytest.fixture
@@ -309,6 +359,7 @@ def test_chunk_header_with_sheet_saved_in_metadata(fake_collection, disable_node
         "xlsx",
         [("Revenue", "dummy")],
         chunk_records,
+        "v1",
     )
     assert added == 1
     assert next_chunk_index == 1
@@ -403,7 +454,7 @@ def test_whitespace_only_document():
 def test_push_chunks_called(fake_collection, mock_embedding, monkeypatch):
     captured = {}
 
-    def fake_push(doc_id, filename, chunk_records):
+    def fake_push(doc_id, filename, chunk_records, index_version=None):
         captured["doc_id"] = doc_id
         captured["filename"] = filename
         captured["chunks"] = chunk_records
@@ -557,7 +608,7 @@ def test_sheet_metadata(fake_collection, mock_embedding, monkeypatch):
     monkeypatch.setattr(chunking_mod, "chunk_text", lambda _body: [body])
 
     chunk_records = []
-    added, next_chunk_index = indexer._index_sections_spreadsheet("doc_sheet", "file.xlsx", "xlsx", [("Sheet1", body)], chunk_records)
+    added, next_chunk_index = indexer._index_sections_spreadsheet("doc_sheet", "file.xlsx", "xlsx", [("Sheet1", body)], chunk_records, "v1")
 
     assert added == 1
     assert next_chunk_index == 1
@@ -566,14 +617,13 @@ def test_sheet_metadata(fake_collection, mock_embedding, monkeypatch):
     assert meta["sheet"] == "Sheet1"
     assert chunk_records[0]["sheet"] == "Sheet1"
 
-def test_embedding_failure_skips_chunk(fake_collection, disable_node_push, monkeypatch):
+def test_embedding_failure_fails_build(fake_collection, disable_node_push, monkeypatch):
     monkeypatch.setattr(pipeline, "embed_document", lambda *_a, **_k: None)
     body = "Valid content for embedding failure test. " * 20
     monkeypatch.setattr(pipeline, "pack_blocks_into_chunks", lambda _sections: [body])
 
     ok, added = indexer.index_text("doc_fail", "file.txt", body)
-
-    assert ok is True
+    assert ok is False
     assert added == 0
     assert len(fake_collection.store) == 0
 
@@ -767,31 +817,35 @@ def test_push_chunks_to_node_payload_and_headers(monkeypatch):
     monkeypatch.setattr(indexer.requests, "post", fake_post)
 
     chunk_records = [{"chunk": 0, "sheet": None, "text": "hello"}]
-    indexer._push_chunks_to_node("doc_http", "f.txt", chunk_records)
+    indexer._push_chunks_to_node("doc_http", "f.txt", chunk_records, "v1")
 
     assert captured["url"] == indexer.CHUNK_UPSERT_URL
     assert captured["json"]["doc_id"] == "doc_http"
     assert captured["json"]["filename"] == "f.txt"
+    assert captured["json"]["indexVersion"] == "v1"
     assert captured["json"]["chunks"] == chunk_records
     assert captured["headers"]["Content-Type"] == "application/json"
     assert captured["headers"]["x-service-token"] == indexer.SERVICE_TOKEN
     assert captured["timeout"] == indexer.NODE_FETCH_TIMEOUT
 
-def test_push_chunks_to_node_swallows_exceptions(monkeypatch):
+def test_push_chunks_to_node_raises_exceptions(monkeypatch):
     import requests
 
     def fail(*_args, **_kwargs):
         raise requests.ConnectionError("down")
 
-    # Patch the shared requests module (indexer imports and uses the same module object)
+    # Patch the shared requests module
     monkeypatch.setattr(requests, "post", fail)
 
-    # Should not raise
-    indexer._push_chunks_to_node(
-        "doc_http2",
-        "f.txt",
-        [{"chunk": 0, "sheet": None, "text": "hello"}],
-    )
+    # Should raise IndexBuildError
+    with pytest.raises(indexer.IndexBuildError) as exc:
+        indexer._push_chunks_to_node(
+            "doc_http2",
+            "f.txt",
+            [{"chunk": 0, "sheet": None, "text": "hello"}],
+            "v1",
+        )
+    assert "Node chunk upsert failed" in str(exc.value)
 
 def test_index_bytes_doc_legacy_supported(fake_collection, mock_embedding, disable_node_push, monkeypatch):
     """Smoke test: legacy .doc files should go through the DOC/DOCX extraction path."""

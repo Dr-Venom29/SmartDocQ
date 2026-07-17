@@ -29,6 +29,26 @@ const documentSchema = new mongoose.Schema({
   consentConfirmed: { type: Boolean, default: false },
   sensitiveSummary: { type: mongoose.Schema.Types.Mixed },
   lastScanAt: { type: Date },
+  indexState: {
+    activeVersion: { type: String, default: null },
+    previousVersion: { type: String, default: null },
+    activeMetadata: {
+      fileHash: { type: String, default: null },
+      pipelineVersion: { type: String, default: null },
+      chunkingVersion: { type: String, default: null },
+      embeddingModel: { type: String, default: null },
+    },
+    build: {
+      version: { type: String, default: null },
+      status: { type: String, enum: ["idle", "building", "failed"], default: "idle" },
+      fileHash: { type: String, default: null },
+      pipelineVersion: { type: String, default: null },
+      chunkingVersion: { type: String, default: null },
+      embeddingModel: { type: String, default: null },
+      reason: { type: String, default: null },
+    },
+    updatedAt: { type: Date, default: Date.now },
+  },
 });
 
 // Populate doc_id with this._id if not set, to avoid null values

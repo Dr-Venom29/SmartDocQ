@@ -9,6 +9,10 @@ def run_background_index(doc_id: str, *, indexing_lock, indexing_in_progress):
     from services.retrieval_service import fetch_doc_from_node, fetch_doc_meta_from_node
 
     try:
+        # Load meta first to check for consentConfirmed
+        meta = fetch_doc_meta_from_node(doc_id) or {}
+        consent_confirmed = bool(meta.get("consentConfirmed", False))
+
         ok, filename, mimetype, data_bytes = fetch_doc_from_node(doc_id)
         if not ok:
             return
@@ -20,7 +24,7 @@ def run_background_index(doc_id: str, *, indexing_lock, indexing_in_progress):
         scan = detect_sensitive(text_for_scan)
         prev = consent_state.get(doc_id) or {}
         sensitive = bool(scan.get("found"))
-        confirmed = bool(prev.get("confirmed", False))
+        confirmed = consent_confirmed or bool(prev.get("confirmed", False))
         awaiting = sensitive and not confirmed
 
         consent_state[doc_id] = {
@@ -32,9 +36,9 @@ def run_background_index(doc_id: str, *, indexing_lock, indexing_in_progress):
         }
 
         if awaiting:
+            logger.warning("[Background Reindex] Document %s awaiting consent. Skipping index.", doc_id)
             return
 
-        meta = fetch_doc_meta_from_node(doc_id) or {}
         file_hash = meta.get("contentHash")
 
         from indexing.indexer import index_bytes

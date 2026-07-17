@@ -14,7 +14,7 @@ router.post("/internal/chunks/upsert", async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { documentId, doc_id, filename, chunks } = req.body || {};
+    const { documentId, doc_id, filename, indexVersion, chunks } = req.body || {};
     if ((!documentId && !doc_id) || !Array.isArray(chunks)) {
       return res.status(400).json({ message: "Missing documentId/doc_id or chunks" });
     }
@@ -28,15 +28,16 @@ router.post("/internal/chunks/upsert", async (req, res) => {
     }
     if (!doc) return res.status(404).json({ message: "Document not found" });
 
-    // Replace strategy: remove existing chunks then insert new ones
-    await DocChunk.deleteMany({ doc: doc._id });
+    // Replace strategy: remove existing chunks for this specific version then insert new ones
+    const versionVal = indexVersion || null;
+    await DocChunk.deleteMany({ doc: doc._id, indexVersion: versionVal });
 
     const bulk = DocChunk.collection.initializeUnorderedBulkOp();
     const now = new Date();
     const fname = filename || doc.name;
     for (const c of chunks) {
       if (!c || typeof c.chunk !== "number" || typeof c.text !== "string") continue;
-      bulk.find({ doc: doc._id, chunk: c.chunk }).upsert().replaceOne({
+      bulk.find({ doc: doc._id, chunk: c.chunk, indexVersion: versionVal }).upsert().replaceOne({
         user: doc.user,
         doc: doc._id,
         doc_id: doc.doc_id,
@@ -44,6 +45,7 @@ router.post("/internal/chunks/upsert", async (req, res) => {
         sheet: c.sheet || null,
         chunk: c.chunk,
         text: c.text,
+        indexVersion: versionVal,
         createdAt: now,
       });
     }
@@ -70,17 +72,92 @@ router.get("/", verifyToken, ensureActive, async (req, res) => {
     // Fallback using $text if index exists; otherwise regex (case-insensitive)
     let items = [];
     try {
-      // Try $text
-      items = await DocChunk.find(
-        { user: req.userId, $text: { $search: q } },
-        { score: { $meta: "textScore" }, text: 1, filename: 1, sheet: 1, doc: 1, doc_id: 1, chunk: 1 }
-      ).sort({ score: { $meta: "textScore" } }).limit(limit).lean();
+      // Try $text with activeVersion filter
+      items = await DocChunk.aggregate([
+        { $match: { user: new mongoose.Types.ObjectId(req.userId), $text: { $search: q } } },
+        {
+          $lookup: {
+            from: "documents",
+            localField: "doc",
+            foreignField: "_id",
+            as: "docObj"
+          }
+        },
+        { $unwind: "$docObj" },
+        {
+          $match: {
+            $expr: {
+              $or: [
+                { $eq: ["$indexVersion", "$docObj.indexState.activeVersion"] },
+                {
+                  $and: [
+                    { $or: [{ $eq: ["$indexVersion", null] }, { $not: ["$indexVersion"] }] },
+                    { $or: [{ $eq: ["$docObj.indexState.activeVersion", null] }, { $not: ["$docObj.indexState.activeVersion"] }] }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          $project: {
+            score: { $meta: "textScore" },
+            text: 1,
+            filename: 1,
+            sheet: 1,
+            doc: 1,
+            doc_id: 1,
+            chunk: 1
+          }
+        },
+        { $sort: { score: { $meta: "textScore" } } },
+        { $limit: limit }
+      ]);
     } catch (_) {
-      // Regex fallback (less performant)
-      items = await DocChunk.find(
-        { user: req.userId, text: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" } },
-        { text: 1, filename: 1, sheet: 1, doc: 1, doc_id: 1, chunk: 1 }
-      ).limit(limit).lean();
+      // Regex fallback with activeVersion filter
+      items = await DocChunk.aggregate([
+        {
+          $match: {
+            user: new mongoose.Types.ObjectId(req.userId),
+            text: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" }
+          }
+        },
+        {
+          $lookup: {
+            from: "documents",
+            localField: "doc",
+            foreignField: "_id",
+            as: "docObj"
+          }
+        },
+        { $unwind: "$docObj" },
+        {
+          $match: {
+            $expr: {
+              $or: [
+                { $eq: ["$indexVersion", "$docObj.indexState.activeVersion"] },
+                {
+                  $and: [
+                    { $or: [{ $eq: ["$indexVersion", null] }, { $not: ["$indexVersion"] }] },
+                    { $or: [{ $eq: ["$docObj.indexState.activeVersion", null] }, { $not: ["$docObj.indexState.activeVersion"] }] }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          $project: {
+            text: 1,
+            filename: 1,
+            sheet: 1,
+            doc: 1,
+            doc_id: 1,
+            chunk: 1
+          }
+        },
+        { $limit: limit }
+      ]);
     }
 
     // Simple snippet building

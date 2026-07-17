@@ -100,7 +100,7 @@ flowchart TD
     -->|"Server-to-Server Request\n(x-service-token)\n(x-user-id)"| Flask["Flask AI Service"]
 ```
 
-The browser never communicates directly with the Flask AI service. Node authenticates users, validates document ownership, enforces request limits, and securely proxies requests to Flask using a shared `SERVICE_TOKEN`.
+The browser never communicates directly with the Flask AI service. Node authenticates users, validates document ownership, enforces request limits, and securely proxies requests to Flask using a shared `SERVICE_TOKEN`. The gateway also coordinates document index lifecycle state, including background indexing, version activation, and recovery from interrupted indexing operations.
 
 ## Request Flow
 
@@ -183,6 +183,9 @@ Responses larger than 1 KB are automatically compressed using `gzip` to reduce b
   - **Production**: Returns `{ "status": "ok" }`.
   - **Development**: Returns status along with `uptime`, `mongodb` connection status, and application `version` (npm package version).
 - **Metrics**: `GET /metrics` exposes Prometheus metrics. Available only in development by default.
+  - HTTP request latency histogram (Prometheus)
+  - Default Node.js process metrics
+  - Request duration grouped by route, method, and status code
 
 ## Graceful Shutdown
 The server supports graceful shutdown. Upon receiving a `SIGINT` or `SIGTERM` signal, it:
@@ -191,10 +194,19 @@ The server supports graceful shutdown. Upon receiving a `SIGINT` or `SIGTERM` si
 3. Closes the MongoDB client connection cleanly.
 4. Forces process exit after 10 seconds if any connection hangs.
 
+## Database Initialization
+
+On startup the server automatically:
+- Creates required MongoDB indexes if missing.
+- Migrates legacy DocChunk indexes to version-aware indexes.
+- Ensures unique document identifiers.
+- Creates TTL indexes for shared chat expiration.
+
 ## Background Jobs
+
 Runs lightweight background tasks on interval:
 - **Shared Chat Cleanup**: Deletes expired public share records hourly.
-- **Stale Document Watchdog**: Runs every 2 minutes to mark documents stuck in processing (`queued`/`indexing`) for more than 10 minutes as `failed`.
+- **Stale Document Watchdog**: Every two minutes detects documents stuck in `queued` or `indexing` for more than ten minutes and safely resets them using optimistic locking (`processingVersion`) to prevent race conditions with active workers.
 
 ## Public share links
 

@@ -4,6 +4,7 @@ const multer = require("multer");
 const crypto = require("crypto");
 const path = require("path");
 const Document = require("../models/Document");
+const DocChunk = require("../models/DocChunk");
 const { verifyToken, ensureActive } = require("../middlewares/auth");
 const { verifyCsrf } = require("../middlewares/csrf");
 const fetch = require("node-fetch");
@@ -509,25 +510,26 @@ router.delete("/:id", verifyToken, ensureActive, verifyCsrf, async (req, res) =>
     // Also delete associated chat if it exists
     try {
       const Chat = require("../models/Chat");
-      const mongoose = require("mongoose");
-      
-      // Try both string and ObjectId formats for document ID
-      const query = { 
-        user: mongoose.Types.ObjectId(userId),
-        $or: [
-          { document: documentId },
-          { document: mongoose.Types.ObjectId(documentId) }
-        ]
-      };
-      
-      const deletedChat = await Chat.findOneAndDelete(query);
-      
+      const deletedChat = await Chat.findOneAndDelete({
+        user: userId,
+        document: documentId
+      });
       if (deletedChat) {
         logger.info({ documentId, messageCount: deletedChat.messages.length }, "Deleted associated chat");
       }
     } catch (chatErr) {
       logger.error({ err: chatErr, documentId }, "Error deleting associated chat");
-      // Don't fail the document deletion if chat deletion fails
+      throw chatErr;
+    }
+    
+    // Also delete associated DocChunks
+    try {
+      const DocChunk = require("../models/DocChunk");
+      await DocChunk.deleteMany({ doc: documentId });
+      logger.info({ documentId }, "Deleted associated DocChunks");
+    } catch (chunkErr) {
+      logger.error({ err: chunkErr, documentId }, "Error deleting associated DocChunks");
+      throw chunkErr;
     }
     
     res.json({ message: "Document deleted" });
@@ -924,6 +926,200 @@ router.get('/:id/_meta', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err?.message || 'Meta fetch failed' });
+  }
+});
+
+// ---- Index State Lifecycle Endpoints (Flask) ----
+router.get('/:id/index-state', async (req, res) => {
+  try {
+    const svc = process.env.SERVICE_TOKEN;
+    const provided = req.header('x-service-token');
+    if (!provided || provided !== svc) return res.status(403).json({ message: 'Forbidden' });
+
+    const doc = await Document.findById(req.params.id);
+    if (!doc) return res.status(404).json({ message: 'Not found' });
+
+    const state = doc.indexState || {};
+    res.json({
+      activeVersion: state.activeVersion || null,
+      previousVersion: state.previousVersion || null,
+      activeMetadata: state.activeMetadata || {
+        fileHash: null,
+        pipelineVersion: null,
+        chunkingVersion: null,
+        embeddingModel: null
+      },
+      build: {
+        version: state.build?.version || null,
+        status: state.build?.status || "idle",
+        fileHash: state.build?.fileHash || null,
+        pipelineVersion: state.build?.pipelineVersion || null,
+        chunkingVersion: state.build?.chunkingVersion || null,
+        embeddingModel: state.build?.embeddingModel || null,
+        reason: state.build?.reason || null
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err?.message || 'State fetch failed' });
+  }
+});
+
+router.post('/:id/index-state/building', async (req, res) => {
+  try {
+    const svc = process.env.SERVICE_TOKEN;
+    const provided = req.header('x-service-token');
+    if (!provided || provided !== svc) return res.status(403).json({ message: 'Forbidden' });
+
+    const { indexVersion, fileHash, pipelineVersion, chunkingVersion, embeddingModel } = req.body || {};
+    if (!indexVersion) return res.status(400).json({ message: "Missing indexVersion" });
+
+    const doc = await Document.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        $or: [
+          { "indexState.build.status": { $ne: "building" } },
+          { "indexState.build.status": { $exists: false } },
+          { "indexState.build": null },
+          { "indexState.build.version": indexVersion }
+        ]
+      },
+      {
+        $set: {
+          "indexState.build": {
+            version: indexVersion,
+            status: "building",
+            fileHash: fileHash || null,
+            pipelineVersion: pipelineVersion || null,
+            chunkingVersion: chunkingVersion || null,
+            embeddingModel: embeddingModel || null,
+            reason: null,
+          },
+          "indexState.updatedAt": new Date(),
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!doc) {
+      const exists = await Document.findById(req.params.id);
+      if (!exists) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      return res.status(409).json({ message: "Another index build is already in progress" });
+    }
+
+    res.json({ message: "Index state set to building", indexState: doc.indexState });
+  } catch (err) {
+    res.status(500).json({ message: err?.message || 'State update building failed' });
+  }
+});
+
+router.post('/:id/index-state/activate', async (req, res) => {
+  try {
+    const svc = process.env.SERVICE_TOKEN;
+    const provided = req.header('x-service-token');
+    if (!provided || provided !== svc) return res.status(403).json({ message: 'Forbidden' });
+
+    const { indexVersion } = req.body || {};
+    if (!indexVersion) return res.status(400).json({ message: "Missing indexVersion" });
+
+    // Atomically activate index version using CAS check: build.version == indexVersion AND build.status == "building"
+    // Also shift activeVersion to previousVersion and clear build object.
+    const doc = await Document.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        "indexState.build.version": indexVersion,
+        "indexState.build.status": "building"
+      },
+      [
+        {
+          $set: {
+            "indexState.previousVersion": { $ifNull: ["$indexState.activeVersion", null] },
+            "indexState.activeVersion": indexVersion,
+            "indexState.activeMetadata": {
+              fileHash: "$indexState.build.fileHash",
+              pipelineVersion: "$indexState.build.pipelineVersion",
+              chunkingVersion: "$indexState.build.chunkingVersion",
+              embeddingModel: "$indexState.build.embeddingModel"
+            },
+            "indexState.build": {
+              version: null,
+              status: "idle",
+              fileHash: null,
+              pipelineVersion: null,
+              chunkingVersion: null,
+              embeddingModel: null,
+              reason: null
+            },
+            "indexState.updatedAt": new Date()
+          }
+        }
+      ],
+      { new: true }
+    );
+
+    if (!doc) {
+      return res.status(409).json({ message: "Conflict: Version mismatch or build not in building status" });
+    }
+
+    res.json({ message: "Index version activated", indexState: doc.indexState });
+  } catch (err) {
+    res.status(500).json({ message: err?.message || 'State update activate failed' });
+  }
+});
+
+router.post('/:id/index-state/failed', async (req, res) => {
+  try {
+    const svc = process.env.SERVICE_TOKEN;
+    const provided = req.header('x-service-token');
+    if (!provided || provided !== svc) return res.status(403).json({ message: 'Forbidden' });
+
+    const { indexVersion, reason } = req.body || {};
+    if (!indexVersion) return res.status(400).json({ message: "Missing indexVersion" });
+
+    // Compare-and-set: update to failed only if version and status="building" match
+    const doc = await Document.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        "indexState.build.version": indexVersion,
+        "indexState.build.status": "building"
+      },
+      {
+        $set: {
+          "indexState.build.status": "failed",
+          "indexState.build.reason": reason || null,
+          "indexState.updatedAt": new Date()
+        }
+      },
+      { new: true }
+    );
+
+    if (!doc) {
+      return res.status(409).json({ message: "Conflict: Version mismatch or build not in building status" });
+    }
+
+    res.json({ message: "Index state set to failed", indexState: doc.indexState });
+  } catch (err) {
+    res.status(500).json({ message: err?.message || 'State update failed failed' });
+  }
+});
+
+router.get('/:id/chunks/count', async (req, res) => {
+  try {
+    const svc = process.env.SERVICE_TOKEN;
+    const provided = req.header('x-service-token');
+    if (!provided || provided !== svc) return res.status(403).json({ message: 'Forbidden' });
+
+    const { indexVersion } = req.query || {};
+    const versionVal = indexVersion || null;
+
+    const count = await DocChunk.countDocuments({ doc: req.params.id, indexVersion: versionVal });
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ message: err?.message || 'Chunk count failed' });
   }
 });
 

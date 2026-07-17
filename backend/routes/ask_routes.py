@@ -24,6 +24,11 @@ _FALLBACK_PROMPT = 'Do you want me to answer using general knowledge instead? Re
 
 @ask_bp.route("/api/document/ask", methods=["POST"])
 def ask_doc():
+    import time
+    t_start = time.perf_counter()
+    retrieval_ms = 0.0
+    llm_ms = 0.0
+
     data = request.get_json(silent=True) or {}
     question = data.get("question", "").strip()
     doc_id = data.get("doc_id", "").strip()
@@ -123,7 +128,10 @@ def ask_doc():
             start_background_indexing(doc_id)
 
         # --- Retrieve context (embedding + ranking lives in retrieval_service) ---
+        t_ret_start = time.perf_counter()
         context, err = retrieve_context(question, doc_id)
+        retrieval_ms = (time.perf_counter() - t_ret_start) * 1000
+
         if err:
             return jsonify({"error": err}), 500
         if context is None:
@@ -131,15 +139,28 @@ def ask_doc():
             return jsonify({"answer": _NO_CONTEXT_MSG})
 
         # --- Generate answer ---
+        t_llm_start = time.perf_counter()
         raw_text = generate_answer_from_context(question, context)
+        llm_ms = (time.perf_counter() - t_llm_start) * 1000
+
         if not raw_text:
             return jsonify({"answer": "⚠️ Could not generate answer."})
 
         if is_out_of_doc_answer(raw_text):
             general_fallback[doc_id] = {"awaiting": True, "pending_question": question}
             appended = raw_text + f"\n\n{_FALLBACK_PROMPT}"
+            total_ms = (time.perf_counter() - t_start) * 1000
+            logger.info(
+                "[Ask Latency] doc_id=%s retrieval_ms=%.2f llm_ms=%.2f total_ms=%.2f",
+                doc_id, retrieval_ms, llm_ms, total_ms
+            )
             return jsonify({"answer": format_response(appended), "requireConfirmation": False})
 
+        total_ms = (time.perf_counter() - t_start) * 1000
+        logger.info(
+            "[Ask Latency] doc_id=%s retrieval_ms=%.2f llm_ms=%.2f total_ms=%.2f",
+            doc_id, retrieval_ms, llm_ms, total_ms
+        )
         return jsonify({"answer": format_response(raw_text), "requireConfirmation": False})
 
     except Exception as e:

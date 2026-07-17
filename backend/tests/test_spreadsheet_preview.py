@@ -7,7 +7,7 @@ import datetime
 from unittest.mock import patch
 
 # Set env before imports
-os.environ.setdefault("SERVICE_TOKEN", "test_service_token")
+os.environ["SERVICE_TOKEN"] = "test_service_token"
 os.environ.setdefault("FLASK_DEBUG", "1")
 
 import pytest

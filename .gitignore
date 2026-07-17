@@ -47,3 +47,6 @@ venv/
 
 # Workspace Agent Configurations
 .agents/
+
+# Scratch folder
+scratch/

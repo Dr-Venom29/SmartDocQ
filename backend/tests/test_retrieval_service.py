@@ -19,7 +19,12 @@ class _ImportCollectionStub:
         pass
 
     def get(self, *args, **kwargs):
-        return {"ids": [], "documents": [], "metadatas": []}
+        # Return a dummy chunk metadata so that legacy fallback checks pass
+        return {
+            "ids": ["dummy_chunk"],
+            "documents": ["dummy_text"],
+            "metadatas": [{"embedding_model": "models/text-embedding-004", "pipeline_version": "6"}]
+        }
 
     def delete(self, *args, **kwargs):
         pass
@@ -359,7 +364,11 @@ def test_chunk_id_uniqueness_uses_next_chunk_index(fake_indexer_collection, monk
     )
 
     assert ok is True
-    assert set(fake_indexer_collection.store.keys()) == {"doc_collision_0", "doc_collision_1", "doc_collision_2"}
+    keys = set(fake_indexer_collection.store.keys())
+    assert len(keys) == 3
+    for k in keys:
+        assert k.startswith("doc_collision:")
+        assert k.split(":")[-1] in {"0", "1", "2"}
 
 
 def test_deterministic_chunk_numbering_consumes_indices_on_embedding_fail(fake_indexer_collection, monkeypatch):
@@ -375,12 +384,9 @@ def test_deterministic_chunk_numbering_consumes_indices_on_embedding_fail(fake_i
     monkeypatch.setattr(pipeline, "embed_document", flaky_embeddings)
 
     ok, added = indexer.index_text("doc_det", "sample.txt", "ignored")
-    assert ok is True
-    assert added == 1
-
-    assert set(fake_indexer_collection.store.keys()) == {"doc_det_1"}
-    meta = fake_indexer_collection.store["doc_det_1"]["metadata"]
-    assert meta.get("chunk") == 1
+    assert ok is False
+    assert added == 0
+    assert len(fake_indexer_collection.store) == 0
 
 
 def test_markdown_truncation_in_metadata(fake_indexer_collection, monkeypatch):
@@ -409,11 +415,13 @@ def test_markdown_truncation_in_metadata(fake_indexer_collection, monkeypatch):
         tables,
         start_chunk_index=0,
         chunk_records_out=chunk_records,
+        index_version="v1",
         file_hash="h_md",
     )
 
     assert added == 1
-    stored = fake_indexer_collection.store["doc_md_0"]
+    assert len(fake_indexer_collection.store) == 1
+    stored = next(iter(fake_indexer_collection.store.values()))
     md_meta = stored["metadata"].get("markdown")
     assert isinstance(md_meta, str)
     assert len(md_meta) <= indexer.MAX_MD_META_LEN
@@ -741,14 +749,23 @@ def test_end_to_end_pdf_indexing_and_retrieval(monkeypatch):
     fake_db = FakeIndexerCollection()
     
     def fake_query(query_embeddings, n_results, where=None, **kwargs):
-        doc_id = where.get("doc_id") if where else None
-        docs, dists, metas = [], [], []
-        for item in fake_db.store.values():
+        doc_id = None
+        if where:
+            if "doc_id" in where:
+                doc_id = where["doc_id"]
+            elif "$and" in where:
+                for cond in where["$and"]:
+                    if "doc_id" in cond:
+                        doc_id = cond["doc_id"]
+        docs, dists, metas, ids = [], [], [], []
+        for cid, item in fake_db.store.items():
             if not doc_id or item["metadata"].get("doc_id") == doc_id:
                 docs.append(item["document"])
                 dists.append(0.1)  # Simulated close distance
                 metas.append(item["metadata"])
+                ids.append(cid)
         return {
+            "ids": [ids],
             "documents": [docs],
             "distances": [dists],
             "metadatas": [metas]

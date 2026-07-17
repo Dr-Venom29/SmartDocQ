@@ -200,8 +200,20 @@ async function onDbOpen() {
     logger.info("Ensured unique index on documents.doc_id");
 
     try {
-      await DocChunk.collection.createIndex({ doc: 1, chunk: 1 }, { unique: true });
-    } catch (_) {}
+      const indexes = await DocChunk.collection.indexes();
+      const oldIndex = indexes.find(idx => {
+        const keys = Object.keys(idx.key || {});
+        return keys.length === 2 && idx.key.doc === 1 && idx.key.chunk === 1;
+      });
+      if (oldIndex) {
+        logger.info(`Dropping old unique index on docchunks: ${oldIndex.name}`);
+        await DocChunk.collection.dropIndex(oldIndex.name);
+      }
+      await DocChunk.collection.createIndex({ doc: 1, chunk: 1, indexVersion: 1 }, { unique: true });
+    } catch (e) {
+      logger.error({ err: e }, "CRITICAL: Database index migration for docchunks failed");
+      process.exit(1);
+    }
     try {
       await DocChunk.collection.createIndex({ user: 1, doc: 1 });
     } catch (_) {}

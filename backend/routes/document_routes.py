@@ -222,10 +222,12 @@ def rename_doc(doc_id):
 @document_bp.route("/api/document/<doc_id>", methods=["DELETE"])
 def delete_doc(doc_id):
     invalidate_cached_doc_meta(doc_id)
-    all_ids = collection.get()["ids"]
-    to_delete = [i for i in all_ids if i.startswith(doc_id)]
-    if to_delete:
-        collection.delete(ids=to_delete)
+    from services.bm25_service import invalidate_all_bm25_versions
+    invalidate_all_bm25_versions(doc_id)
+    try:
+        collection.delete(where={"doc_id": doc_id})
+    except Exception as e:
+        logger.warning("Chroma deletion failed in delete_doc for %s: %s", doc_id, e)
     return jsonify({"message": "Deleted successfully"})
 
 

@@ -6,29 +6,29 @@ In today's information-driven world, efficiently extracting insights from docume
 
 ## Overview
 
-SmartDocQ is a comprehensive full-stack web application that enables users to upload documents, engage with content through natural language queries, and generate educational resources automatically. By combining Retrieval-Augmented Generation (RAG) with Google's Gemini AI, the platform delivers accurate, context-aware responses while maintaining document privacy and security.
-
-SmartDocQ uses a Hybrid Retrieval-Augmented Generation (Hybrid RAG) architecture that combines semantic vector search, BM25 keyword retrieval, and Reciprocal Rank Fusion (RRF) to improve answer accuracy across both narrative documents and structured tabular data.
+SmartDocQ is a full-stack AI document intelligence platform that combines structured document processing with a Hybrid Retrieval-Augmented Generation (Hybrid RAG) architecture. By integrating semantic vector search, BM25 lexical retrieval, and Reciprocal Rank Fusion (RRF), it delivers accurate, context-aware answers across both narrative documents and structured tabular data.
 
 ## Features
 
-### Core Functionality
+### Core AI Features
+- **AI-Powered Chat**: Hybrid RAG-based question answering using Vector Search + BM25 + RRF Fusion.
+- **Quiz Generation**: Automatic creation of multiple-choice, true/false, and short-answer questions from document content.
+- **Flashcard Creation**: Smart extraction of key concepts and definitions for effective learning and revision.
+- **Text Summarization**: Concise summaries of document content for quick comprehension.
+
+### Indexing & Retrieval
 - **Document Upload & Processing**: Support for PDF, DOC, DOCX, TXT, CSV, and XLSX files with intelligent text extraction and preprocessing.
 - **Advanced PDF Indexing Pipeline**:
   - **PyMuPDF4LLM Markdown extraction** for high-quality structure conversion.
   - **Heading-aware section detection** (traces H1-H5 hierarchy).
   - **Block-aware token chunking** preserving list, code, table, and paragraph bounds.
-  - **Contextual embedding headers** prepending document, section, subsection, and page ranges.
+  - **Contextual document embeddings**: Prepend document title, hierarchical headings, and page ranges before embedding, improving retrieval quality while preserving the original chunk text for generation.
   - **Rich metadata indexing** and duplicate filtering.
-- **AI-Powered Chat**: Hybrid RAG-based question answering using Vector Search + BM25 + RRF Fusion.
-- **Quiz Generation**: Automatic creation of multiple-choice, true/false, and short-answer questions from document content.
-- **Flashcard Creation**: Smart extraction of key concepts and definitions for effective learning and revision.
-- **Text Summarization**: Concise summaries of document content for quick comprehension.
-- **Hybrid Retrieval Engine**: Combines semantic vector search, BM25 keyword search, and Reciprocal Rank Fusion (RRF) for higher retrieval accuracy.
+- **Hybrid Retrieval Engine**: Combines semantic vector search, version-isolated BM25 lexical search with in-memory caching, and Reciprocal Rank Fusion (RRF) for higher retrieval accuracy.
 - **Spreadsheet & Table Intelligence**: Extracts and indexes structured data from CSV, XLSX, and DOCX tables for table-aware question answering.
-- **Automatic Reindexing**: Detects embedding model, content, or indexing pipeline changes and transparently reindexes documents in the background.
+- **Atomic Shadow Indexing**: Builds new vector generations in isolation, validates them across ChromaDB and BM25, performs compare-and-swap (CAS) activation, and automatically rolls back failed builds without interrupting retrieval.
 
-### Security & Privacy
+### Security
 - **Session-Bound CSRF Protection**: Custom double-submit cookie protection with session-bound SHA-256 token validation, timing-safe comparisons, and Origin/Referer verification to prevent Cross-Site Request Forgery attacks.
 - **Defense-in-Depth Request Validation**: Authenticated state-changing requests are protected by session-bound double-submit CSRF tokens, Origin/Referer validation, timing-safe comparisons, and per-user rate limiting.
 - **Internal AI Service Authentication**: All browser requests are routed through the Node.js backend. The Flask AI service accepts only authenticated server-to-server requests protected with a shared `SERVICE_TOKEN`, preventing direct client access to AI endpoints.
@@ -44,77 +44,13 @@ SmartDocQ uses a Hybrid Retrieval-Augmented Generation (Hybrid RAG) architecture
 - **Strict Admin Authorization**: Admin endpoints are protected by middleware that requires an authenticated user with `isAdmin = true`; there are no hardcoded admin credentials or token backdoors.
 - **Authentication Rate Limiting**: Sensitive auth endpoints (login, signup, password resets) are rate-limited per IP to prevent brute-force attacks.
 - **User Enumeration Protection**: Authentication endpoints utilize unified, generic error responses to avoid leaking database user existence.
+- **Optimistic Locking & Recovery**: Processing jobs use optimistic versioning and watchdog recovery to prevent race conditions and automatically recover stalled indexing tasks.
 
-### Administrative Tools
+### Administration
 - **User Management**: Comprehensive admin dashboard for user oversight and role assignment.
 - **Document Analytics**: Track document uploads, processing status, and usage statistics.
 - **Report Management**: Handle user feedback and support inquiries efficiently.
 - **System Monitoring**: Structured request logging (Pino), Prometheus metrics, health checks, and background maintenance jobs.
-
----
-
-## ADVANCED PDF INDEXING PIPELINE
-
-To handle complex manuals and academic textbooks, SmartDocQ uses a specialized, stage-based indexing pipeline:
-
-```mermaid
-flowchart TD
-    A([PDF Upload])
-    --> B["Three-tier Extraction Chain\n(PyMuPDF4LLM → PyMuPDF → PyPDF2 fallback)"]
-    --> C["Markdown Normalization\n(Bulleted fixes, noise removals, line merging)"]
-    --> D["Extensible Block Parsing\n(Paragraph, List, Table, Code, Blockquote blocks)"]
-    --> E["Heading Extraction\n(H1–H5 nested path extraction)"]
-    --> F["Section-aware Chunking\n(Isolated table/code chunks, snapped text bounds)"]
-    --> G["Token-aware Packing\n(tiktoken bounds packing with overlap bounds mapping)"]
-    --> H["Contextual Headers\n(Prepending Document, Section, Subsection, Page Range)"]
-    --> I["Gemini Embeddings\n(gemini-embedding-exp-03-07 vector calculation)"]
-    --> J[("ChromaDB Storage\nClean text documents + detailed metadata")]
-```
-
----
-
-## Technology Stack
-
-### Frontend
-- **React.js 18.x**: Modern component-based UI framework
-- **React Router DOM**: Client-side routing and navigation
-- **i18next**: Internationalization support
-- **GSAP & Lottie**: Smooth animations and interactive elements
-- **Focus Trap React**: Accessibility features
-
-### Backend Middleware
-- **Node.js & Express 5.x**: RESTful API server
-- **Mongoose 8.x**: MongoDB object modeling
-- **JWT & bcryptjs**: Authentication and password security
-- **Multer**: File upload handling
-- **Helmet**: Security-oriented HTTP response headers
-- **Compression**: gzip response compression for payloads > 1 KB
-- **Pino**: Structured request and error logging
-- **CORS**: Cross-origin resource sharing configuration
-- **express-rate-limit**: API rate limiting for public sharing and authentication endpoints
-
-### AI Service
-- **Flask 3.x**: Python web framework for AI processing
-- **Google Gemini 2.5 Flash**: Advanced text generation and comprehension
-- **models/gemini-embedding-2**: High-quality vector embeddings
-- **ChromaDB 0.5+**: Vector database for semantic retrieval
-- **BM25 Retrieval Layer**: Fast keyword and identifier-based search
-- **Reciprocal Rank Fusion (RRF)**: Hybrid ranking engine combining vector and lexical retrieval
-- **PyMuPDF4LLM / PyMuPDF**: Structural Markdown extractors
-- **tiktoken**: Token packing estimation
-
-### Document Processing
-- **PyMuPDF4LLM**: Markdown layout converter
-- **PyMuPDF (fitz)**: Page-level structural extraction fallback
-- **PyPDF2**: Backup PDF text extraction
-- **python-docx**: Microsoft Word document processing
-- **openpyxl**: Spreadsheet processing and table extraction
-- **Structured Table Extraction**: CSV, XLSX, and DOCX table indexing
-- **Better Profanity**: Content filtering
-
-### Database
-- **MongoDB Atlas**: Primary NoSQL database for user data, documents, and chat history
-- **ChromaDB**: Vector store for document embeddings and semantic retrieval
 
 ---
 
@@ -146,7 +82,7 @@ graph TD
     subgraph AI_Layer ["AI Processing Layer (Flask Service)"]
         FlaskApp["Flask API Router<br/>(/api/index-from-atlas, /api/document/ask)"]:::aiservice
         Parser["Document Parser & Table Extractor<br/>(PyMuPDF4LLM → Markdown → Block Parser → Chunker)"]:::aiservice
-        VersionManager["Index Lifecycle watchdog<br/>(Version / Hash validation)"]:::aiservice
+        ShadowVersionManager["Shadow Version Manager<br/>(CAS Activation & Rollbacks)"]:::aiservice
         RetrievalPipeline["Hybrid Retrieval Engine<br/>(Vector Search + BM25 + RRF)"]:::aiservice
         Sanitizer["Prompt Injection Sanitizer<br/>(sanitize_context)"]:::aiservice
     end
@@ -174,8 +110,8 @@ graph TD
     ExpressRouter -->|"Server-to-Server POST<br/>(Service Token Auth)"| FlaskApp
     
     FlaskApp --> Parser
-    Parser --> VersionManager
-    VersionManager --> RetrievalPipeline
+    Parser --> ShadowVersionManager
+    ShadowVersionManager --> RetrievalPipeline
     RetrievalPipeline --> Sanitizer
     
     FlaskApp <-->|"Download Document Binary"| ExpressRouter
@@ -188,6 +124,71 @@ graph TD
 
 ---
 
+## Technology Stack
+
+### Frontend
+- **React.js 18.x**: Modern component-based UI framework
+- **React Router DOM**: Client-side routing and navigation
+- **i18next**: Internationalization support
+- **GSAP & Lottie**: Smooth animations and interactive elements
+- **Focus Trap React**: Accessibility features
+
+### Backend (Node)
+- **Node.js & Express 5.x**: RESTful API server
+- **Mongoose 8.x**: MongoDB object modeling
+- **JWT & bcryptjs**: Authentication and password security
+- **Multer**: File upload handling
+- **Helmet**: Security-oriented HTTP response headers
+- **Compression**: gzip response compression for payloads > 1 KB
+- **Pino**: Structured request and error logging
+- **CORS**: Cross-origin resource sharing configuration
+- **express-rate-limit**: API rate limiting for public sharing and authentication endpoints
+
+### AI Service
+- **Flask 3.x**: Python web framework for AI processing
+- **Google Gemini 2.5 Flash**: Advanced text generation and comprehension
+- **models/gemini-embedding-2**: High-quality vector embeddings
+- **ChromaDB 0.5+**: Vector database for semantic retrieval
+- **BM25 Retrieval Layer**: Fast keyword and identifier-based search
+- **Reciprocal Rank Fusion (RRF)**: Hybrid ranking engine combining vector and lexical retrieval
+- **PyMuPDF4LLM / PyMuPDF**: Structural Markdown extractors
+- **tiktoken**: Token packing estimation
+
+### Document Processing
+- **PyMuPDF4LLM**: Markdown layout converter
+- **PyMuPDF (fitz)**: Page-level structural extraction fallback
+- **PyPDF2**: Backup PDF text extraction
+- **python-docx**: Microsoft Word document processing
+- **openpyxl**: Spreadsheet processing and table extraction
+- **Structured Table Extraction**: CSV, XLSX, and DOCX table indexing
+- **Better Profanity**: Content filtering
+
+### Storage
+- **MongoDB Atlas**: Primary NoSQL database for user data, documents, and chat history
+- **ChromaDB**: Vector store for document embeddings and semantic retrieval
+
+---
+
+## ADVANCED PDF INDEXING PIPELINE
+
+To handle complex manuals and academic textbooks, SmartDocQ uses a specialized, stage-based indexing pipeline:
+
+```mermaid
+flowchart TD
+    A([PDF Upload])
+    --> B["Three-tier Extraction Chain\n(PyMuPDF4LLM → PyMuPDF → PyPDF2 fallback)"]
+    --> C["Markdown Normalization\n(Bulleted fixes, noise removals, line merging)"]
+    --> D["Extensible Block Parsing\n(Paragraph, List, Table, Code, Blockquote blocks)"]
+    --> E["Heading Extraction\n(H1–H5 nested path extraction)"]
+    --> F["Section-aware Chunking\n(Isolated table/code chunks, snapped text bounds)"]
+    --> G["Token-aware Packing\n(tiktoken bounds packing with overlap bounds mapping)"]
+    --> H["Contextual Headers\n(Prepending Document, Section, Subsection, Page Range)"]
+    --> I["Gemini Embeddings\n(gemini-embedding-exp-03-07 vector calculation)"]
+    --> J[("ChromaDB Storage\nClean text documents + detailed metadata")]
+```
+
+---
+
 ## Index Lifecycle Management
 
 The Flask AI service includes automatic vector index lifecycle management to maintain retrieval quality as embedding models and preprocessing logic evolve.
@@ -195,6 +196,26 @@ The Flask AI service includes automatic vector index lifecycle management to mai
 Each ChromaDB vector stores detailed structural metadata. Before retrieval, SmartDocQ verifies vector compatibility and automatically triggers background reindexing when stale or incompatible vectors are detected.
 
 **This prevents:** silent retrieval degradation when upgrading embedding models or modifying chunking and preprocessing strategies.
+
+### Shadow Index Lifecycle
+SmartDocQ uses versioned shadow indexing to ensure retrieval remains available during reindexing.
+
+Each reindex creates a completely isolated index generation containing:
+- ChromaDB vectors
+- BM25 lexical index
+- Chunk metadata
+
+The active index continues serving queries while the new generation is built.
+
+Once validation succeeds:
+- Compare-and-swap (CAS) activation atomically promotes the new version
+- Previous version is retained for rollback
+- Obsolete generations are cleaned asynchronously
+
+If validation fails:
+- Active retrieval is unaffected
+- Failed generation is discarded
+- Previous active generation continues serving requests
 
 ### Supported Versioning Metadata
 - `embedding_model` — e.g. `models/gemini-embedding-2`
@@ -209,12 +230,14 @@ Each ChromaDB vector stores detailed structural metadata. Before retrieval, Smar
 
 ## Retrieval Architecture
 
+Retrieval is always performed against the currently active index generation, ensuring background reindexing never interrupts user queries.
+
 SmartDocQ uses a Hybrid RAG pipeline that combines:
 - **Semantic vector retrieval** (ChromaDB + gemini-embedding-2)
-- **BM25 keyword retrieval**
+- **Version-isolated BM25 lexical retrieval** with in-memory caching
 - **Reciprocal Rank Fusion (RRF)**
 - **Table-aware reranking**
-- **Contextual headers & section-aware chunks** (Document, Section, Subsection, Page Ranges)
+- **Contextual document embeddings** (Document, Section, Subsection, Page Ranges)
 
 This approach improves both semantic understanding and exact-match retrieval for identifiers, spreadsheet data, and structured documents.
 
@@ -313,6 +336,22 @@ cd backend
 # Set SERVICE_TOKEN (PowerShell: $env:SERVICE_TOKEN="dev-token")
 python -m pytest tests/ -v
 ```
+
+---
+
+## Observability
+
+SmartDocQ includes built-in latency instrumentation for every retrieval request.
+
+Captured metrics include:
+- embedding latency
+- Chroma retrieval latency
+- BM25 latency
+- RRF fusion latency
+- LLM latency
+- total request latency
+
+Internal timings are logged server-side while remaining hidden from client responses.
 
 ---
 

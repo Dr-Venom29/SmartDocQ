@@ -6,7 +6,6 @@ Responsible for:
     fused with Reciprocal Rank Fusion (RRF) + table-aware boosting
 Routes should call retrieve_context() and get back plain text -- no query logic in routes.
 """
-import re
 import os
 import requests
 import logging
@@ -129,26 +128,88 @@ def _rrf(rank: int, k: int = 60) -> float:
     return 1.0 / (k + rank + 1)
 
 
+_vv_module = None
+_indexer_module = None
+
+
 def retrieve_context(question: str, doc_id: str) -> tuple[str | None, str | None]:
     """Hybrid retrieval: Vector (Chroma, top-20) + BM25 (cached, top-20),
     fused with Reciprocal Rank Fusion.
     Final score = RRF_WEIGHT * rrf + SIM_WEIGHT * sim  (env-var configurable).
     Table-aware boosting applied after fusion.
     """
+    global _vv_module
+    if _vv_module is None:
+        import services.vector_versioning as vv
+        _vv_module = vv
 
-    # --- 1. Vector Search ---
+    import time
+    t_start = time.perf_counter()
+    index_state_fetch_ms = 0.0
+    embed_query_ms = 0.0
+    chroma_query_ms = 0.0
+    bm25_ms = 0.0
+    fusion_ms = 0.0
+
+    # --- 1. Version Resolution & Fallback ---
+    t_fetch_start = time.perf_counter()
+    state = _vv_module.get_index_state(doc_id)
+    index_state_fetch_ms = (time.perf_counter() - t_fetch_start) * 1000
+    
+    active_version = state.get("activeVersion")
+    
+    if not active_version:
+        # Check if legacy chunks exist in Chroma. If yes, trigger background reindex and allow legacy search.
+        global _indexer_module
+        if _indexer_module is None:
+            import indexing.indexer as idxr
+            _indexer_module = idxr
+        if _vv_module.has_legacy_chunks(doc_id):
+            logger.info("[Retrieval] Legacy chunks detected for doc %s. Triggering background reindex.", doc_id)
+            _indexer_module.start_background_indexing(doc_id)
+            where = {"doc_id": doc_id}
+        else:
+            logger.warning("[Retrieval] No active version and no legacy chunks found for doc_id=%s", doc_id)
+            ret_val = (None, None)
+            retrieval_total_ms = (time.perf_counter() - t_start) * 1000
+            logger.info(
+                "[Retrieval Latency] doc_id=%s index_state_fetch_ms=%.2f embed_query_ms=%.2f chroma_query_ms=%.2f bm25_ms=%.2f fusion_ms=%.2f retrieval_total_ms=%.2f",
+                doc_id, index_state_fetch_ms, embed_query_ms, chroma_query_ms, bm25_ms, fusion_ms, retrieval_total_ms
+            )
+            return ret_val
+    else:
+        where = {
+            "$and": [
+                {"doc_id": doc_id},
+                {"index_version": active_version}
+            ]
+        }
+
+    # --- 2. Vector Search ---
+    t_embed_start = time.perf_counter()
     q_emb = embed_query(question)
+    embed_query_ms = (time.perf_counter() - t_embed_start) * 1000
+    
     if not q_emb:
         logger.error("[Retrieval] Embedding failed")
-        return None, "Failed to generate embedding"
+        ret_val = (None, "Failed to generate embedding")
+        retrieval_total_ms = (time.perf_counter() - t_start) * 1000
+        logger.info(
+            "[Retrieval Latency] doc_id=%s index_state_fetch_ms=%.2f embed_query_ms=%.2f chroma_query_ms=%.2f bm25_ms=%.2f fusion_ms=%.2f retrieval_total_ms=%.2f",
+            doc_id, index_state_fetch_ms, embed_query_ms, chroma_query_ms, bm25_ms, fusion_ms, retrieval_total_ms
+        )
+        return ret_val
 
+    t_chroma_start = time.perf_counter()
     results = collection.query(
         query_embeddings=[q_emb],
         n_results=20,
-        where={"doc_id": doc_id},
+        where=where,
         include=["documents", "distances", "metadatas"],
     )
+    chroma_query_ms = (time.perf_counter() - t_chroma_start) * 1000
 
+    ids = results.get("ids", [[]])[0] or []
     docs = results.get("documents", [[]])[0] or []
     dists = results.get("distances", [[]])[0] or []
     metas = results.get("metadatas", [[]])[0] or []
@@ -159,21 +220,30 @@ def retrieve_context(question: str, doc_id: str) -> tuple[str | None, str | None
         if not doc_txt:
             continue
         meta = metas[i] if i < len(metas) and isinstance(metas[i], dict) else {}
+        # If in legacy mode, filter out any versioned building/failed chunks that may exist in Chroma
+        if not active_version and meta.get("index_version"):
+            continue
         dist = float(dist) if dist is not None else 0.5
-        chunk_idx = meta.get("chunk", i)
-        chunk_id = f"{doc_id}_{chunk_idx}"
+        chunk_id = ids[i] if i < len(ids) else f"{doc_id}_{meta.get('chunk', i)}"
         vector_hits.append((chunk_id, dist, meta, doc_txt))
 
-    # --- 2. BM25 Search (in-process cache, zero network overhead) ---
-    # Returns [(chunk_id, score, text, is_table), ...] sorted descending.
-    # Returns [] on cache miss (first query before index warms up or after TTL).
-    bm25_hits = bm25_search(doc_id, question, top_k=20)
+    # --- 3. BM25 Search (in-process cache, zero network overhead) ---
+    t_bm25_start = time.perf_counter()
+    bm25_hits = bm25_search(doc_id, active_version, question, top_k=20)
+    bm25_ms = (time.perf_counter() - t_bm25_start) * 1000
 
     if not vector_hits and not bm25_hits:
         logger.warning("[Retrieval] No results from either search for doc_id=%s", doc_id)
-        return None, None
+        ret_val = (None, None)
+        retrieval_total_ms = (time.perf_counter() - t_start) * 1000
+        logger.info(
+            "[Retrieval Latency] doc_id=%s index_state_fetch_ms=%.2f embed_query_ms=%.2f chroma_query_ms=%.2f bm25_ms=%.2f fusion_ms=%.2f retrieval_total_ms=%.2f",
+            doc_id, index_state_fetch_ms, embed_query_ms, chroma_query_ms, bm25_ms, fusion_ms, retrieval_total_ms
+        )
+        return ret_val
 
     # --- 3. RRF Fusion keyed by chunk_id ---
+    t_fusion_start = time.perf_counter()
     rrf_scores: dict[str, float] = {}
     chunk_text_map: dict[str, str] = {}
     chunk_sim_map: dict[str, float] = {}     # similarity = 1 - distance
@@ -188,8 +258,6 @@ def retrieve_context(question: str, doc_id: str) -> tuple[str | None, str | None
         logger.debug("[Vector] rank=%d chunk=%s dist=%.4f", rank, cid, dist)
 
     # BM25 contributions (0-indexed rank → RRF score)
-    # Chunks that appear in both lists accumulate scores from both.
-    # Chunks only in BM25 get sim=0.0 (no Chroma distance available).
     for rank, (cid, bm25_score, text, is_table) in enumerate(bm25_hits):
         rrf_scores[cid] = rrf_scores.get(cid, 0.0) + _rrf(rank)
         if cid not in chunk_text_map:
@@ -210,10 +278,8 @@ def retrieve_context(question: str, doc_id: str) -> tuple[str | None, str | None
         sim = chunk_sim_map.get(cid, 0.0)
         is_table = chunk_is_table_map.get(cid, False)
 
-        # Hybrid score: mostly RRF, with a small similarity tiebreaker.
         final_score = RRF_WEIGHT * rrf_score + SIM_WEIGHT * sim
 
-        # Lightweight table-aware boosting (unchanged from previous pipeline).
         if table_intent:
             if table_intent >= 2:
                 final_score *= 1.30 if is_table else 0.93
@@ -227,7 +293,14 @@ def retrieve_context(question: str, doc_id: str) -> tuple[str | None, str | None
         candidates.append({"chunk_id": cid, "text": text, "score": final_score})
 
     if not candidates:
-        return None, None
+        ret_val = (None, None)
+        fusion_ms = (time.perf_counter() - t_fusion_start) * 1000
+        retrieval_total_ms = (time.perf_counter() - t_start) * 1000
+        logger.info(
+            "[Retrieval Latency] doc_id=%s index_state_fetch_ms=%.2f embed_query_ms=%.2f chroma_query_ms=%.2f bm25_ms=%.2f fusion_ms=%.2f retrieval_total_ms=%.2f",
+            doc_id, index_state_fetch_ms, embed_query_ms, chroma_query_ms, bm25_ms, fusion_ms, retrieval_total_ms
+        )
+        return ret_val
 
     candidates.sort(key=lambda x: float(x.get("score") or 0.0), reverse=True)
     top5 = candidates[:5]
@@ -239,9 +312,23 @@ def retrieve_context(question: str, doc_id: str) -> tuple[str | None, str | None
 
     chosen = [c["text"] for c in top5 if c.get("text")]
     if not chosen:
-        return None, None
+        ret_val = (None, None)
+        fusion_ms = (time.perf_counter() - t_fusion_start) * 1000
+        retrieval_total_ms = (time.perf_counter() - t_start) * 1000
+        logger.info(
+            "[Retrieval Latency] doc_id=%s index_state_fetch_ms=%.2f embed_query_ms=%.2f chroma_query_ms=%.2f bm25_ms=%.2f fusion_ms=%.2f retrieval_total_ms=%.2f",
+            doc_id, index_state_fetch_ms, embed_query_ms, chroma_query_ms, bm25_ms, fusion_ms, retrieval_total_ms
+        )
+        return ret_val
 
-    return "\n\n".join(chosen), None
+    ret_val = ("\n\n".join(chosen), None)
+    fusion_ms = (time.perf_counter() - t_fusion_start) * 1000
+    retrieval_total_ms = (time.perf_counter() - t_start) * 1000
+    logger.info(
+        "[Retrieval Latency] doc_id=%s index_state_fetch_ms=%.2f embed_query_ms=%.2f chroma_query_ms=%.2f bm25_ms=%.2f fusion_ms=%.2f retrieval_total_ms=%.2f",
+        doc_id, index_state_fetch_ms, embed_query_ms, chroma_query_ms, bm25_ms, fusion_ms, retrieval_total_ms
+    )
+    return ret_val
 
 
 def fetch_doc_from_node(doc_id: str):

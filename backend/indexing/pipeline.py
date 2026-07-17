@@ -1,4 +1,4 @@
-import logging
+
 import re
 from datetime import datetime, timezone
 from db.chroma import collection
@@ -20,7 +20,10 @@ from indexing.chunking import (
     estimate_token_count,
 )
 
-logger = logging.getLogger(__name__)
+
+
+class IndexBuildError(Exception):
+    pass
 
 class BatchWriter:
     def __init__(self, collection_ref, batch_size: int, flush_fn):
@@ -151,6 +154,7 @@ def build_chunk_metadata(
     row_start: int | None = None,
     row_end: int | None = None,
     markdown: str | None = None,
+    index_version: str | None = None,
 ) -> dict:
     """Consolidated helper to build consistent vector metadata dicts."""
     cv = CHUNKING_VERSION
@@ -158,6 +162,7 @@ def build_chunk_metadata(
 
     meta = {
         "doc_id": doc_id,
+        "index_version": index_version or "",
         "chunk": reserved_chunk_index,
         "filename": filename,
         "source_type": source_type,
@@ -236,6 +241,7 @@ def _index_blocks_pipeline(
     source_type: str,
     pages: list[dict],
     chunk_records_out: list,
+    index_version: str,
     file_hash: str | None = None,
 ) -> tuple[int, int]:
     writer = _make_batch_writer()
@@ -315,7 +321,7 @@ def _index_blocks_pipeline(
         )
         emb = embed_document(text=c, title=filename, context=embed_header)
         if not emb:
-            continue
+            raise IndexBuildError(f"Failed to generate embedding for block chunk {reserved_chunk_index}")
             
         meta = build_chunk_metadata(
             doc_id=doc_id,
@@ -333,10 +339,12 @@ def _index_blocks_pipeline(
             paragraph_count=chunk["paragraph_count"],
             token_count=chunk["token_count"],
             chunk_header=meta_header,
-            file_hash=file_hash
+            file_hash=file_hash,
+            index_version=index_version
         )
 
-        writer.add(emb, c, meta, f"{doc_id}_{reserved_chunk_index}")
+        chunk_id = f"{doc_id}:{index_version}:{reserved_chunk_index}"
+        writer.add(emb, c, meta, chunk_id)
         
         chunk_records_out.append({
             "chunk": reserved_chunk_index,
@@ -356,6 +364,7 @@ def _index_sections_spreadsheet(
     source_type: str,
     sections: list,
     chunk_records_out: list,
+    index_version: str,
     file_hash: str | None = None,
 ) -> tuple[int, int]:
     writer = _make_batch_writer()
@@ -388,7 +397,7 @@ def _index_sections_spreadsheet(
             embed_header = _build_contextual_header(filename, sheet_name=sheet_name, include_filename=False)
             emb = embed_document(text=c, title=filename, context=embed_header)
             if not emb:
-                continue
+                raise IndexBuildError(f"Failed to generate embedding for spreadsheet section chunk {reserved_chunk_index}")
 
             meta = build_chunk_metadata(
                 doc_id=doc_id,
@@ -400,10 +409,12 @@ def _index_sections_spreadsheet(
                 token_count=estimate_token_count(c),
                 chunk_header=meta_header,
                 file_hash=file_hash,
-                sheet=sheet_name
+                sheet=sheet_name,
+                index_version=index_version
             )
 
-            writer.add(emb, c, meta, f"{doc_id}_{reserved_chunk_index}")
+            chunk_id = f"{doc_id}:{index_version}:{reserved_chunk_index}"
+            writer.add(emb, c, meta, chunk_id)
 
             chunk_records_out.append({
                 "chunk": reserved_chunk_index,
@@ -424,6 +435,7 @@ def _index_tables_spreadsheet(
     *,
     start_chunk_index: int,
     chunk_records_out: list,
+    index_version: str,
     file_hash: str | None = None,
 ) -> int:
     if not tables:
@@ -467,7 +479,7 @@ def _index_tables_spreadsheet(
             embed_header = _build_contextual_header(filename, sheet_name=sheet_name, include_filename=False)
             emb = embed_document(text=flat, title=filename, context=embed_header)
             if not emb:
-                continue
+                raise IndexBuildError(f"Failed to generate embedding for spreadsheet table chunk {reserved_chunk_index}")
 
             meta = build_chunk_metadata(
                 doc_id=doc_id,
@@ -486,10 +498,12 @@ def _index_tables_spreadsheet(
                 table_index=table_index,
                 row_start=row_start,
                 row_end=row_end,
-                markdown=md_meta
+                markdown=md_meta,
+                index_version=index_version
             )
 
-            writer.add(emb, flat, meta, f"{doc_id}_{reserved_chunk_index}")
+            chunk_id = f"{doc_id}:{index_version}:{reserved_chunk_index}"
+            writer.add(emb, flat, meta, chunk_id)
 
             chunk_records_out.append({
                 "chunk": reserved_chunk_index,

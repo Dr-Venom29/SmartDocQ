@@ -1,9 +1,13 @@
 import os
 import chromadb
+from chromadb.config import Settings
 import logging
 from config import CHROMA_DB_PATH
 
 logger = logging.getLogger(__name__)
+
+_chroma_settings = Settings(anonymized_telemetry=False)
+
 
 def _ensure_dir(p: str) -> bool:
     try:
@@ -16,7 +20,7 @@ def _ensure_dir(p: str) -> bool:
 
 def _try_persistent(path: str):
     try:
-        cli = chromadb.PersistentClient(path=path)
+        cli = chromadb.PersistentClient(path=path, settings=_chroma_settings)
         logger.info("Chroma persistent path: %s", path)
         return cli
     except Exception as e:
@@ -41,7 +45,7 @@ def init_chroma_client():
 
     logger.warning("Using EphemeralClient (no persistence)")
     try:
-        return chromadb.EphemeralClient()
+        return chromadb.EphemeralClient(settings=_chroma_settings)
     except Exception:
         logger.error("Failed to initialize Chroma client")
         raise

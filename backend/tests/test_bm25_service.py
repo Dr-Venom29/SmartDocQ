@@ -78,7 +78,7 @@ def test_bm25_all_zero_scores_return_empty():
     build_bm25_index("doc1", chunks)
 
     # Query with completely disjoint vocabulary
-    results = bm25_search("doc1", "cooking recipe ingredients")
+    results = bm25_search("doc1", None, "cooking recipe ingredients")
     assert results == []
 
 
@@ -92,7 +92,7 @@ def test_bm25_zero_score_results_are_excluded():
     build_bm25_index("doc2", chunks)
 
     # doc2_1 matches "learning", doc2_2 and doc2_3 have zero score
-    results = bm25_search("doc2", "learning algorithm")
+    results = bm25_search("doc2", None, "learning algorithm")
     assert len(results) == 1
     cid, score, text, is_tbl = results[0]
     assert cid == "doc2_1"
@@ -109,7 +109,7 @@ def test_bm25_positive_results_remain_sorted():
     ]
     build_bm25_index("doc3", chunks)
 
-    results = bm25_search("doc3", "optimizer")
+    results = bm25_search("doc3", None, "optimizer")
     assert len(results) == 2  # unrelated is excluded since its score is 0
     scores = [r[1] for r in results]
     assert scores == sorted(scores, reverse=True)
@@ -129,7 +129,7 @@ def test_bm25_top_k_applies_to_positive_results():
     build_bm25_index("doc4", chunks)
 
     # Query matching the positive docs with top_k = 2
-    results = bm25_search("doc4", "match", top_k=2)
+    results = bm25_search("doc4", None, "match", top_k=2)
     assert len(results) == 2
     # Verify we get the highest-scored matches
     assert results[0][0] == "doc4_3"
@@ -144,6 +144,11 @@ def test_retrieval_uses_vector_results_when_bm25_returns_empty():
 
         # Mock Chroma query results
         with patch("services.retrieval_service.collection") as mock_coll:
+            mock_coll.get.return_value = {
+                "ids": ["dummy_chunk"],
+                "documents": ["dummy_text"],
+                "metadatas": [{"doc_id": "doc5", "embedding_model": "models/text-embedding-004", "pipeline_version": "6"}]
+            }
             mock_coll.query.return_value = {
                 "documents": [["Semantic match content in document"]],
                 "distances": [[0.35]],
