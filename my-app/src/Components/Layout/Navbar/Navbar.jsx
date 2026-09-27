@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Navbar.css";
 import logo from "./assets/logo.png";
@@ -210,13 +210,8 @@ export default function Navbar() {
                 clearMenuTimeout();
               }}
               ref={(el) => (itemsRef.current["Home"] = el)}>
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                <path d="M2 6.5L8 2l6 4.5V13a1 1 0 01-1 1H3a1 1 0 01-1-1V6.5z"/>
-              </svg>
               Home
             </button>
-
-            <div className="nav-divider" aria-hidden="true" />
 
             <button
               type="button"
@@ -232,16 +227,8 @@ export default function Navbar() {
                 }, MENU_DELAY);
               }}
               ref={(el) => (itemsRef.current["Features"] = el)}>
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                <rect x="2" y="2" width="5" height="5" rx="1"/>
-                <rect x="9" y="2" width="5" height="5" rx="1"/>
-                <rect x="2" y="9" width="5" height="5" rx="1"/>
-                <rect x="9" y="9" width="5" height="5" rx="1"/>
-              </svg>
               Features
             </button>
-
-            <div className="nav-divider" aria-hidden="true" />
 
             <button
               type="button"
@@ -257,12 +244,7 @@ export default function Navbar() {
                 }, MENU_DELAY);
               }}
               ref={(el) => (itemsRef.current["Contact"] = el)}>
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                <path d="M2 4h12M2 8h8M2 12h5"/>
-                <circle cx="13" cy="11" r="2.5"/>
-                <path d="M15 13.5l1.5 1.5"/>
-              </svg>
-              Contact Us
+              Contact
             </button>
           </div>
 

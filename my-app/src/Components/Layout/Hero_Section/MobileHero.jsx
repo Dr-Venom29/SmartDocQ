@@ -1,8 +1,75 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./HeroSection.css";
 
+// Document query variations for interactive exploration
+const DOCUMENT_QUERIES = {
+  default: {
+    id: "default",
+    question: "What is photosynthesis?",
+    leadText: "Photosynthesis is the process by which plants convert ",
+    highlightText: "light energy",
+    tailText: " into chemical energy. Chlorophyll absorbs the light energy that drives the reactions involved in producing chemical energy for the plant.",
+    evidenceQuote: "“Light energy is absorbed by chlorophyll molecules, which are primarily synthesized within plant leaves.”",
+    sourceRef: "Page 12 · Photosynthesis",
+    source: "Grounded in · Chapter 04 · Photosynthesis"
+  },
+  chlorophyll: {
+    id: "chlorophyll",
+    buttonLabel: "What role does chlorophyll play?",
+    question: "What role does chlorophyll play?",
+    leadText: "",
+    highlightText: "Chlorophyll absorbs light energy",
+    tailText: " that drives the reactions involved in producing chemical energy for the plant.",
+    evidenceQuote: "“Chlorophyll molecules capture photons within the thylakoid membrane to drive photosynthetic phosphorylation.”",
+    sourceRef: "Page 12 · Photosynthesis",
+    source: "Grounded in · Chapter 04 · Photosynthesis"
+  },
+  energy: {
+    id: "energy",
+    buttonLabel: "How does light energy become chemical energy?",
+    question: "How does light energy become chemical energy?",
+    leadText: "",
+    highlightText: "Light energy absorbed by chlorophyll",
+    tailText: " drives the reactions involved in producing chemical energy for the plant.",
+    evidenceQuote: "“Absorbed radiant energy is converted through electron transport into stored chemical potential (ATP and NADPH).”",
+    sourceRef: "Page 12 · Photosynthesis",
+    source: "Grounded in · Chapter 04 · Photosynthesis"
+  }
+};
+
 const MobileHero = () => {
   const navigate = useNavigate();
+  const [activeCitation, setActiveCitation] = useState(false);
+  const [activeQueryId, setActiveQueryId] = useState("default");
+  const [isMorphing, setIsMorphing] = useState(false);
+
+  const currentQuery = DOCUMENT_QUERIES[activeQueryId] || DOCUMENT_QUERIES.default;
+
+  const handleSelectQuery = (id) => {
+    if (isMorphing) return;
+    const targetId = activeQueryId === id ? "default" : id;
+    setActiveCitation(false);
+    setIsMorphing(true);
+    setTimeout(() => {
+      setActiveQueryId(targetId);
+      setTimeout(() => {
+        setIsMorphing(false);
+      }, 160);
+    }, 160);
+  };
+
+  // Dismiss evidence popover on outside click
+  useEffect(() => {
+    if (!activeCitation) return;
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest(".doc-evidence-wrapper")) {
+        setActiveCitation(false);
+      }
+    };
+    document.addEventListener("click", handleOutsideClick);
+    return () => document.removeEventListener("click", handleOutsideClick);
+  }, [activeCitation]);
 
   const handleGetStarted = () => {
     const user = localStorage.getItem("user");
@@ -17,26 +84,38 @@ const MobileHero = () => {
     <div className="mobile-only-hero">
       <div className="mobile-hero-container">
 
-        {/* Badge */}
-        <div className="mobile-badge">
-          <span className="spark-icon">✦</span> AI Document Assistant
-        </div>
-
         {/* Heading */}
         <h1 className="mobile-hero-heading">
           Your documents.<br />
-          <span className="gradient-text">Now you can talk to them.</span>
+          Now you can <em className="hero-editorial-word">talk</em> to them.
         </h1>
 
-        {/* Description */}
-        <p className="mobile-hero-description">
-          Upload PDFs, Word files, spreadsheets, and text. Ask questions, get grounded answers with citations, and generate instant study tools.
-        </p>
+        {/* Document Metadata Information Block */}
+        <div className="hero-metadata-block">
+          <div className="meta-header">
+            <span className="meta-label">SUPPORTED MATERIAL</span>
+          </div>
+          <div className="meta-divider" />
 
-        {/* CTA */}
-        <button type="button" className="get-started-btn" onClick={handleGetStarted}>
-          Get Started <span className="btn-arrow">→</span>
-        </button>
+          <div className="meta-formats">
+            <span className="format-item">PDF</span>
+            <span className="format-item">DOCX</span>
+            <span className="format-item">XLSX</span>
+            <span className="format-item">CSV</span>
+            <span className="format-item">TXT</span>
+          </div>
+
+          <div className="meta-statement">
+            <p>Ask questions across your files.</p>
+            <p>Trace answers back to their source.</p>
+          </div>
+
+          <div className="meta-action-row">
+            <button type="button" className="meta-open-btn" onClick={handleGetStarted}>
+              OPEN SMARTDOCQ <span className="btn-arrow">→</span>
+            </button>
+          </div>
+        </div>
 
         {/* Feature Grid */}
         <div className="mobile-features-grid">
@@ -94,37 +173,167 @@ const MobileHero = () => {
 
         </div>
 
-        {/* Document Mockup */}
-        <div className="mobile-mockup-wrapper">
-          <div className="mockup-sparkles" />
-          <div className="mobile-mockup">
-            <div className="mockup-floating-tag tag-pdf">PDF</div>
-            <div className="mockup-floating-tag tag-docx">DOCX</div>
-            <div className="mockup-floating-tag tag-txt">TXT</div>
-            <div className="mockup-floating-tag tag-csv">CSV</div>
-            <div className="mockup-floating-tag tag-xlsx">XLSX</div>
-            <div className="mockup-screen">
-              <div className="mockup-pdf-header">
-                <span className="mockup-pdf-badge">Research Paper</span>
+        {/* Single Tall Dark Document Page with Editorial Annotation */}
+        <div className="hero-document-stage">
+          <div className="doc-sheet">
+            <div className="doc-page-header">
+              <span className="doc-title-stamp">CHAPTER 04 · CELLULAR BIOLOGY</span>
+            </div>
+
+            <div className="doc-header-rule" />
+
+            {/* Q&A Excerpt */}
+            <div className="doc-page-content">
+              <div className={`doc-qa-block ${isMorphing ? "is-morphing" : ""}`}>
+                <div className="doc-qa-item question-item">
+                  <span className="doc-qa-meta-label">QUESTION</span>
+                  <p className="doc-qa-question-text">{currentQuery.question}</p>
+                </div>
+
+                <div className="doc-qa-item answer-item">
+                  <span className="doc-qa-meta-label answer-label">ANSWER</span>
+                  <p className="doc-qa-answer-text">
+                    {currentQuery.leadText}
+                    <span 
+                      className={`doc-evidence-wrapper ${activeCitation ? "is-open" : ""}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveCitation(!activeCitation);
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label="Inspect supporting document evidence"
+                    >
+                      <mark className="doc-evidence-highlight">{currentQuery.highlightText}</mark>
+                      
+                      {/* Grounded Evidence Inspection Card */}
+                      <span className="evidence-popover" role="dialog" aria-label="Supporting evidence">
+                        <span className="popover-header">
+                          <span className="popover-tag">EVIDENCE</span>
+                          <span 
+                            className="popover-close-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveCitation(false);
+                            }}
+                            role="button"
+                            aria-label="Dismiss evidence"
+                          >
+                            ×
+                          </span>
+                        </span>
+                        <span className="popover-quote">
+                          {currentQuery.evidenceQuote}
+                        </span>
+                        <span className="popover-rule" />
+                        <span className="popover-source">{currentQuery.sourceRef}</span>
+                      </span>
+                    </span>
+                    {currentQuery.tailText}
+                  </p>
+                </div>
               </div>
-              <div className="mockup-lines">
-                <div className="mockup-line w-80 glow" />
-                <div className="mockup-line w-full" />
-                <div className="mockup-line w-60" />
-                <div className="mockup-line w-90" />
-                <div className="mockup-line w-50" />
+
+              {/* Supporting Scientific Figure */}
+              <div className="doc-figure-box">
+                <svg 
+                  width="100%" 
+                  height="66" 
+                  viewBox="0 0 220 66" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="doc-figure-svg" 
+                  aria-label="Chloroplast schematic diagram"
+                >
+                  <ellipse cx="110" cy="32" rx="92" ry="24" stroke="#242522" strokeWidth="0.8" strokeOpacity="0.38" strokeDasharray="3 2" />
+                  <ellipse cx="110" cy="32" rx="88" ry="21" stroke="#242522" strokeWidth="0.9" strokeOpacity="0.75" />
+                  <path d="M54 32 H166" stroke="#55756F" strokeWidth="0.8" strokeOpacity="0.55" />
+                  <g transform="translate(64, 20)">
+                    <rect x="0" y="0" width="18" height="3" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                    <rect x="0" y="5" width="18" height="3" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                    <rect x="0" y="10" width="18" height="3" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                  </g>
+                  <g transform="translate(101, 18)">
+                    <rect x="0" y="0" width="18" height="3" rx="1.5" fill="#55756F" fillOpacity="0.35" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.85" />
+                    <rect x="0" y="5" width="18" height="3" rx="1.5" fill="#55756F" fillOpacity="0.35" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.85" />
+                    <rect x="0" y="10" width="18" height="3" rx="1.5" fill="#55756F" fillOpacity="0.35" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.85" />
+                    <rect x="0" y="15" width="18" height="3" rx="1.5" fill="#55756F" fillOpacity="0.35" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.85" />
+                  </g>
+                  <g transform="translate(138, 21)">
+                    <rect x="0" y="0" width="18" height="3" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                    <rect x="0" y="5" width="18" height="3" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                    <rect x="0" y="10" width="18" height="3" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                  </g>
+                  <text x="110" y="10" textAnchor="middle" fill="#242522" fillOpacity="0.55" fontFamily="'DM Mono', monospace" fontSize="5" letterSpacing="0.1em">CHLOROPLAST SCHEMATIC</text>
+                </svg>
+
+                <div className="doc-figure-caption">
+                  <span className="caption-tag">Fig. 4.2</span>
+                  <span className="caption-text">Photosynthetic electron transport and carbohydrate synthesis.</span>
+                </div>
               </div>
-              <div className="mockup-chat-box">
-                <p>Explain this paper in simple terms.</p>
-                <button className="mockup-send-btn" type="button" aria-label="Send">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="19" x2="12" y2="5" />
-                    <polyline points="5 12 12 5 19 12" />
-                  </svg>
-                </button>
+            </div>
+
+            {/* Grounded Source Rule on Document */}
+            <div className="doc-page-footer">
+              <div className="doc-footer-rule" />
+              <div className="doc-footer-content">
+                <span className="doc-source-stamp">{currentQuery.source}</span>
               </div>
             </div>
           </div>
+
+          {/* EXPLORE THIS DOCUMENT — Mobile Stacked Panel */}
+          <aside className="doc-explore-panel mobile-explore-panel" aria-label="Explore this document">
+            <div className="explore-panel-header">
+              <span className="explore-header-dot" />
+              <span className="explore-header-tag">EXPLORE THIS DOCUMENT</span>
+            </div>
+
+            <div className="explore-cards-stack">
+              <button
+                type="button"
+                className={`explore-card-btn ${activeQueryId === "chlorophyll" ? "active" : ""}`}
+                onClick={() => handleSelectQuery("chlorophyll")}
+                aria-pressed={activeQueryId === "chlorophyll"}
+                aria-label="Ask: What role does chlorophyll play?"
+              >
+                <div className="explore-card-inner">
+                  <div className="explore-card-top">
+                    <span className="explore-card-num">01</span>
+                    <span className="explore-card-tag">ASK</span>
+                  </div>
+                  <div className="explore-card-body">
+                    <span className="explore-card-query">What role does chlorophyll play?</span>
+                    <span className="explore-card-arrow" aria-hidden="true">
+                      {activeQueryId === "chlorophyll" ? "✓" : "→"}
+                    </span>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`explore-card-btn ${activeQueryId === "energy" ? "active" : ""}`}
+                onClick={() => handleSelectQuery("energy")}
+                aria-pressed={activeQueryId === "energy"}
+                aria-label="Ask: How does light energy become chemical energy?"
+              >
+                <div className="explore-card-inner">
+                  <div className="explore-card-top">
+                    <span className="explore-card-num">02</span>
+                    <span className="explore-card-tag">ASK</span>
+                  </div>
+                  <div className="explore-card-body">
+                    <span className="explore-card-query">How does light energy become chemical energy?</span>
+                    <span className="explore-card-arrow" aria-hidden="true">
+                      {activeQueryId === "energy" ? "✓" : "→"}
+                    </span>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </aside>
         </div>
 
         {/* Privacy Notice */}

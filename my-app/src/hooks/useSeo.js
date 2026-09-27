@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 const BASE_URL = "https://smartdocq.vercel.app";
 
 /**
- * Custom hook to dynamically manage document title and self-referencing canonical URL
+ * Custom hook to dynamically manage document title, self-referencing canonical URL, and Open Graph URL (og:url)
  * @param {string} [title] - Optional title for the page
  */
 export function useSeo(title) {
@@ -29,6 +29,14 @@ export function useSeo(title) {
       document.head.appendChild(link);
     }
     link.setAttribute("href", canonicalUrl);
+
+    let ogUrl = document.querySelector("meta[property='og:url']");
+    if (!ogUrl) {
+      ogUrl = document.createElement("meta");
+      ogUrl.setAttribute("property", "og:url");
+      document.head.appendChild(ogUrl);
+    }
+    ogUrl.setAttribute("content", canonicalUrl);
   }, [location.pathname, title]);
 }
 

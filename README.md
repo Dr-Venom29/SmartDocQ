@@ -352,10 +352,10 @@ Thanks to all the contributors who have helped build SmartDocQ:
 			</a>
 		</td>
 		<td align="center">
-			<a href="https://github.com/sameekhsa">
-				<img src="https://github.com/sameekhsa.png" width="100px;" alt=""/>
+			<a href="https://github.com/Sameeksha270905">
+				<img src="https://github.com/Sameeksha270905.png" width="100px;" alt=""/>
 				<br />
-				<sub><b>sameekhsa</b></sub>
+				<sub><b>Sameeksha270905</b></sub>
 			</a>
 		</td>
 		<td align="center">

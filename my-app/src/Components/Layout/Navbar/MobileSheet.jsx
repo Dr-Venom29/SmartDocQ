@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import "./MobileSheet.css";
 
 const NAV_ITEMS = [
@@ -27,7 +27,7 @@ const NAV_ITEMS = [
   },
   {
     id: "Contact",
-    label: "Contact Us",
+    label: "Contact",
     sub: "Get in touch with us",
     icon: (
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">

@@ -29,15 +29,13 @@
   -webkit-user-drag: none;
 }
 
-/* Scrolled visual morph state */
+/* Scrolled visual morph state — transparent with no overlay */
 .navbar.scrolled {
-  background: rgba(10, 10, 12, 0.7);
-  backdrop-filter: blur(20px) saturate(120%);
-  -webkit-backdrop-filter: blur(20px) saturate(120%);
-  border-bottom-color: rgba(255, 255, 255, 0.05);
-  padding: 12px 40px;
-  height: 72px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom-color: transparent;
+  box-shadow: none;
 }
 
 .navbar.upload-navbar {
@@ -57,53 +55,51 @@
   opacity: 0.85;
 }
 
-/* Navigation Links center row container */
+/* Editorial Text Navigation (No outer capsule) */
 .nav-links-container {
   position: relative;
   display: flex;
   align-items: center;
-  background: rgba(15, 15, 18, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 100px;
-  padding: 4px;
-  gap: 2px;
-  box-shadow: 
-    0 4px 24px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 6px 0;
+  gap: 28px;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
-/* Magnetic Sliding background cursor */
+/* Subtle Active Underline Slider */
 .nav-slider {
   position: absolute;
-  height: calc(100% - 8px);
-  top: 4px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.01);
-  border-radius: 100px;
-  transition: left 0.32s cubic-bezier(0.25, 1, 0.5, 1), 
-              width 0.32s cubic-bezier(0.25, 1, 0.5, 1),
-              opacity 0.25s ease;
+  bottom: 0px;
+  height: 1.5px;
+  background: #ffffff;
+  border: none;
+  border-radius: 1px;
+  box-shadow: 0 1px 4px rgba(255, 255, 255, 0.25);
+  transition: left 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
+              width 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.2s ease;
   pointer-events: none;
-  z-index: 0;
+  z-index: 2;
 }
 
-/* Navigation tab item */
+/* Navigation text item */
 .nav-item {
   position: relative;
   z-index: 1;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
+  padding: 6px 2px;
   font-size: 13.5px;
-  font-weight: 550;
-  color: rgba(255, 255, 255, 0.45);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.48);
   cursor: pointer;
-  border-radius: 100px;
-  transition: color 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+  border-radius: 0;
+  transition: color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
   background: transparent;
   border: none;
@@ -112,43 +108,17 @@
 }
 
 .nav-item:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.2);
-  outline-offset: -2px;
+  outline: 2px solid rgba(255, 255, 255, 0.3);
+  outline-offset: 4px;
 }
 
-.nav-item svg {
-  width: 14px;
-  height: 14px;
-  color: rgba(255, 255, 255, 0.3);
-  transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1),
-              color 0.25s cubic-bezier(0.25, 1, 0.5, 1);
-  flex-shrink: 0;
+.nav-item:hover {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .nav-item.active {
   color: #ffffff;
-}
-
-.nav-item.active svg {
-  color: #ffffff;
-  transform: scale(1.05);
-}
-
-.nav-item:hover:not(.active) {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.nav-item:hover:not(.active) svg {
-  color: rgba(255, 255, 255, 0.6);
-  transform: translateY(-0.5px);
-}
-
-.nav-divider {
-  width: 1px;
-  height: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  flex-shrink: 0;
-  margin: 0 4px;
+  font-weight: 600;
 }
 
 /* Premium Login button */
@@ -524,7 +494,7 @@
 
 /* Responsive Viewports styling */
 @media (max-width: 900px) {
-  .nav-links-container { gap: 10px; padding: 4px 12px; }
+  .nav-links-container { gap: 18px; padding: 4px 0; }
   .navbar { padding: 18px 24px; }
   .navbar.scrolled { padding: 12px 24px; }
 }

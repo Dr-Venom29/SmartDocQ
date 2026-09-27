@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./Contact.css";
 import { useToast } from "../../Toast/ToastContext";
 import { useAuth } from "./useAuth";

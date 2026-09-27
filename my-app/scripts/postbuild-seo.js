@@ -98,6 +98,15 @@ function injectSeo(html, { title, canonical, rootContent }) {
     result = result.replace('</head>', `  ${canonicalTag}\n  </head>`);
   }
 
+  // Inject or update <meta property="og:url"> tag in <head>
+  const ogUrlTag = `<meta property="og:url" content="${canonical}" />`;
+  const ogUrlRegex = /<meta\s+property=["']og:url["']\s+content=["'][^"']*["']\s*\/?>/i;
+  if (ogUrlRegex.test(result)) {
+    result = result.replace(ogUrlRegex, ogUrlTag);
+  } else {
+    result = result.replace('</head>', `  ${ogUrlTag}\n  </head>`);
+  }
+
   // Replace empty <div id="root"></div> with minimal crawlable HTML (visually hidden to prevent pre-hydration flash)
   const rootElement = `<div id="root"><div aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">${rootContent}</div></div>`;
   result = result.replace(/<div id="root">\s*<\/div>/i, rootElement);

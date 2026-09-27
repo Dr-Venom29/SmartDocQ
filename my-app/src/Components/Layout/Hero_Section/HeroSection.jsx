@@ -11,12 +11,66 @@ import { useMediaQuery } from "../../../hooks/useMediaQuery";
 
 gsap.registerPlugin(ScrollTrigger);
 
+// Document query variations for interactive exploration
+const DOCUMENT_QUERIES = {
+  default: {
+    id: "default",
+    question: "What is photosynthesis?",
+    leadText: "Photosynthesis is the process by which plants convert ",
+    highlightText: "light energy",
+    tailText: " into chemical energy. Chlorophyll absorbs the light energy that drives the reactions involved in producing chemical energy for the plant.",
+    evidenceQuote: "“Light energy is absorbed by chlorophyll molecules, which are primarily synthesized within plant leaves.”",
+    sourceRef: "Page 12 · Photosynthesis",
+    source: "Grounded in · Chapter 04 · Photosynthesis"
+  },
+  chlorophyll: {
+    id: "chlorophyll",
+    buttonLabel: "What role does chlorophyll play?",
+    question: "What role does chlorophyll play?",
+    leadText: "",
+    highlightText: "Chlorophyll absorbs light energy",
+    tailText: " that drives the reactions involved in producing chemical energy for the plant.",
+    evidenceQuote: "“Chlorophyll molecules capture photons within the thylakoid membrane to drive photosynthetic phosphorylation.”",
+    sourceRef: "Page 12 · Photosynthesis",
+    source: "Grounded in · Chapter 04 · Photosynthesis"
+  },
+  energy: {
+    id: "energy",
+    buttonLabel: "How does light energy become chemical energy?",
+    question: "How does light energy become chemical energy?",
+    leadText: "",
+    highlightText: "Light energy absorbed by chlorophyll",
+    tailText: " drives the reactions involved in producing chemical energy for the plant.",
+    evidenceQuote: "“Absorbed radiant energy is converted through electron transport into stored chemical potential (ATP and NADPH).”",
+    sourceRef: "Page 12 · Photosynthesis",
+    source: "Grounded in · Chapter 04 · Photosynthesis"
+  }
+};
+
 const HeroSection = () => {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const sectionRef = useRef(null);
   const containerRef = useRef(null);
   const navigate = useNavigate();
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [activeCitation, setActiveCitation] = useState(false);
+  const [activeQueryId, setActiveQueryId] = useState("default");
+  const [isMorphing, setIsMorphing] = useState(false);
+
+  const currentQuery = DOCUMENT_QUERIES[activeQueryId] || DOCUMENT_QUERIES.default;
+
+  const handleSelectQuery = (id) => {
+    if (isMorphing) return;
+    const targetId = activeQueryId === id ? "default" : id;
+    setActiveCitation(false);
+    setIsMorphing(true);
+    setTimeout(() => {
+      setActiveQueryId(targetId);
+      setTimeout(() => {
+        setIsMorphing(false);
+      }, 160);
+    }, 160);
+  };
 
   // Respect prefers-reduced-motion
   useEffect(() => {
@@ -27,6 +81,18 @@ const HeroSection = () => {
     media.addEventListener?.("change", update);
     return () => media.removeEventListener?.("change", update);
   }, []);
+
+  // Dismiss evidence popover on outside click
+  useEffect(() => {
+    if (!activeCitation) return;
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest(".doc-evidence-wrapper")) {
+        setActiveCitation(false);
+      }
+    };
+    document.addEventListener("click", handleOutsideClick);
+    return () => document.removeEventListener("click", handleOutsideClick);
+  }, [activeCitation]);
 
   // Horizontal scroll animation for desktop feature cards using gsap.context
   useLayoutEffect(() => {
@@ -83,129 +149,236 @@ const HeroSection = () => {
         <div className="hero-container">
           
           <div className="hero-left">
-            <div className="badge">
-              <span className="badge-spark">✦</span>
-              <span>AI Document Assistant</span>
-            </div>
             <h1 id="hero-heading" className="hero-heading">
               Your documents.<br />
-              <span className="gradient-text">Now you can talk to them.</span>
+              Now you can <em className="hero-editorial-word">talk</em> to them.
             </h1>
-            <p className="hero-description">
-              Upload PDFs, Word files, spreadsheets, and text. Ask questions, get grounded answers with instant citations, and turn complex documents into summaries, quizzes, and flashcards.
-            </p>
-            <button type="button" className="get-started-btn" onClick={handleGetStarted}>
-              Get Started <span className="btn-arrow">→</span>
-            </button>
+            {/* Document Metadata Information Block */}
+            <div className="hero-metadata-block">
+              <div className="meta-header">
+                <span className="meta-label">SUPPORTED MATERIAL</span>
+              </div>
+              <div className="meta-divider" />
+
+              <div className="meta-formats">
+                <span className="format-item">PDF</span>
+                <span className="format-item">DOCX</span>
+                <span className="format-item">XLSX</span>
+                <span className="format-item">CSV</span>
+                <span className="format-item">TXT</span>
+              </div>
+
+              <div className="meta-statement">
+                <p>Ask questions across your files.</p>
+                <p>Trace answers back to their source.</p>
+              </div>
+
+              <div className="meta-action-row">
+                <button type="button" className="meta-open-btn" onClick={handleGetStarted}>
+                  OPEN SMARTDOCQ <span className="btn-arrow">→</span>
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="hero-right" aria-hidden="true">
-            <div className="hero-3d-scene">
-              <div className="hero-3d-stack">
+          <div className="hero-right">
+            <div className="hero-document-stage">
+              
+              {/* Interactive Study Page Document Sheet */}
+              <div className="doc-sheet">
+                
+                {/* Document Header */}
+                <div className="doc-page-header">
+                  <span className="doc-title-stamp">CHAPTER 04 · CELLULAR_BIOLOGY.pdf</span>
+                </div>
 
-                {/* Layer 3: Grounded Answer & Source Citations (Top Layer) */}
-                <div className="stack-layer layer-top">
-                  <div className="layer-glass-card border-cyan">
-                    <div className="card-header">
-                      <div className="file-header-meta">
-                        <span className="file-icon-badge pdf-type">PDF</span>
-                        <span className="header-filename">Q3_Financial_Analysis.pdf</span>
-                      </div>
-                      <div className="header-status">
-                        <span className="status-dot cyan-pulse" />
-                        <span className="status-label">Active Document</span>
-                      </div>
+                <div className="doc-header-rule" />
+
+                {/* Q&A Excerpt */}
+                <div className="doc-page-content">
+                  <div className={`doc-qa-block ${isMorphing ? "is-morphing" : ""}`}>
+                    <div className="doc-qa-item question-item">
+                      <span className="doc-qa-meta-label">QUESTION</span>
+                      <p className="doc-qa-question-text">{currentQuery.question}</p>
                     </div>
-                    <div className="card-body">
-                      <div className="insight-bubble">
-                        <div className="bubble-header">
-                          <span className="bubble-category">AI Chat Answer</span>
-                          <span className="citation-pill">Source: p. 14 · Sec 3.2</span>
-                        </div>
-                        <div className="chat-query">Q: What are the primary growth drivers?</div>
-                        <div className="chat-answer">➔ Enterprise ARR grew +38% YoY, led by cloud migrations and automation.</div>
-                      </div>
+
+                    <div className="doc-qa-item answer-item">
+                      <span className="doc-qa-meta-label answer-label">ANSWER</span>
+                      <p className="doc-qa-answer-text">
+                        {currentQuery.leadText}
+                        <span 
+                          className={`doc-evidence-wrapper ${activeCitation ? "is-open" : ""}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveCitation(!activeCitation);
+                          }}
+                          tabIndex={0}
+                          role="button"
+                          aria-label="Inspect supporting document evidence"
+                        >
+                          <mark className="doc-evidence-highlight">{currentQuery.highlightText}</mark>
+                          
+                          {/* Grounded Evidence Inspection Card */}
+                          <span className="evidence-popover" role="dialog" aria-label="Supporting evidence">
+                            <span className="popover-header">
+                              <span className="popover-tag">EVIDENCE</span>
+                              <span 
+                                className="popover-close-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveCitation(false);
+                                }}
+                                role="button"
+                                aria-label="Dismiss evidence"
+                              >
+                                ×
+                              </span>
+                            </span>
+                            <span className="popover-quote">
+                              {currentQuery.evidenceQuote}
+                            </span>
+                            <span className="popover-rule" />
+                            <span className="popover-source">{currentQuery.sourceRef}</span>
+                          </span>
+                        </span>
+                        {currentQuery.tailText}
+                      </p>
                     </div>
-                    <div className="card-footer">
-                      <span className="footer-metric">✦ 100% Grounded Answer</span>
-                      <div className="card-quick-actions">
-                        <span className="action-pill">Summary</span>
-                        <span className="action-pill">Quiz</span>
-                        <span className="action-pill">Flashcards</span>
-                      </div>
+                  </div>
+
+                  {/* Supporting Scientific Figure */}
+                  <div className="doc-figure-box">
+                    <svg 
+                      width="100%" 
+                      height="72" 
+                      viewBox="0 0 220 72" 
+                      fill="none" 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="doc-figure-svg" 
+                      aria-label="Chloroplast schematic diagram"
+                    >
+                      {/* Outer double membrane */}
+                      <ellipse cx="110" cy="35" rx="96" ry="28" stroke="#242522" strokeWidth="0.8" strokeOpacity="0.38" strokeDasharray="3 2" />
+                      <ellipse cx="110" cy="35" rx="92" ry="24" stroke="#242522" strokeWidth="0.9" strokeOpacity="0.75" />
+                      
+                      {/* Stroma lamellae connecting lines */}
+                      <path d="M52 35 H168" stroke="#55756F" strokeWidth="0.8" strokeOpacity="0.55" />
+                      <path d="M68 29 C 92 29, 128 41, 152 41" stroke="#55756F" strokeWidth="0.75" strokeOpacity="0.45" />
+                      
+                      {/* Thylakoid Granum Stack 1 */}
+                      <g transform="translate(60, 23)">
+                        <rect x="0" y="0" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                        <rect x="0" y="5.5" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                        <rect x="0" y="11" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                        <rect x="0" y="16.5" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                      </g>
+
+                      {/* Thylakoid Granum Stack 2 (Center) */}
+                      <g transform="translate(100, 21)">
+                        <rect x="0" y="0" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.35" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.85" />
+                        <rect x="0" y="5.5" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.35" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.85" />
+                        <rect x="0" y="11" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.35" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.85" />
+                        <rect x="0" y="16.5" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.35" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.85" />
+                        <rect x="0" y="22" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.35" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.85" />
+                      </g>
+
+                      {/* Thylakoid Granum Stack 3 */}
+                      <g transform="translate(140, 24)">
+                        <rect x="0" y="0" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                        <rect x="0" y="5.5" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                        <rect x="0" y="11" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                        <rect x="0" y="16.5" width="20" height="3.5" rx="1.5" fill="#55756F" fillOpacity="0.3" stroke="#242522" strokeWidth="0.7" strokeOpacity="0.8" />
+                      </g>
+
+                      {/* Micro labels */}
+                      <text x="110" y="11" textAnchor="middle" fill="#242522" fillOpacity="0.55" fontFamily="'DM Mono', monospace" fontSize="5" letterSpacing="0.1em">CHLOROPLAST SCHEMATIC</text>
+                      <text x="180" y="45" fill="#55756F" fontFamily="'DM Mono', monospace" fontSize="5" letterSpacing="0.04em">thylakoid</text>
+                      <line x1="178" y1="43" x2="162" y2="38" stroke="#55756F" strokeWidth="0.5" strokeOpacity="0.7" />
+                    </svg>
+
+                    <div className="doc-figure-caption">
+                      <span className="caption-tag">Fig. 4.2</span>
+                      <span className="caption-text">Photosynthetic electron transport and carbohydrate synthesis.</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Layer 2: Source Context Selection (Middle Layer) */}
-                <div className="stack-layer layer-middle">
-                  <div className="layer-glass-card border-purple">
-                    <div className="card-header">
-                      <div className="file-header-meta">
-                        <span className="file-icon-badge docx-type">DOCX</span>
-                        <span className="header-filename">Research_Paper_v2.docx</span>
-                      </div>
-                      <div className="header-status">
-                        <span className="status-dot purple-pulse" />
-                        <span className="status-label">Citation Context</span>
-                      </div>
-                    </div>
-                    <div className="card-body source-context-zone">
-                      <div className="highlighted-excerpt">
-                        <span className="highlight-tag">Cited Excerpt</span>
-                        <p className="excerpt-text">
-                          "...revenue expansion was primarily accelerated by enterprise contract renewals and cross-segment adoption..."
-                        </p>
-                      </div>
-                    </div>
-                    <div className="card-footer">
-                      <span className="footer-metric">Verified Source Excerpt</span>
-                      <span className="footer-metric">Exact Match</span>
-                    </div>
+                {/* Grounded Source Rule on Document */}
+                <div className="doc-page-footer">
+                  <div className="doc-footer-rule" />
+                  <div className="doc-footer-content">
+                    <span className="doc-source-stamp">{currentQuery.source}</span>
                   </div>
                 </div>
 
-                {/* Layer 1: Workspace Ingest Surface (Base Layer) */}
-                <div className="stack-layer layer-base">
-                  <div className="layer-glass-card border-grey">
-                    <div className="card-header">
-                      <span className="header-filename">Supported Workspace Formats</span>
-                      <div className="header-status">
-                        <span className="status-dot grey-pulse" />
-                        <span className="status-label">Secure Ingest</span>
-                      </div>
-                    </div>
-                    <div className="card-body format-badges-zone">
-                      <div className="format-tokens">
-                        <span className="fmt-token pdf">PDF</span>
-                        <span className="fmt-token docx">DOCX</span>
-                        <span className="fmt-token xlsx">XLSX</span>
-                        <span className="fmt-token csv">CSV</span>
-                        <span className="fmt-token txt">TXT</span>
-                      </div>
-                    </div>
-                    <div className="card-footer">
-                      <span className="footer-metric">Private & Encrypted</span>
-                      <span className="footer-metric">Zero Model Training</span>
-                    </div>
-                  </div>
-                </div>
               </div>
+
+              {/* EXPLORE THIS DOCUMENT — Bespoke Side Panel */}
+              <aside className="doc-explore-panel" aria-label="Explore this document">
+                <div className="explore-panel-header">
+                  <span className="explore-header-dot" />
+                  <span className="explore-header-tag">EXPLORE THIS DOCUMENT</span>
+                </div>
+
+                <div className="explore-cards-stack">
+                  {/* Card 01: Chlorophyll */}
+                  <button
+                    type="button"
+                    className={`explore-card-btn ${activeQueryId === "chlorophyll" ? "active" : ""}`}
+                    onClick={() => handleSelectQuery("chlorophyll")}
+                    aria-pressed={activeQueryId === "chlorophyll"}
+                    aria-label="Ask: What role does chlorophyll play?"
+                  >
+                    <div className="explore-card-inner">
+                      <div className="explore-card-top">
+                        <span className="explore-card-num">01</span>
+                        <span className="explore-card-tag">ASK</span>
+                      </div>
+                      <div className="explore-card-body">
+                        <span className="explore-card-query">What role does chlorophyll play?</span>
+                        <span className="explore-card-arrow" aria-hidden="true">
+                          {activeQueryId === "chlorophyll" ? "✓" : "→"}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Card 02: Energy */}
+                  <button
+                    type="button"
+                    className={`explore-card-btn ${activeQueryId === "energy" ? "active" : ""}`}
+                    onClick={() => handleSelectQuery("energy")}
+                    aria-pressed={activeQueryId === "energy"}
+                    aria-label="Ask: How does light energy become chemical energy?"
+                  >
+                    <div className="explore-card-inner">
+                      <div className="explore-card-top">
+                        <span className="explore-card-num">02</span>
+                        <span className="explore-card-tag">ASK</span>
+                      </div>
+                      <div className="explore-card-body">
+                        <span className="explore-card-query">How does light energy become chemical energy?</span>
+                        <span className="explore-card-arrow" aria-hidden="true">
+                          {activeQueryId === "energy" ? "✓" : "→"}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </aside>
+
             </div>
           </div>
         </div>
       </section>
 
-      <div className="premium-header-wrap" style={{ marginTop: "-16px" }}>
-        <span className="section-meta-badge">01 // CAPABILITIES</span>
-        <h2 id="feat" className="premium-section-header">
-          Make Every Document <span className="premium-accent-word">More Useful.</span>
+      <div className="doc-intelligence-header" style={{ marginTop: "-16px" }}>
+        <h2 id="feat" className="doc-intel-heading">
+          <span className="heading-line-sans">Make Every Document</span>
+          <span className="heading-line-serif">
+            <span className="clarity-underline">More Useful</span>.
+          </span>
         </h2>
-        <div className="premium-header-line-container">
-          <div className="premium-header-line" />
-          <span className="sparkle-dot">✦</span>
-          <div className="premium-header-line" />
-        </div>
       </div>
 
       <section className="features-section" ref={sectionRef} aria-label="Product features">
@@ -217,21 +390,17 @@ const HeroSection = () => {
               tag={f.tag}
               title={f.title}
               desc={f.desc}
-              anim={f.anim}
-              reduceMotion={reduceMotion}
+              metaText={f.metaText}
             />
           ))}
         </div>
-        <div className="premium-header-wrap" style={{ marginTop: "-60px", marginBottom: "20px" }}>
-          <span className="section-meta-badge">02 // TRANSFORMATION</span>
-          <h2 className="premium-section-header">
-            From Chaos To <span className="standard-accent-word">Clarity</span>
+        <div className="doc-intelligence-header" style={{ marginTop: "0px", marginBottom: "20px", padding: "24px 0 32px 0" }}>
+          <h2 className="doc-intel-heading" style={{ gap: "10px", marginBottom: "5px" }}>
+            <span className="heading-line-sans">From Chaos To</span>
+            <span className="heading-line-serif">
+              <span className="clarity-underline">Clarity</span>.
+            </span>
           </h2>
-          <div className="premium-header-line-container">
-            <div className="premium-header-line" />
-            <span className="sparkle-dot">✦</span>
-            <div className="premium-header-line" />
-          </div>
         </div>
       </section>
     </div>

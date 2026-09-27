@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import profileIcon from "./assets/profile.svg";
 import logoutIcon from "./assets/logout.svg";
 

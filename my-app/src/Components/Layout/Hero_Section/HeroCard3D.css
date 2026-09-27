@@ -1,460 +1,541 @@
-/* ── 3D Exploded Card Stack Scene ── */
+/* ============================================================================
+   WARM PAPER TEXTBOOK DOCUMENT PAGE (Muted Botanical Palette #55756F)
+   ============================================================================ */
+
 .hero-right {
   display: flex;
   justify-content: center;
   align-items: center;
-  perspective: 1200px;
   width: 100%;
+  position: relative;
 }
 
-.hero-3d-scene {
+.hero-document-stage {
   width: 100%;
-  max-width: 530px; /* Scaled up to occupy screen space perfectly */
-  height: 470px; 
+  max-width: 540px;
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
+  gap: 16px;
   position: relative;
+  padding: 10px 0 20px 0;
+  margin-left: 89px;
 }
 
-.hero-3d-stack {
-  position: relative;
-  width: 390px; /* Scaled up to fit perfectly */
-  height: 235px; 
-  transform-style: preserve-3d;
-  transform: rotateX(54deg) rotateY(0deg) rotateZ(-34deg);
-  transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
-  animation: floatStack 6.5s ease-in-out infinite;
-}
-
-@keyframes floatStack {
-  0%, 100% { transform: rotateX(54deg) rotateY(0deg) rotateZ(-34deg) translateY(0px); }
-  50% { transform: rotateX(54deg) rotateY(0deg) rotateZ(-34deg) translateY(-14px); }
-}
-
-/* Expanding 3D stack behavior on direct scene hover only */
-.hero-3d-scene:hover .hero-3d-stack {
-  transform: rotateX(48deg) rotateY(0deg) rotateZ(-22deg) translateY(-7px);
-}
-
-.hero-3d-scene:hover .layer-top {
-  transform: translateZ(95px) translateY(-35px);
-}
-
-.hero-3d-scene:hover .layer-base {
-  transform: translateZ(-95px) translateY(35px);
-}
-
-
-/* Stack Layer Wrapper */
-.stack-layer {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform;
-}
-
-.layer-top {
-  transform: translateZ(35px) translateY(-12px);
-  z-index: 3;
-}
-
-.layer-middle {
-  transform: translateZ(0px) translateY(0px);
-  z-index: 2;
-}
-
-.layer-base {
-  transform: translateZ(-35px) translateY(12px);
-  z-index: 1;
-}
-
-/* Frosted Glass Document Card */
-.layer-glass-card {
+/* ── The Physical Warm Paper Document Page (#D8D4C8) ── */
+.doc-sheet {
   width: 100%;
-  height: 100%;
-  background: rgba(10, 10, 12, 0.65);
-  backdrop-filter: blur(16px) saturate(110%);
-  -webkit-backdrop-filter: blur(16px) saturate(110%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
-  padding: 18px 20px;
+  max-width: 340px;
+  flex: 0 0 340px;
+  min-height: 420px;
+  background: #D8D4C8; /* Authentic warm paper */
+  color: #242522; /* Dark ink */
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 4px; /* Crisp paper sheet corner */
+  padding: 24px 22px 20px 22px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
-  transform-style: preserve-3d;
-  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+  justify-content: flex-start;
+  box-shadow: 
+    0 20px 48px -10px rgba(0, 0, 0, 0.72),
+    0 2px 10px rgba(0, 0, 0, 0.45);
+  transform: rotate(-2.2deg);
+  transform-origin: center center;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+  position: relative;
 }
 
-.layer-glass-card:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
+.doc-sheet:hover {
+  transform: rotate(-1.2deg) translateY(-2px);
+  box-shadow: 
+    0 26px 58px -10px rgba(0, 0, 0, 0.82),
+    0 4px 14px rgba(0, 0, 0, 0.5);
 }
 
-.layer-glass-card.border-cyan {
-  border-left: 2px solid #06b6d4;
-}
-
-.layer-glass-card.border-purple {
-  border-left: 2px solid #a855f7;
-}
-
-.layer-glass-card.border-grey {
-  border-left: 2px solid rgba(255, 255, 255, 0.25);
-}
-
-/* Card Header styles */
-.card-header {
+/* ── Document Page Header ── */
+.doc-page-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   width: 100%;
 }
 
-.header-filename {
+.doc-title-stamp {
   font-family: 'DM Mono', monospace;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.63rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: rgba(36, 37, 34, 0.55);
+  text-transform: uppercase;
+}
+
+.doc-header-rule {
+  width: 100%;
+  height: 1px;
+  background: rgba(36, 37, 34, 0.12);
+  margin: 10px 0 16px 0;
+}
+
+/* ── Document Body Content (Dark Ink #242522 on Warm Paper #D8D4C8) ── */
+.doc-page-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+  flex: 1;
+}
+
+/* Document Q&A Section inside the sheet */
+.doc-qa-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.doc-qa-block.is-morphing {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
+.doc-qa-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.doc-qa-meta-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(36, 37, 34, 0.48);
+  text-transform: uppercase;
+}
+
+.doc-qa-meta-label.answer-label {
+  color: #55756F;
+}
+
+.doc-qa-question-text {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: #1a1c18;
+  line-height: 1.35;
+  margin: 0;
   letter-spacing: -0.01em;
 }
 
-.header-status {
+.doc-qa-answer-text {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.83rem;
+  font-weight: 400;
+  color: #242522;
+  line-height: 1.56;
+  margin: 0;
+}
+
+/* ── Interactive Evidence Highlight & Popover ── */
+.doc-evidence-wrapper {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.doc-evidence-highlight {
+  background: rgba(85, 117, 111, 0.22);
+  color: #1a2725;
+  padding: 0 3px;
+  border-radius: 1px;
+  border-bottom: 1.5px solid #55756F;
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.doc-evidence-wrapper:hover .doc-evidence-highlight,
+.doc-evidence-wrapper.is-open .doc-evidence-highlight {
+  background: rgba(85, 117, 111, 0.38);
+  border-bottom-color: #3b534e;
+}
+
+/* ── Grounded Evidence Inspection Card (Click-activated) ── */
+.evidence-popover {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  width: 250px;
+  max-width: 270px;
+  background: #111516;
+  color: #ffffff;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(85, 117, 111, 0.45);
+  box-shadow: 
+    0 12px 32px rgba(0, 0, 0, 0.65),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.evidence-popover::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: #111516 transparent transparent transparent;
+}
+
+/* Activated strictly on click / keyboard focus */
+.doc-evidence-wrapper.is-open .evidence-popover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 5px;
+}
+
+.popover-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #55756F;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.popover-close-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color 0.15s ease;
+}
+
+.popover-close-btn:hover {
+  color: #ffffff;
+}
+
+.popover-quote {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.74rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.92);
+  margin: 0;
+}
+
+.popover-rule {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 7px 0 5px 0;
+}
+
+.popover-source {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0.04em;
+}
+
+/* ── Supporting Scientific Figure 4.2 & Hotspot ── */
+.doc-figure-box {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(36, 37, 34, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.doc-figure-svg {
+  display: block;
+  max-width: 220px;
+}
+
+
+
+.doc-figure-caption {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 5px;
+  width: 100%;
+  text-align: left;
+}
+
+.caption-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #55756F;
+  letter-spacing: 0.04em;
+}
+
+.caption-text {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.68rem;
+  color: rgba(36, 37, 34, 0.65);
+  line-height: 1.4;
+}
+
+/* ── Grounded Source Rule on Document ── */
+.doc-page-footer {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.doc-footer-rule {
+  width: 100%;
+  height: 1px;
+  background: rgba(36, 37, 34, 0.14);
+  margin: 10px 0 8px 0;
+}
+
+.doc-footer-content {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+}
+
+.doc-source-stamp {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(36, 37, 34, 0.68);
+}
+
+/* ── EXPLORE THIS DOCUMENT (Editorial Side Panel beside Document) ── */
+.doc-explore-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 170px;
+  flex: 0 0 170px;
+  align-items: stretch;
+  text-align: left;
+  z-index: 5;
+}
+
+.explore-panel-header {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 0 2px 2px 2px;
 }
 
-.status-dot {
+.explore-header-dot {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
+  background: #55756F;
+  box-shadow: 0 0 6px rgba(85, 117, 111, 0.6);
 }
 
-.status-dot.cyan-pulse {
-  background: #06b6d4;
-  box-shadow: 0 0 8px rgba(6, 182, 212, 0.5);
-  animation: dotPulse 2s infinite;
-}
-
-.status-dot.purple-pulse {
-  background: #a855f7;
-  box-shadow: 0 0 8px rgba(168, 85, 247, 0.5);
-  animation: dotPulse 2s infinite 0.5s;
-}
-
-.status-dot.grey-pulse {
-  background: rgba(255, 255, 255, 0.45);
-}
-
-@keyframes dotPulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-.status-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.64rem;
-  color: rgba(255, 255, 255, 0.35);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* Card Body styles */
-.card-body {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 10px 0;
-}
-
-/* base: raw document view */
-.document-raw-view {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  text-align: left;
-}
-
-.raw-doc-title {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.72rem;
-  color: #dfcfb7;
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-
-.raw-doc-snippet {
-  font-family: 'Inter', sans-serif;
-  font-size: 0.68rem;
-  color: rgba(255, 255, 255, 0.45);
-  line-height: 1.45;
-  margin: 0;
-}
-
-/* middle: vector embeddings grid */
-.vector-details {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  width: 100%;
-  margin-bottom: 8px;
-  text-align: left;
-}
-
-.vector-row {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.64rem;
-  color: rgba(255, 255, 255, 0.4);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.vector-code {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.tag-cyan {
-  color: #06b6d4;
-  font-weight: 600;
-}
-
-.tag-purple {
-  color: #a855f7;
-  font-weight: 600;
-}
-
-/* top: AI chat queries */
-.chat-query {
-  font-family: 'Inter', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #ffffff;
-  margin-top: 2px;
-}
-
-.chat-answer {
-  font-family: 'Inter', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: #06b6d4;
-  margin-top: 2px;
-}
-
-/* middle: vector mapping graph */
-.vector-mapping-zone {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.vector-graph-svg {
-  width: 100%;
-  height: 60px;
-  overflow: visible;
-}
-
-.graph-edge {
-  stroke: rgba(255, 255, 255, 0.06);
-  stroke-width: 1px;
-}
-
-.graph-vertex {
-  fill: rgba(255, 255, 255, 0.15);
-  stroke: rgba(255, 255, 255, 0.1);
-  stroke-width: 1px;
-}
-
-.graph-vertex.highlight {
-  fill: #a855f7;
-  stroke: rgba(168, 85, 247, 0.3);
-  stroke-width: 2px;
-  animation: pulseVertex 3s infinite ease-in-out;
-}
-
-@keyframes pulseVertex {
-  0%, 100% { r: 4.5; }
-  50% { r: 6.5; }
-}
-
-/* top: parsed executive summary */
-.insight-bubble {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  text-align: left;
-}
-
-.bubble-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.bubble-category {
-  font-family: 'Inter', sans-serif;
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: #06b6d4;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.bubble-time {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.64rem;
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.bubble-text {
-  font-family: 'Inter', sans-serif;
-  font-size: 0.72rem;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0;
-}
-
-/* Card Footer styles */
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px dashed rgba(255, 255, 255, 0.04);
-  padding-top: 8px;
-  margin-top: 4px;
-  width: 100%;
-}
-
-.footer-metric {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.64rem;
-  color: rgba(255, 255, 255, 0.3);
-  letter-spacing: -0.01em;
-}
-
-/* Product-first UI card enhancements */
-.file-header-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.file-icon-badge {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.6rem;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-transform: uppercase;
-}
-
-.file-icon-badge.pdf-type {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.file-icon-badge.docx-type {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-}
-
-.citation-pill {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.6rem;
-  color: #06b6d4;
-  background: rgba(6, 182, 212, 0.1);
-  border: 1px solid rgba(6, 182, 212, 0.25);
-  padding: 2px 8px;
-  border-radius: 9999px;
-}
-
-.card-quick-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.action-pill {
-  font-family: 'Inter', sans-serif;
-  font-size: 0.6rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 2px 7px;
-  border-radius: 6px;
-}
-
-.source-context-zone {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.highlighted-excerpt {
-  background: rgba(168, 85, 247, 0.04);
-  border: 1px solid rgba(168, 85, 247, 0.15);
-  border-radius: 8px;
-  padding: 8px 10px;
-  text-align: left;
-}
-
-.highlight-tag {
+.explore-header-tag {
   font-family: 'DM Mono', monospace;
   font-size: 0.58rem;
-  color: #c084fc;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.48);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  display: block;
-  margin-bottom: 4px;
 }
 
-.excerpt-text {
-  font-family: 'Inter', sans-serif;
-  font-size: 0.68rem;
-  color: rgba(255, 255, 255, 0.65);
-  line-height: 1.4;
-  margin: 0;
-  font-style: italic;
+.explore-cards-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
 }
 
-.format-badges-zone {
+.explore-card-btn {
+  appearance: none;
+  background: rgba(17, 21, 22, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 12px 11px;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: 
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.22s ease,
+    background 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.explore-card-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.explore-card-top {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
-.format-tokens {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.fmt-token {
+.explore-card-num {
   font-family: 'DM Mono', monospace;
-  font-size: 0.64rem;
+  font-size: 0.56rem;
   font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.08em;
+  transition: color 0.2s ease;
 }
 
-.fmt-token.pdf { color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
-.fmt-token.docx { color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); }
-.fmt-token.xlsx { color: #34d399; border-color: rgba(52, 211, 153, 0.3); }
-.fmt-token.csv { color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
-.fmt-token.txt { color: #c084fc; border-color: rgba(192, 132, 252, 0.3); }
+.explore-card-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #55756F;
+  text-transform: uppercase;
+}
 
+.explore-card-body {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
 
+.explore-card-query {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.74rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.82);
+  transition: color 0.2s ease;
+}
+
+.explore-card-arrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.82rem;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+/* Hover State: Slight movement toward the document (leftwards: translateX(-4px)) + subtle border/glow */
+.explore-card-btn:hover {
+  transform: translateX(-4px);
+  border-color: rgba(85, 117, 111, 0.45);
+  background: rgba(26, 33, 34, 0.85);
+  box-shadow: 
+    0 6px 18px rgba(0, 0, 0, 0.45),
+    0 0 12px rgba(85, 117, 111, 0.15);
+}
+
+.explore-card-btn:hover .explore-card-query {
+  color: #ffffff;
+}
+
+.explore-card-btn:hover .explore-card-arrow {
+  color: #55756F;
+}
+
+/* Active State: Nudges toward document (translateX(-6px)) with ✓ checkmark and botanical accent */
+.explore-card-btn.active {
+  transform: translateX(-6px);
+  background: rgba(85, 117, 111, 0.12);
+  border-color: #55756F;
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.55),
+    0 0 14px rgba(85, 117, 111, 0.22);
+}
+
+.explore-card-btn.active .explore-card-num {
+  color: #55756F;
+}
+
+.explore-card-btn.active .explore-card-query {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.explore-card-btn.active .explore-card-arrow {
+  color: #55756F;
+  font-weight: 700;
+}
+
+/* ── Responsive Adaptations ── */
+@media (max-width: 1024px) {
+  .hero-document-stage {
+    max-width: 500px;
+    gap: 12px;
+  }
+  .doc-sheet {
+    max-width: 320px;
+    flex: 0 0 320px;
+    min-height: 380px;
+    padding: 20px 18px 16px 18px;
+  }
+  .doc-explore-panel {
+    width: 155px;
+    flex: 0 0 155px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-document-stage {
+    flex-direction: column;
+    max-width: 100%;
+    padding: 10px;
+    gap: 18px;
+    margin-left: 0;
+  }
+  .doc-sheet {
+    max-width: 100%;
+    flex: 1 1 auto;
+    min-height: auto;
+    transform: none;
+    padding: 22px 20px;
+  }
+  .doc-sheet:hover {
+    transform: none;
+  }
+  .doc-explore-panel {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 auto;
+  }
+  .explore-card-btn:hover,
+  .explore-card-btn.active {
+    transform: translateY(-2px);
+  }
+}
