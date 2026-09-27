@@ -17,99 +17,58 @@ const pages = [
     route: '/',
     filePath: path.join(BUILD_DIR, 'index.html'),
     title: 'SmartDocQ – AI PDF Chat, Document Summarizer & Research Assistant',
-    canonical: `${BASE_URL}/`,
-    rootContent: `
-      <main>
-        <h1>Your documents. Now you can talk to them.</h1>
-        <p>Chat with PDFs, get citation-backed answers, summarize documents, and create quizzes and flashcards. Supports PDF, Word, Excel, CSV, and TXT.</p>
-        <nav aria-label="Footer Links">
-          <a href="/help">Help Center</a>
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/terms">Terms of Service</a>
-        </nav>
-      </main>
-    `.trim()
+    description: 'Chat with PDFs, get citation-backed answers, summarize documents, and create quizzes and flashcards. Supports PDF, Word, Excel, CSV, and TXT.',
+    canonical: `${BASE_URL}/`
   },
   {
     route: '/help',
     filePath: path.join(BUILD_DIR, 'help', 'index.html'),
     title: 'Help Center - SmartDocQ',
-    canonical: `${BASE_URL}/help`,
-    rootContent: `
-      <main>
-        <h1>SmartDocQ Help Center</h1>
-        <p>Search documentation, quick-start guides, security compliance details, and FAQs.</p>
-        <nav aria-label="Breadcrumb">
-          <a href="/">Home</a>
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/terms">Terms of Service</a>
-        </nav>
-      </main>
-    `.trim()
+    description: 'Find SmartDocQ guides, document upload instructions, security information, FAQs, and troubleshooting help.',
+    canonical: `${BASE_URL}/help`
   },
   {
     route: '/privacy',
     filePath: path.join(BUILD_DIR, 'privacy', 'index.html'),
     title: 'Privacy Policy - SmartDocQ',
-    canonical: `${BASE_URL}/privacy`,
-    rootContent: `
-      <main>
-        <h1>SmartDocQ Privacy Policy</h1>
-        <p>Information on data collection, privacy practices, and document security.</p>
-        <nav aria-label="Breadcrumb">
-          <a href="/">Home</a>
-          <a href="/help">Help Center</a>
-        </nav>
-      </main>
-    `.trim()
+    description: 'Learn how SmartDocQ collects, processes, protects, and manages your account and document data.',
+    canonical: `${BASE_URL}/privacy`
   },
   {
     route: '/terms',
     filePath: path.join(BUILD_DIR, 'terms', 'index.html'),
     title: 'Terms of Service - SmartDocQ',
-    canonical: `${BASE_URL}/terms`,
-    rootContent: `
-      <main>
-        <h1>SmartDocQ Terms of Service</h1>
-        <p>Usage guidelines, system limitations, and service policies of SmartDocQ.</p>
-        <nav aria-label="Breadcrumb">
-          <a href="/">Home</a>
-          <a href="/help">Help Center</a>
-        </nav>
-      </main>
-    `.trim()
+    description: 'Review the SmartDocQ terms of service, acceptable use requirements, limitations, and service policies.',
+    canonical: `${BASE_URL}/terms`
   }
 ];
 
-function injectSeo(html, { title, canonical, rootContent }) {
+function injectSeo(html, { title, description, canonical }) {
   let result = html;
 
-  // Replace <title> tag
-  if (title) {
-    result = result.replace(/<title>.*?<\/title>/i, `<title>${title}</title>`);
-  }
+  // Remove existing SEO tags so we don't end up with duplicates
+  result = result
+    .replace(/<title>[\s\S]*?<\/title>/i, '')
+    .replace(/<meta\b[^>]*\bname=["']description["'][^>]*>/gi, '')
+    .replace(/<meta\b[^>]*\bproperty=["']og:title["'][^>]*>/gi, '')
+    .replace(/<meta\b[^>]*\bproperty=["']og:description["'][^>]*>/gi, '')
+    .replace(/<meta\b[^>]*\bproperty=["']og:url["'][^>]*>/gi, '')
+    .replace(/<meta\b[^>]*\bname=["']twitter:title["'][^>]*>/gi, '')
+    .replace(/<meta\b[^>]*\bname=["']twitter:description["'][^>]*>/gi, '')
+    .replace(/<link\b[^>]*\brel=["']canonical["'][^>]*>/gi, '');
 
-  // Inject or update <link rel="canonical"> tag in <head>
-  const canonicalTag = `<link rel="canonical" href="${canonical}" />`;
-  const canonicalRegex = /<link\s+rel=["']canonical["']\s+href=["'][^"']*["']\s*\/?>/i;
-  if (canonicalRegex.test(result)) {
-    result = result.replace(canonicalRegex, canonicalTag);
-  } else {
-    result = result.replace('</head>', `  ${canonicalTag}\n  </head>`);
-  }
+  const seoTags = `
+    <title>${title}</title>
+    <meta name="description" content="${description}" />
+    <link rel="canonical" href="${canonical}" />
+    <meta property="og:title" content="${title}" />
+    <meta property="og:description" content="${description}" />
+    <meta property="og:url" content="${canonical}" />
+    <meta name="twitter:title" content="${title}" />
+    <meta name="twitter:description" content="${description}" />
+  `.trim();
 
-  // Inject or update <meta property="og:url"> tag in <head>
-  const ogUrlTag = `<meta property="og:url" content="${canonical}" />`;
-  const ogUrlRegex = /<meta\s+property=["']og:url["']\s+content=["'][^"']*["']\s*\/?>/i;
-  if (ogUrlRegex.test(result)) {
-    result = result.replace(ogUrlRegex, ogUrlTag);
-  } else {
-    result = result.replace('</head>', `  ${ogUrlTag}\n  </head>`);
-  }
-
-  // Replace empty <div id="root"></div> with minimal crawlable HTML (visually hidden to prevent pre-hydration flash)
-  const rootElement = `<div id="root"><div aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">${rootContent}</div></div>`;
-  result = result.replace(/<div id="root">\s*<\/div>/i, rootElement);
+  result = result.replace('</head>', `    ${seoTags}\n  </head>`);
 
   return result;
 }
